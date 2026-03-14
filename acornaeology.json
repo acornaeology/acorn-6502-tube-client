@@ -6,9 +6,13 @@
     "versions": ["1.10"],
     "references": [
         {
-            "label": "Acorn 6502 Tube ROM source code",
+            "label": "Acorn 6502 Tube ROM v1.10 original source code (UADE format)",
+            "url": "https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade"
+        },
+        {
+            "label": "Acorn 6502 Tube ROM v1.20 source code and change history",
             "url": "https://github.com/stardot/Acorn6502TubeROM",
-            "note": "Original source code for the v1.20 ROM in MASM format, plus the v1.10 source in UADE format (in the uadesrc/ directory). The v1.20 sources include a change history documenting the bug fixes applied between v1.10 and v1.20."
+            "note": "The v1.20 sources include a change history documenting the bug fixes applied between v1.10 and v1.20."
         }
     ]
 }
