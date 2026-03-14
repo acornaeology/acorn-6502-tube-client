@@ -10,7 +10,7 @@
             "icon": "chip"
         },
         {
-            "label": "Original v1.10 source code (UADE format)",
+            "label": "Original Acorn source code for v1.10 (UADE format)",
             "url": "https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade",
             "icon": "github"
         },
