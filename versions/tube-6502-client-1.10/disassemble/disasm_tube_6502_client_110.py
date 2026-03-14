@@ -142,6 +142,10 @@ entry(0xFE41)
 entry(0xFE80)
 entry(0xFEB3)
 entry(0xFFB9)
+entry(0xFFBC)
+entry(0xFFBF)
+entry(0xFFC2)
+entry(0xFFC5)
 entry(0xFFC8)
 entry(0xFFCB)
 entry(0xFFCE)
@@ -211,7 +215,9 @@ label(0xFCBC, "osword_send_lengths")
 label(0xFCD0, "osword_recv_lengths")
 label(0xFCE5, "interrupt_handler")
 label(0xFCF0, "irq1_handler")
-label(0xFCFB, "brk_handler")
+# Note: brk_handler label was previously at &FCFB, but that is in the
+# middle of the 3-byte JMP (IRQ2V) instruction at &FCFA. The actual
+# BRK handler entry point is at &FCFD (brk_handler_entry).
 label(0xFD18, "tube_r1_interrupt")
 label(0xFD39, "set_escape_flag")
 label(0xFD3F, "tube_r4_interrupt")
@@ -418,12 +424,46 @@ subroutine(0xF8B5, "Enter code at transfer address",
     If the header is missing or invalid, enters with A=1
     anyway (raw code entry). Generates an error if the
     ROM type indicates it is not a language or not 6502
-    code.""")
+    code.
+
+    Note: the v1.10 ROM always enters with A=1 regardless
+    of whether it is a RESET or OSCLI entry, and does not
+    pass the carry flag. JGH identifies this as a bug.""")
+
+subroutine(0xF8FA, "Enter raw code",
+    """Enter code at the transfer address without a valid
+    ROM header. Loads A=1 and jumps via the memory top
+    pointer (which has been set to the transfer address).
+
+    Note: JGH identifies a bug where raw code should be
+    entered with A=0, and the carry should indicate
+    whether the entry is from RESET or OSCLI.""")
+
+subroutine(0xF8FF, "Generate 'not a language' error",
+    """Set up the BRK vector to point to the default error
+    handler, then generate error 0: 'This is not a
+    language'. The error handler must be re-established
+    here because the previous language's handler will
+    have been overwritten.""")
+
+subroutine(0xF922, "Generate 'not 6502 code' error",
+    """Set up the BRK vector to point to the default error
+    handler, then generate error 0: 'I cannot run this
+    code'. Called when the ROM type indicates the code is
+    not suitable for a 6502 processor.""")
 
 subroutine(0xF945, "Error handler",
     """Default BRK handler. Clears the stack, prints the
     error message from the BRK instruction, and returns
     to the command prompt.""")
+
+subroutine(0xF95D, "OSWORD 0 control block",
+    """Control block for the supervisor command prompt input.
+
+    Byte 0-1: buffer address (&0236)
+    Byte 2:   buffer length (&CA = 202 bytes, up to &0300)
+    Byte 3:   minimum acceptable ASCII value (&20 = space)
+    Byte 4:   maximum acceptable ASCII value (&FF)""")
 
 subroutine(0xF962, "OSWRCH implementation",
     """Send character in A to the host via Tube R1.
@@ -442,6 +482,29 @@ subroutine(0xF96C, "OSRDCH implementation",
     On exit:
       A = character received
       C = Escape flag""")
+
+subroutine(0xF971, "Wait for carry byte and data byte",
+    """Wait for two bytes from Tube R2: first a carry
+    indicator, then the data byte.
+
+    The carry byte is shifted left so bit 7 moves into
+    the carry flag, then falls through to read the
+    actual data byte.
+
+    On exit:
+      A = data byte from Tube R2
+      C = carry indicator from host""")
+
+subroutine(0xF975, "Wait for byte from Tube R2",
+    """Poll Tube R2 status until data is available, then
+    read and return the byte.
+
+    On exit:
+      A = byte read from Tube R2""")
+
+subroutine(0xF97D, "Null return",
+    """An RTS used as a no-op handler for vectors that have
+    no action (EVNTV, IND1V-IND3V in the default table).""")
 
 subroutine(0xF97F, "Skip spaces in command string",
     """Advance past space characters in the string at
@@ -497,6 +560,16 @@ subroutine(0xFA2D, "Send OSCLI command to host",
     If the response has bit 7 set, code needs to be
     entered (a language was selected).""")
 
+subroutine(0xFA35, "Wait for OSCLI acknowledgement",
+    """Wait for the host's response byte after sending an
+    OSCLI command. If the response has bit 7 set (&80),
+    the host has selected a language and code needs to be
+    entered at the transfer address. Otherwise restore A
+    and return to the caller.
+
+    Also used by OSBYTE &8E (select language) via the
+    check at osbyte_check_ack.""")
+
 subroutine(0xFA3E, "Handle *GO command",
     """Parse *GO [address]. If an address is given, set the
     transfer address to it. If no address given, use the
@@ -504,12 +577,24 @@ subroutine(0xFA3E, "Handle *GO command",
     the code.
 
     Note: does not check for a separator after 'GO', so
-    commands like *GOAD would be incorrectly matched.""")
+    commands like *GOAD would be incorrectly matched.
+    JGH identifies this as a bug.""")
 
 subroutine(0xFA5C, "Execute code and restore state",
     """Save the current program pointer, call enter_code,
     then restore the current program and memory top
-    on return.""")
+    on return.
+
+    Note: in v1.10, the carry flag is not explicitly set
+    before calling enter_code, so entered code cannot
+    reliably distinguish RESET from OSCLI entry. JGH
+    identifies this as a bug.""")
+
+subroutine(0xFA71, "Check OSCLI acknowledgement (OSBYTE &8E path)",
+    """Entry point used by OSBYTE &8E (select language).
+    If the function matched &8E, branches to wait for
+    the OSCLI acknowledgement byte from the host, which
+    may trigger code entry.""")
 
 subroutine(0xFA73, "OSBYTE implementation",
     """Handle OSBYTE calls. Functions &82-&84 are handled
@@ -526,6 +611,29 @@ subroutine(0xFA73, "OSBYTE implementation",
     On exit:
       A preserved
       X, Y, Carry = returned values (for A >= &80)""")
+
+subroutine(0xFAF0, "OSBYTE &84: read top of memory",
+    """Return the current top of user memory from &F2/F3.
+
+    On exit:
+      X = memory_top low byte
+      Y = memory_top high byte""")
+
+subroutine(0xFAF4, "OSBYTE &83: read bottom of memory",
+    """Return the bottom of user memory, fixed at &0800.
+
+    On exit:
+      X = &00
+      Y = &08""")
+
+subroutine(0xFAF8, "OSBYTE &82: read machine high order address",
+    """Return &0000 as the high word of the address space.
+    This indicates the 6502 has a 16-bit address space
+    with no bank switching.
+
+    On exit:
+      X = &00
+      Y = &00""")
 
 subroutine(0xFAFF, "OSWORD implementation",
     """Handle OSWORD calls. OSWORD 0 (read line) is handled
@@ -617,7 +725,35 @@ subroutine(0xFC8E, "OSGBPB implementation",
       A = function, XY => control block""")
 
 subroutine(0xFCB7, "Unsupported MOS call",
-    """Generate a 'Bad' error for unsupported MOS calls.""")
+    """Generate a 'Bad' error for unsupported MOS calls.
+    Used as the default handler for USERV, IRQ2V, FSCV,
+    and several other vectors that have no parasite-side
+    implementation.""")
+
+subroutine(0xFCBC, "OSWORD send block length table",
+    """Indexed by OSWORD number via LDY table,X where X is
+    the OSWORD function. Entry 0 is never used because
+    OSWORD 0 (RDLINE) is handled separately. Entries
+    1-20 give the number of bytes to send from the
+    control block to the host for each OSWORD function.
+    Functions above &14 (20) default to sending 16 bytes.
+
+    For functions >= &80, the send length is taken from
+    byte 0 of the control block instead of this table.""")
+
+subroutine(0xFCD0, "OSWORD receive block length table",
+    """Indexed by OSWORD number via LDY table,X. Gives the
+    number of bytes to receive back from the host into
+    the control block. Entries 1-20 correspond to OSWORD
+    functions &01-&14. Functions above &14 default to
+    receiving 16 bytes.
+
+    The first byte (&80) is shared: it serves as both
+    the OSWORD &14 send length (meaning the length is in
+    the control block) and the unused recv slot 0.
+
+    For functions >= &80, the receive length is taken from
+    byte 1 of the control block instead of this table.""")
 
 subroutine(0xFCE5, "Interrupt handler entry",
     """Hardware interrupt entry point. Saves A, checks the
@@ -629,17 +765,24 @@ subroutine(0xFCF0, "IRQ1 handler",
     transfer requests, then Tube R1 for escape/event
     notifications. Falls through to IRQ2V if neither.""")
 
-subroutine(0xFCFB, "BRK handler dispatch",
+subroutine(0xFCFD, "BRK handler dispatch",
     """Extract the return address from the stack, subtract 1
-    to point to the byte after the BRK opcode, store in
-    last_error, then dispatch via BRKV.""")
+    to point to the byte after the BRK opcode (the error
+    block), store the pointer in last_error (&FD/FE),
+    then re-enable interrupts and dispatch via BRKV.""")
 
-subroutine(0xFD18, "Handle Tube R1 interrupt",
+subroutine(0xFD18, "Handle Tube R1 interrupt (escape and events)",
     """Process data received via Tube R1. If bit 7 is set,
     it is an Escape state change (stored in escape_flag).
     Otherwise, it is an event notification: reads the
     event parameters (Y, X, event number) from R1 and
     dispatches via EVNTV.""")
+
+subroutine(0xFD39, "Set escape flag from Tube R1 data",
+    """Called when Tube R1 data has bit 7 set, indicating
+    an Escape state change. Shifts bit 6 of the received
+    byte into bit 7 via ASL and stores the result in
+    escape_flag (&FF). Bit 7 set = Escape active.""")
 
 subroutine(0xFD3F, "Handle Tube R4 interrupt",
     """Process data received via Tube R4. If bit 7 is set,
@@ -663,6 +806,19 @@ subroutine(0xFD65, "Set up data transfer via NMI",
     low 2 bytes are used), configures the NMI vector and
     transfer address, then reads the sync byte from R4.""")
 
+subroutine(0xFDE7, "Restore registers and return from interrupt",
+    """Common exit path for data transfer setup. Restores Y
+    from the stack, retrieves saved A from irq_a_store,
+    and executes RTI.""")
+
+subroutine(0xFDEC, "Transfer 256 bytes from Tube via R3",
+    """Read 256 bytes from Tube R3 into memory at the
+    address patched into the STA instruction. Used for
+    transfer type 7 (256-byte read from host).
+
+    The target address is set up by data_transfer_setup
+    via the transfer address pointer table.""")
+
 subroutine(0xFE00, "NMI: single byte to Tube",
     """Transfer type 0. Sends one byte from the transfer
     address to Tube R3, then increments the address.""")
@@ -681,6 +837,29 @@ subroutine(0xFE41, "NMI: two bytes from Tube",
     """Transfer type 3. Reads two bytes from Tube R3 and
     stores them at (data_transfer_addr), incrementing
     the pointer after each byte.""")
+
+subroutine(0xFE60, "Transfer address pointer table (low bytes)",
+    """Eight entries indexed by transfer type (0-7). Each
+    entry is the low byte of the address of the two-byte
+    field that holds the current transfer address for
+    that type. Types 0-1 and 6-7 point to self-modifying
+    code address operands; types 2-5 point to the
+    data_transfer_addr zero page location (&F6).""")
+
+subroutine(0xFE68, "Transfer address pointer table (high bytes)",
+    """High bytes corresponding to the low byte table at
+    &FE60. Together they form 8 pointers to the address
+    fields used by each transfer type.""")
+
+subroutine(0xFE70, "NMI routine address table (low bytes)",
+    """Eight entries indexed by transfer type (0-7). Each
+    entry is the low byte of the NMI handler routine
+    for that type. Types 0-3 have dedicated handlers;
+    types 4-7 all use the NMI acknowledge routine.""")
+
+subroutine(0xFE78, "NMI routine address table (high bytes)",
+    """High bytes corresponding to the low byte table at
+    &FE70. Together they form 8 NMI handler addresses.""")
 
 subroutine(0xFE80, "Wait for byte in Tube R1",
     """Wait for data in Tube R1, allowing Tube R4 transfer
@@ -705,8 +884,135 @@ subroutine(0xFE98, "Print inline text",
 
 subroutine(0xFEB3, "NMI acknowledge",
     """Acknowledge an NMI by writing A to Tube R3, then
-    return from interrupt. Used as the default NMI
-    handler for transfer types 4-7.""")
+    return from interrupt. Used as the NMI handler for
+    transfer types 4-7 (release and 256-byte block
+    transfers, which do not use NMI for individual
+    bytes). Also the initial value of the NMI vector
+    at reset.""")
+
+subroutine(0xFF80, "Default MOS vector table",
+    """27 two-byte entries (54 bytes) copied to &0200-&0235
+    at reset. Each entry is the initial value for the
+    corresponding MOS vector. Vectors for unimplemented
+    functions point to the 'unsupported' error handler;
+    unused event and indirect vectors point to
+    null_return (RTS).""")
+
+subroutine(0xFFB6, "Vector table descriptor",
+    """Three-byte block at &FFB6 used by OSBYTE &FD
+    (read vector table info). Byte 0 = length of the
+    vector table in bytes (&36 = 54 = 27 vectors).
+    Bytes 1-2 = address of the default vector table
+    (&FF80).""")
+
+subroutine(0xFFB9, "MOS entry: unsupported (5 stubs at &FFB9-&FFC7)",
+    """Five consecutive JMP unsupported stubs at &FFB9,
+    &FFBC, &FFBF, &FFC2, &FFC5. In the v1.10 external
+    ROM, all five generate a 'Bad' error. These
+    addresses are reserved for MOS compatibility but
+    have no function in this Tube Client.""")
+
+subroutine(0xFFC8, "MOS entry: NVRDCH (non-vectored RDCH)",
+    """Jump directly to the OSRDCH implementation,
+    bypassing RDCHV. Used when the caller needs to
+    ensure the real RDCH handler runs regardless of
+    any vector interception.""")
+
+subroutine(0xFFCB, "MOS entry: NVWRCH (non-vectored WRCH)",
+    """Jump directly to the OSWRCH implementation,
+    bypassing WRCHV. Used when the caller needs to
+    ensure the real WRCH handler runs regardless of
+    any vector interception.""")
+
+subroutine(0xFFCE, "MOS entry: OSFIND",
+    """Open or close a file. Dispatches via FINDV (&021C).
+
+    On entry:
+      A = 0 to close, non-zero to open
+      Y = handle (close) or XY => filename (open)
+    On exit:
+      A = file handle (open) or preserved (close)""")
+
+subroutine(0xFFD1, "MOS entry: OSGBPB",
+    """Multiple-byte get or put. Dispatches via GBPBV (&021A).
+
+    On entry:
+      A = function, XY => 13-byte control block""")
+
+subroutine(0xFFD4, "MOS entry: OSBPUT",
+    """Write a byte to an open file. Dispatches via BPUTV (&0218).
+
+    On entry:
+      A = byte to write, Y = file handle""")
+
+subroutine(0xFFD7, "MOS entry: OSBGET",
+    """Read a byte from an open file. Dispatches via BGETV (&0216).
+
+    On entry:
+      Y = file handle
+    On exit:
+      A = byte read, C = set if EOF""")
+
+subroutine(0xFFDA, "MOS entry: OSARGS",
+    """Read or write open file arguments. Dispatches via ARGSV (&0214).
+
+    On entry:
+      A = function, X => zero-page data word, Y = handle""")
+
+subroutine(0xFFDD, "MOS entry: OSFILE",
+    """Whole-file operations. Dispatches via FILEV (&0212).
+
+    On entry:
+      A = function, XY => 18-byte control block""")
+
+subroutine(0xFFE0, "MOS entry: OSRDCH",
+    """Read a character from the input stream. Dispatches via RDCHV (&0210).
+
+    On exit:
+      A = character, C = set if Escape""")
+
+subroutine(0xFFE3, "MOS entry: OSASCI",
+    """Write a character, converting CR to CR+LF. If the
+    character is &0D, falls through to OSNEWL to send
+    LF then CR. Otherwise jumps directly to OSWRCH.
+
+    On entry:
+      A = character to write""")
+
+subroutine(0xFFE7, "MOS entry: OSNEWL",
+    """Send a newline sequence (LF followed by CR) via OSWRCH.
+    Loads A=&0A, calls OSWRCH, then falls through to
+    OSWRCR which loads A=&0D and calls OSWRCH.""")
+
+subroutine(0xFFEC, "MOS entry: OSWRCR",
+    """Send a carriage return via OSWRCH. Loads A=&0D and
+    falls through to OSWRCH.""")
+
+subroutine(0xFFEE, "MOS entry: OSWRCH",
+    """Write a character to the output stream. Dispatches via WRCHV (&020E).
+
+    On entry:
+      A = character to write
+    On exit:
+      A preserved""")
+
+subroutine(0xFFF1, "MOS entry: OSWORD",
+    """Perform a word-based MOS operation. Dispatches via WORDV (&020C).
+
+    On entry:
+      A = function, XY => control block""")
+
+subroutine(0xFFF4, "MOS entry: OSBYTE",
+    """Perform a byte-based MOS operation. Dispatches via BYTEV (&020A).
+
+    On entry:
+      A = function, X = parameter 1, Y = parameter 2""")
+
+subroutine(0xFFF7, "MOS entry: OSCLI",
+    """Execute a star command. Dispatches via CLIV (&0208).
+
+    On entry:
+      XY => command string (CR-terminated)""")
 
 # =====================================================================
 # Comments
@@ -1387,7 +1693,6 @@ comment(0xFCF8, "Data present: handle escape/event", inline=True)
 comment(0xFCFA, "Neither: dispatch via IRQ2V", inline=True)
 
 # --- BRK handler (&FCFB) ---
-comment(0xFCFB, "Merge with BRK entry (ASL is TXA;PHA)", inline=True)
 comment(0xFCFD, "Save X on stack", inline=True)
 comment(0xFCFE, "Push X", inline=True)
 comment(0xFCFF, "Get stack pointer", inline=True)

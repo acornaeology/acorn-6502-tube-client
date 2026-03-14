@@ -161,7 +161,11 @@ soft_reset_jmp_hi = soft_reset_jmp+2
     sta soft_reset_jmp_lo                                             ; f87e: 8d 5e f8    .^.            ; Patch JMP target low byte
     lda #&f8                                                          ; f881: a9 f8       ..             ; High byte of command_prompt address
     sta soft_reset_jmp_hi                                             ; f883: 8d 5f f8    ._.            ; Patch JMP target high byte
-    jsr wait_for_tube_r2_byte                                         ; f886: 20 75 f9     u.            ; Wait for host acknowledge byte
+    jsr wait_for_tube_r2_byte                                         ; f886: 20 75 f9     u.            ; Wait for host acknowledge byte; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     cmp #&80                                                          ; f889: c9 80       ..             ; Is it &80 (enter code)?
     beq enter_code                                                    ; f88b: f0 28       .(             ; Yes, enter transferred code; Check whether the code at the data transfer address
 ;     has a valid ROM header with a (C) string, and if so
@@ -173,6 +177,10 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     anyway (raw code entry). Generates an error if the
 ;     ROM type indicates it is not a language or not 6502
 ;     code.
+; 
+;     Note: the v1.10 ROM always enters with A=1 regardless
+;     of whether it is a RESET or OSCLI entry, and does not
+;     pass the carry flag. JGH identifies this as a bug.
 ; ***************************************************************************************
 ; The main supervisor command prompt.
 ; 
@@ -184,15 +192,26 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; &f88d referenced 2 times by &f8a4, &f95a
 .command_prompt
     lda #&2a ; '*'                                                    ; f88d: a9 2a       .*             ; Print '*' prompt character
-    jsr oswrch_entry                                                  ; f88f: 20 ee ff     ..            ; Send '*' via OSWRCH
+    jsr oswrch_entry                                                  ; f88f: 20 ee ff     ..            ; Send '*' via OSWRCH; Write a character to the output stream. Dispatches via WRCHV (&020E).
+; 
+;     On entry:
+;       A = character to write
+;     On exit:
+;       A preserved
     ldx #&5d ; ']'                                                    ; f892: a2 5d       .]             ; Low byte of rdline control block
     ldy #&f9                                                          ; f894: a0 f9       ..             ; High byte of rdline control block
     lda #0                                                            ; f896: a9 00       ..             ; OSWORD 0: read line of input
-    jsr osword_entry                                                  ; f898: 20 f1 ff     ..            ; Call OSWORD
+    jsr osword_entry                                                  ; f898: 20 f1 ff     ..            ; Call OSWORD; Perform a word-based MOS operation. Dispatches via WORDV (&020C).
+; 
+;     On entry:
+;       A = function, XY => control block
     bcs command_prompt_escape                                         ; f89b: b0 0a       ..             ; Carry set: Escape was pressed
     ldx #&36 ; '6'                                                    ; f89d: a2 36       .6             ; Low byte of input buffer &0236
     ldy #2                                                            ; f89f: a0 02       ..             ; High byte of input buffer
-    jsr oscli_entry                                                   ; f8a1: 20 f7 ff     ..            ; Execute command via OSCLI
+    jsr oscli_entry                                                   ; f8a1: 20 f7 ff     ..            ; Execute command via OSCLI; Execute a star command. Dispatches via CLIV (&0208).
+; 
+;     On entry:
+;       XY => command string (CR-terminated)
     jmp command_prompt                                                ; f8a4: 4c 8d f8    L..            ; Loop back for next command; The main supervisor command prompt.
 ; 
 ;     Prints a '*' prompt, reads a line of input using
@@ -203,7 +222,10 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; &f8a7 referenced 1 time by &f89b
 .command_prompt_escape
     lda #&7e ; '~'                                                    ; f8a7: a9 7e       .~             ; OSBYTE &7E: acknowledge Escape
-    jsr osbyte_entry                                                  ; f8a9: 20 f4 ff     ..            ; Call OSBYTE
+    jsr osbyte_entry                                                  ; f8a9: 20 f4 ff     ..            ; Call OSBYTE; Perform a byte-based MOS operation. Dispatches via BYTEV (&020A).
+; 
+;     On entry:
+;       A = function, X = parameter 1, Y = parameter 2
     brk                                                               ; f8ac: 00          .              ; Generate error 17: 'Escape'
 
     equb &11                                                          ; f8ad: 11          .
@@ -221,6 +243,10 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     anyway (raw code entry). Generates an error if the
 ;     ROM type indicates it is not a language or not 6502
 ;     code.
+; 
+;     Note: the v1.10 ROM always enters with A=1 regardless
+;     of whether it is a RESET or OSCLI entry, and does not
+;     pass the carry flag. JGH identifies this as a bug.
 ; ***************************************************************************************
 ; &f8b5 referenced 2 times by &f88b, &fa62
 .enter_code
@@ -241,31 +267,78 @@ soft_reset_jmp_hi = soft_reset_jmp+2
     sta last_error_hi                                                 ; f8cf: 85 fe       ..             ; Store copyright pointer high
     ldy #0                                                            ; f8d1: a0 00       ..             ; Y=0 to check first byte
     lda (last_error),y                                                ; f8d3: b1 fd       ..             ; Read byte at copyright pointer
-    bne enter_raw_code                                                ; f8d5: d0 23       .#             ; Not zero: no valid header, enter raw
+    bne enter_raw_code                                                ; f8d5: d0 23       .#             ; Not zero: no valid header, enter raw; Enter code at the transfer address without a valid
+;     ROM header. Loads A=1 and jumps via the memory top
+;     pointer (which has been set to the transfer address).
+; 
+;     Note: JGH identifies a bug where raw code should be
+;     entered with A=0, and the carry should indicate
+;     whether the entry is from RESET or OSCLI.
     iny                                                               ; f8d7: c8          .              ; Y=1 to check '('; Y=&01
     lda (last_error),y                                                ; f8d8: b1 fd       ..             ; Read next byte
     cmp #&28 ; '('                                                    ; f8da: c9 28       .(             ; Is it '('?
-    bne enter_raw_code                                                ; f8dc: d0 1c       ..             ; No: enter as raw code
+    bne enter_raw_code                                                ; f8dc: d0 1c       ..             ; No: enter as raw code; Enter code at the transfer address without a valid
+;     ROM header. Loads A=1 and jumps via the memory top
+;     pointer (which has been set to the transfer address).
+; 
+;     Note: JGH identifies a bug where raw code should be
+;     entered with A=0, and the carry should indicate
+;     whether the entry is from RESET or OSCLI.
     iny                                                               ; f8de: c8          .              ; Y=2 to check 'C'; Y=&02
     lda (last_error),y                                                ; f8df: b1 fd       ..             ; Read next byte
     cmp #&43 ; 'C'                                                    ; f8e1: c9 43       .C             ; Is it 'C'?
-    bne enter_raw_code                                                ; f8e3: d0 15       ..             ; No: enter as raw code
+    bne enter_raw_code                                                ; f8e3: d0 15       ..             ; No: enter as raw code; Enter code at the transfer address without a valid
+;     ROM header. Loads A=1 and jumps via the memory top
+;     pointer (which has been set to the transfer address).
+; 
+;     Note: JGH identifies a bug where raw code should be
+;     entered with A=0, and the carry should indicate
+;     whether the entry is from RESET or OSCLI.
     iny                                                               ; f8e5: c8          .              ; Y=3 to check ')'; Y=&03
     lda (last_error),y                                                ; f8e6: b1 fd       ..             ; Read next byte
     cmp #&29 ; ')'                                                    ; f8e8: c9 29       .)             ; Is it ')'?
-    bne enter_raw_code                                                ; f8ea: d0 0e       ..             ; No: enter as raw code
+    bne enter_raw_code                                                ; f8ea: d0 0e       ..             ; No: enter as raw code; Enter code at the transfer address without a valid
+;     ROM header. Loads A=1 and jumps via the memory top
+;     pointer (which has been set to the transfer address).
+; 
+;     Note: JGH identifies a bug where raw code should be
+;     entered with A=0, and the carry should indicate
+;     whether the entry is from RESET or OSCLI.
     ldy #6                                                            ; f8ec: a0 06       ..             ; Offset 6 = ROM type byte
     lda (current_program),y                                           ; f8ee: b1 ee       ..             ; Read ROM type
     and #&4f ; 'O'                                                    ; f8f0: 29 4f       )O             ; Mask language and CPU type bits
     cmp #&40 ; '@'                                                    ; f8f2: c9 40       .@             ; Bit 6 clear: not a language ROM
-    bcc error_not_a_language                                          ; f8f4: 90 09       ..             ; Generate 'not a language' error
+    bcc error_not_a_language                                          ; f8f4: 90 09       ..             ; Generate 'not a language' error; Set up the BRK vector to point to the default error
+;     handler, then generate error 0: 'This is not a
+;     language'. The error handler must be re-established
+;     here because the previous language's handler will
+;     have been overwritten.
     and #&0d                                                          ; f8f6: 29 0d       ).             ; Mask CPU type: 0 or 2 = 6502
-    bne error_not_6502_code                                           ; f8f8: d0 28       .(             ; Non-zero: not 6502 code
+    bne error_not_6502_code                                           ; f8f8: d0 28       .(             ; Non-zero: not 6502 code; Set up the BRK vector to point to the default error
+;     handler, then generate error 0: 'I cannot run this
+;     code'. Called when the ROM type indicates the code is
+;     not suitable for a 6502 processor.
+; ***************************************************************************************
+; Enter code at the transfer address without a valid
+;     ROM header. Loads A=1 and jumps via the memory top
+;     pointer (which has been set to the transfer address).
+; 
+;     Note: JGH identifies a bug where raw code should be
+;     entered with A=0, and the carry should indicate
+;     whether the entry is from RESET or OSCLI.
+; ***************************************************************************************
 ; &f8fa referenced 4 times by &f8d5, &f8dc, &f8e3, &f8ea
 .enter_raw_code
     lda #1                                                            ; f8fa: a9 01       ..             ; Enter code with A=1
     jmp (memory_top)                                                  ; f8fc: 6c f2 00    l..            ; Jump to code via memory top pointer
 
+; ***************************************************************************************
+; Set up the BRK vector to point to the default error
+;     handler, then generate error 0: 'This is not a
+;     language'. The error handler must be re-established
+;     here because the previous language's handler will
+;     have been overwritten.
+; ***************************************************************************************
 ; &f8ff referenced 1 time by &f8f4
 .error_not_a_language
     lda #&45 ; 'E'                                                    ; f8ff: a9 45       .E             ; Set BRKV low to error handler
@@ -278,6 +351,12 @@ soft_reset_jmp_hi = soft_reset_jmp+2
     equs "This is not a language"                                     ; f90b: 54 68 69... Thi
     equb 0                                                            ; f921: 00          .
 
+; ***************************************************************************************
+; Set up the BRK vector to point to the default error
+;     handler, then generate error 0: 'I cannot run this
+;     code'. Called when the ROM type indicates the code is
+;     not suitable for a 6502 processor.
+; ***************************************************************************************
 ; &f922 referenced 1 time by &f8f8
 .error_not_6502_code
     lda #&45 ; 'E'                                                    ; f922: a9 45       .E             ; Set BRKV low to error handler
@@ -298,18 +377,27 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 .error_handler
     ldx #&ff                                                          ; f945: a2 ff       ..             ; Reset stack pointer to &FF
     txs                                                               ; f947: 9a          .              ; Clear the stack
-    jsr osnewl_entry                                                  ; f948: 20 e7 ff     ..            ; Print newline before error message
+    jsr osnewl_entry                                                  ; f948: 20 e7 ff     ..            ; Print newline before error message; Send a newline sequence (LF followed by CR) via OSWRCH.
+;     Loads A=&0A, calls OSWRCH, then falls through to
+;     OSWRCR which loads A=&0D and calls OSWRCH.
     ldy #1                                                            ; f94b: a0 01       ..             ; Start at offset 1 (skip error number)
 ; &f94d referenced 1 time by &f955
 .print_error_loop
     lda (last_error),y                                                ; f94d: b1 fd       ..             ; Get next error message character
     beq print_error_done                                              ; f94f: f0 06       ..             ; Zero: end of error message
-    jsr oswrch_entry                                                  ; f951: 20 ee ff     ..            ; Print character via OSWRCH
+    jsr oswrch_entry                                                  ; f951: 20 ee ff     ..            ; Print character via OSWRCH; Write a character to the output stream. Dispatches via WRCHV (&020E).
+; 
+;     On entry:
+;       A = character to write
+;     On exit:
+;       A preserved
     iny                                                               ; f954: c8          .              ; Next character
     bne print_error_loop                                              ; f955: d0 f6       ..             ; Loop until all characters printed
 ; &f957 referenced 1 time by &f94f
 .print_error_done
-    jsr osnewl_entry                                                  ; f957: 20 e7 ff     ..            ; Print trailing newline
+    jsr osnewl_entry                                                  ; f957: 20 e7 ff     ..            ; Print trailing newline; Send a newline sequence (LF followed by CR) via OSWRCH.
+;     Loads A=&0A, calls OSWRCH, then falls through to
+;     OSWRCR which loads A=&0D and calls OSWRCH.
     jmp command_prompt                                                ; f95a: 4c 8d f8    L..            ; Return to command prompt; The main supervisor command prompt.
 ; 
 ;     Prints a '*' prompt, reads a line of input using
@@ -317,6 +405,14 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     Handles Escape by acknowledging it and reporting
 ;     the error.
 
+; ***************************************************************************************
+; Control block for the supervisor command prompt input.
+; 
+;     Byte 0-1: buffer address (&0236)
+;     Byte 2:   buffer length (&CA = 202 bytes, up to &0300)
+;     Byte 3:   minimum acceptable ASCII value (&20 = space)
+;     Byte 4:   maximum acceptable ASCII value (&FF)
+; ***************************************************************************************
 .rdline_control_block
     equb &36                                                          ; f95d: 36          6              ; Buffer at &0236, length &CA
     equb 2                                                            ; f95e: 02          .
@@ -364,15 +460,46 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
+; ***************************************************************************************
+; Wait for two bytes from Tube R2: first a carry
+;     indicator, then the data byte.
+; 
+;     The carry byte is shifted left so bit 7 moves into
+;     the carry flag, then falls through to read the
+;     actual data byte.
+; 
+;     On exit:
+;       A = data byte from Tube R2
+;       C = carry indicator from host
+; ***************************************************************************************
 ; &f971 referenced 2 times by &fc33, &fcb4
 .wait_carry_and_byte
-    jsr wait_for_tube_r2_byte                                         ; f971: 20 75 f9     u.            ; Wait for carry byte from host
+    jsr wait_for_tube_r2_byte                                         ; f971: 20 75 f9     u.            ; Wait for carry byte from host; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     asl a                                                             ; f974: 0a          .              ; Shift carry flag into C
+; ***************************************************************************************
+; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
+; ***************************************************************************************
 ; &f975 referenced 18 times by &f886, &f971, &f978, &fa35, &fba3, &fbf2, &fbf6, &fbfb, &fc00, &fc05, &fc1f, &fc27, &fc45, &fc78, &fc7e, &fca8, &fd53, &fd5a
 .wait_for_tube_r2_byte
     bit tube_r2_status                                                ; f975: 2c fa fe    ,..            ; Poll Tube R2 status
-    bpl wait_for_tube_r2_byte                                         ; f978: 10 fb       ..             ; Loop until data available
+    bpl wait_for_tube_r2_byte                                         ; f978: 10 fb       ..             ; Loop until data available; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     lda tube_r2_data                                                  ; f97a: ad fb fe    ...            ; Read data byte from Tube R2
+; ***************************************************************************************
+; An RTS used as a no-op handler for vectors that have
+;     no action (EVNTV, IND1V-IND3V in the default table).
+; ***************************************************************************************
 .null_return
     rts                                                               ; f97d: 60          `              ; Return
 
@@ -511,6 +638,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: does not check for a separator after 'GO', so
 ;     commands like *GOAD would be incorrectly matched.
+;     JGH identifies this as a bug.
     cpx #&48 ; 'H'                                                    ; f9e2: e0 48       .H             ; Is first letter 'H'?
     bne oscli_send_to_host                                            ; f9e4: d0 47       .G             ; No: pass command to host; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
@@ -614,13 +742,32 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     On exit:
 ;       A preserved
     jsr send_string_via_ptr                                           ; fa32: 20 b6 f9     ..            ; Send command string via string_ptr
+; ***************************************************************************************
+; Wait for the host's response byte after sending an
+;     OSCLI command. If the response has bit 7 set (&80),
+;     the host has selected a language and code needs to be
+;     entered at the transfer address. Otherwise restore A
+;     and return to the caller.
+; 
+;     Also used by OSBYTE &8E (select language) via the
+;     check at osbyte_check_ack.
+; ***************************************************************************************
 ; &fa35 referenced 1 time by &fa71
 .oscli_wait_ack
-    jsr wait_for_tube_r2_byte                                         ; fa35: 20 75 f9     u.            ; Wait for host acknowledgement
+    jsr wait_for_tube_r2_byte                                         ; fa35: 20 75 f9     u.            ; Wait for host acknowledgement; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     cmp #&80                                                          ; fa38: c9 80       ..             ; &80: host wants code entered
     beq execute_code                                                  ; fa3a: f0 20       .              ; Enter transferred code; Save the current program pointer, call enter_code,
 ;     then restore the current program and memory top
 ;     on return.
+; 
+;     Note: in v1.10, the carry flag is not explicitly set
+;     before calling enter_code, so entered code cannot
+;     reliably distinguish RESET from OSCLI entry. JGH
+;     identifies this as a bug.
     pla                                                               ; fa3c: 68          h              ; Restore saved A
     rts                                                               ; fa3d: 60          `              ; Return to caller
 
@@ -632,6 +779,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: does not check for a separator after 'GO', so
 ;     commands like *GOAD would be incorrectly matched.
+;     JGH identifies this as a bug.
 ; ***************************************************************************************
 ; &fa3e referenced 1 time by &f9e0
 .command_go
@@ -675,6 +823,11 @@ soft_reset_jmp_hi = soft_reset_jmp+2
     beq execute_code                                                  ; fa52: f0 08       ..             ; Use current transfer address; Save the current program pointer, call enter_code,
 ;     then restore the current program and memory top
 ;     on return.
+; 
+;     Note: in v1.10, the carry flag is not explicitly set
+;     before calling enter_code, so entered code cannot
+;     reliably distinguish RESET from OSCLI entry. JGH
+;     identifies this as a bug.
     lda hex_accumulator                                               ; fa54: a5 f0       ..             ; Get parsed address low byte
     sta data_transfer_addr                                            ; fa56: 85 f6       ..             ; Set transfer address low
     lda hex_accumulator_hi                                            ; fa58: a5 f1       ..             ; Get parsed address high byte
@@ -683,6 +836,11 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; Save the current program pointer, call enter_code,
 ;     then restore the current program and memory top
 ;     on return.
+; 
+;     Note: in v1.10, the carry flag is not explicitly set
+;     before calling enter_code, so entered code cannot
+;     reliably distinguish RESET from OSCLI entry. JGH
+;     identifies this as a bug.
 ; ***************************************************************************************
 ; &fa5c referenced 2 times by &fa3a, &fa52
 .execute_code
@@ -700,6 +858,10 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     anyway (raw code entry). Generates an error if the
 ;     ROM type indicates it is not a language or not 6502
 ;     code.
+; 
+;     Note: the v1.10 ROM always enters with A=1 regardless
+;     of whether it is a RESET or OSCLI entry, and does not
+;     pass the carry flag. JGH identifies this as a bug.
     pla                                                               ; fa65: 68          h              ; Restore current program low
     sta current_program                                               ; fa66: 85 ee       ..             ; Set current program low
     sta memory_top                                                    ; fa68: 85 f2       ..             ; Also restore memory top low
@@ -709,10 +871,23 @@ soft_reset_jmp_hi = soft_reset_jmp+2
     pla                                                               ; fa6f: 68          h              ; Restore saved A
     rts                                                               ; fa70: 60          `              ; Return to caller
 
+; ***************************************************************************************
+; Entry point used by OSBYTE &8E (select language).
+;     If the function matched &8E, branches to wait for
+;     the OSCLI acknowledgement byte from the host, which
+;     may trigger code entry.
+; ***************************************************************************************
 ; &fa71 referenced 1 time by &face
 .check_oscli_ack
 .osbyte_check_ack
-    beq oscli_wait_ack                                                ; fa71: f0 c2       ..             ; If &8E matched, wait for OSCLI ack
+    beq oscli_wait_ack                                                ; fa71: f0 c2       ..             ; If &8E matched, wait for OSCLI ack; Wait for the host's response byte after sending an
+;     OSCLI command. If the response has bit 7 set (&80),
+;     the host has selected a language and code needs to be
+;     entered at the transfer address. Otherwise restore A
+;     and return to the caller.
+; 
+;     Also used by OSBYTE &8E (select language) via the
+;     check at osbyte_check_ack.
 ; ***************************************************************************************
 ; Handle OSBYTE calls. Functions &82-&84 are handled
 ;     locally (memory high word, bottom/top of memory).
@@ -764,7 +939,11 @@ soft_reset_jmp_hi = soft_reset_jmp+2
     cmp #&83                                                          ; faa0: c9 83       ..             ; Is it OSBYTE &83 (read LOMEM)?
     beq osbyte_read_lomem_impl                                        ; faa2: f0 51       .Q             ; Yes: return &0800
     cmp #&84                                                          ; faa4: c9 84       ..             ; Is it OSBYTE &84 (read HIMEM)?
-    beq osbyte_read_himem                                             ; faa6: f0 48       .H             ; Yes: return memory_top
+    beq osbyte_read_himem                                             ; faa6: f0 48       .H             ; Yes: return memory_top; Return the current top of user memory from &F2/F3.
+; 
+;     On exit:
+;       X = memory_top low byte
+;       Y = memory_top high byte
     pha                                                               ; faa8: 48          H              ; Save function on stack
     lda #6                                                            ; faa9: a9 06       ..             ; Command &06: OSBYTE high
 ; &faab referenced 1 time by &faae
@@ -789,7 +968,10 @@ soft_reset_jmp_hi = soft_reset_jmp+2
     bvc osbyte_high_wait_r2_4                                         ; fac7: 50 fb       P.             ; Wait until R2 ready
     sta tube_r2_data                                                  ; fac9: 8d fb fe    ...            ; Send function code
     cmp #&8e                                                          ; facc: c9 8e       ..             ; Is it &8E (select language)?
-    beq check_oscli_ack                                               ; face: f0 a1       ..             ; Yes: check for code to enter
+    beq check_oscli_ack                                               ; face: f0 a1       ..             ; Yes: check for code to enter; Entry point used by OSBYTE &8E (select language).
+;     If the function matched &8E, branches to wait for
+;     the OSCLI acknowledgement byte from the host, which
+;     may trigger code entry.
     cmp #&9d                                                          ; fad0: c9 9d       ..             ; Is it &9D (fast BPUT)?
     beq osbyte_high_return                                            ; fad2: f0 1b       ..             ; Yes: return without response
     pha                                                               ; fad4: 48          H              ; Save function for later restore
@@ -814,10 +996,24 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 .osbyte_high_return
     rts                                                               ; faef: 60          `              ; Return
 
+; ***************************************************************************************
+; Return the current top of user memory from &F2/F3.
+; 
+;     On exit:
+;       X = memory_top low byte
+;       Y = memory_top high byte
+; ***************************************************************************************
 ; &faf0 referenced 1 time by &faa6
 .osbyte_read_himem
     ldx memory_top                                                    ; faf0: a6 f2       ..             ; X = memory top low byte
     ldy memory_top_hi                                                 ; faf2: a4 f3       ..             ; Y = memory top high byte
+; ***************************************************************************************
+; Return the bottom of user memory, fixed at &0800.
+; 
+;     On exit:
+;       X = &00
+;       Y = &08
+; ***************************************************************************************
 .osbyte_read_lomem
     rts                                                               ; faf4: 60          `              ; Return (OSBYTE &84)
 
@@ -825,8 +1021,19 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 .osbyte_read_lomem_impl
     ldx #0                                                            ; faf5: a2 00       ..             ; X = &00 (bottom of user memory)
 .osbyte_lomem_y_value
-osbyte_read_high_word = osbyte_lomem_y_value+1
-    ldy #8                                                            ; faf7: a0 08       ..             ; Y = &08 (bottom of memory = &0800)
+    equb &a0                                                          ; faf7: a0          .              ; Y = &08 (bottom of memory = &0800)
+
+; ***************************************************************************************
+; Return &0000 as the high word of the address space.
+;     This indicates the 6502 has a 16-bit address space
+;     with no bank switching.
+; 
+;     On exit:
+;       X = &00
+;       Y = &00
+; ***************************************************************************************
+.osbyte_read_high_word
+    php                                                               ; faf8: 08          .
     rts                                                               ; faf9: 60          `              ; Return (OSBYTE &83)
 
 ; &fafa referenced 1 time by &fa9e
@@ -984,7 +1191,11 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
     lda (string_ptr),y                                                ; fb9e: b1 f8       ..             ; Get actual buffer low byte
     pha                                                               ; fba0: 48          H              ; Save on stack for later
     ldx #&ff                                                          ; fba1: a2 ff       ..             ; X=&FF as Escape indicator
-    jsr wait_for_tube_r2_byte                                         ; fba3: 20 75 f9     u.            ; Wait for host response
+    jsr wait_for_tube_r2_byte                                         ; fba3: 20 75 f9     u.            ; Wait for host response; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     cmp #&80                                                          ; fba6: c9 80       ..             ; Is response >= &80 (Escape)?
     bcs rdline_escape                                                 ; fba8: b0 1d       ..             ; Yes: handle Escape
     pla                                                               ; fbaa: 68          h              ; Recover buffer low byte
@@ -1074,15 +1285,35 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    jsr wait_for_tube_r2_byte                                         ; fbf2: 20 75 f9     u.            ; Wait for result byte
+    jsr wait_for_tube_r2_byte                                         ; fbf2: 20 75 f9     u.            ; Wait for result byte; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     pha                                                               ; fbf5: 48          H              ; Save result on stack
-    jsr wait_for_tube_r2_byte                                         ; fbf6: 20 75 f9     u.            ; Wait for data byte 3
+    jsr wait_for_tube_r2_byte                                         ; fbf6: 20 75 f9     u.            ; Wait for data byte 3; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     sta zp_data_base_3,x                                              ; fbf9: 95 03       ..             ; Store in data word
-    jsr wait_for_tube_r2_byte                                         ; fbfb: 20 75 f9     u.            ; Wait for data byte 2
+    jsr wait_for_tube_r2_byte                                         ; fbfb: 20 75 f9     u.            ; Wait for data byte 2; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     sta zp_data_base_2,x                                              ; fbfe: 95 02       ..             ; Store in data word
-    jsr wait_for_tube_r2_byte                                         ; fc00: 20 75 f9     u.            ; Wait for data byte 1
+    jsr wait_for_tube_r2_byte                                         ; fc00: 20 75 f9     u.            ; Wait for data byte 1; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     sta zp_data_base_1,x                                              ; fc03: 95 01       ..             ; Store in data word
-    jsr wait_for_tube_r2_byte                                         ; fc05: 20 75 f9     u.            ; Wait for data byte 0
+    jsr wait_for_tube_r2_byte                                         ; fc05: 20 75 f9     u.            ; Wait for data byte 0; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     sta zp_data_base,x                                                ; fc08: 95 00       ..             ; Store in data word
     pla                                                               ; fc0a: 68          h              ; Restore result to A
     rts                                                               ; fc0b: 60          `              ; Return with result in A
@@ -1124,7 +1355,11 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    jsr wait_for_tube_r2_byte                                         ; fc1f: 20 75 f9     u.            ; Wait for acknowledge
+    jsr wait_for_tube_r2_byte                                         ; fc1f: 20 75 f9     u.            ; Wait for acknowledge; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     pla                                                               ; fc22: 68          h              ; Restore A=0
     rts                                                               ; fc23: 60          `              ; Return
 
@@ -1137,7 +1372,11 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
 ;       Y = string address high byte
 ;     On exit:
 ;       Y restored from string_ptr_hi
-    jmp wait_for_tube_r2_byte                                         ; fc27: 4c 75 f9    Lu.            ; Wait for and return file handle
+    jmp wait_for_tube_r2_byte                                         ; fc27: 4c 75 f9    Lu.            ; Wait for and return file handle; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
 
 ; ***************************************************************************************
 ; Read a byte from an open file.
@@ -1164,7 +1403,16 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    jmp wait_carry_and_byte                                           ; fc33: 4c 71 f9    Lq.            ; Wait for carry and data byte
+    jmp wait_carry_and_byte                                           ; fc33: 4c 71 f9    Lq.            ; Wait for carry and data byte; Wait for two bytes from Tube R2: first a carry
+;     indicator, then the data byte.
+; 
+;     The carry byte is shifted left so bit 7 moves into
+;     the carry flag, then falls through to read the
+;     actual data byte.
+; 
+;     On exit:
+;       A = data byte from Tube R2
+;       C = carry indicator from host
 
 ; ***************************************************************************************
 ; Write a byte to an open file.
@@ -1200,7 +1448,11 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
 ;     On exit:
 ;       A preserved
     pha                                                               ; fc44: 48          H              ; Save A for restore after ack
-    jsr wait_for_tube_r2_byte                                         ; fc45: 20 75 f9     u.            ; Wait for acknowledge
+    jsr wait_for_tube_r2_byte                                         ; fc45: 20 75 f9     u.            ; Wait for acknowledge; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     pla                                                               ; fc48: 68          h              ; Restore A (preserved)
     rts                                                               ; fc49: 60          `              ; Return
 
@@ -1278,12 +1530,20 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    jsr wait_for_tube_r2_byte                                         ; fc78: 20 75 f9     u.            ; Wait for result byte
+    jsr wait_for_tube_r2_byte                                         ; fc78: 20 75 f9     u.            ; Wait for result byte; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     pha                                                               ; fc7b: 48          H              ; Save result on stack
     ldy #&11                                                          ; fc7c: a0 11       ..             ; Start at control block byte &11
 ; &fc7e referenced 1 time by &fc86
 .osfile_recv_block_loop
-    jsr wait_for_tube_r2_byte                                         ; fc7e: 20 75 f9     u.            ; Wait for response byte
+    jsr wait_for_tube_r2_byte                                         ; fc7e: 20 75 f9     u.            ; Wait for response byte; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     sta (control_block_ptr),y                                         ; fc81: 91 fa       ..             ; Store in control block
     dey                                                               ; fc83: 88          .              ; Decrement index
     cpy #1                                                            ; fc84: c0 01       ..             ; Reached byte 1?
@@ -1335,23 +1595,50 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
     ldy #&0c                                                          ; fca6: a0 0c       ..             ; Start at control block byte &0C
 ; &fca8 referenced 1 time by &fcae
 .osgbpb_recv_block_loop
-    jsr wait_for_tube_r2_byte                                         ; fca8: 20 75 f9     u.            ; Wait for response byte
+    jsr wait_for_tube_r2_byte                                         ; fca8: 20 75 f9     u.            ; Wait for response byte; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     sta (control_block_ptr),y                                         ; fcab: 91 fa       ..             ; Store in control block
     dey                                                               ; fcad: 88          .              ; Decrement index
     bpl osgbpb_recv_block_loop                                        ; fcae: 10 f8       ..             ; Loop for bytes &0C..&00
     ldy control_block_ptr_hi                                          ; fcb0: a4 fb       ..             ; Restore Y from control block ptr
     ldx control_block_ptr                                             ; fcb2: a6 fa       ..             ; Restore X from control block ptr
-    jmp wait_carry_and_byte                                           ; fcb4: 4c 71 f9    Lq.            ; Get carry and result byte
+    jmp wait_carry_and_byte                                           ; fcb4: 4c 71 f9    Lq.            ; Get carry and result byte; Wait for two bytes from Tube R2: first a carry
+;     indicator, then the data byte.
+; 
+;     The carry byte is shifted left so bit 7 moves into
+;     the carry flag, then falls through to read the
+;     actual data byte.
+; 
+;     On exit:
+;       A = data byte from Tube R2
+;       C = carry indicator from host
 
 ; ***************************************************************************************
 ; Generate a 'Bad' error for unsupported MOS calls.
+;     Used as the default handler for USERV, IRQ2V, FSCV,
+;     and several other vectors that have no parasite-side
+;     implementation.
 ; ***************************************************************************************
-; &fcb7 referenced 1 time by &ffb9
+; &fcb7 referenced 5 times by &ffb9, &ffbc, &ffbf, &ffc2, &ffc5
 .unsupported
     brk                                                               ; fcb7: 00          .              ; Generate error 255: 'Bad'
 
     equb &ff                                                          ; fcb8: ff          .
     equs "Bad"                                                        ; fcb9: 42 61 64    Bad
+; ***************************************************************************************
+; Indexed by OSWORD number via LDY table,X where X is
+;     the OSWORD function. Entry 0 is never used because
+;     OSWORD 0 (RDLINE) is handled separately. Entries
+;     1-20 give the number of bytes to send from the
+;     control block to the host for each OSWORD function.
+;     Functions above &14 (20) default to sending 16 bytes.
+; 
+;     For functions >= &80, the send length is taken from
+;     byte 0 of the control block instead of this table.
+; ***************************************************************************************
 ; &fcbc referenced 1 time by &fb24
 .osword_send_lengths
     equb 0                                                            ; fcbc: 00          .              ; (unused: OSWORD 0 handled separately)
@@ -1374,6 +1661,20 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
     equb &0d                                                          ; fccd: 0d          .              ; &11 Net receive
     equb 0                                                            ; fcce: 00          .              ; &12 Net read arguments
     equb 4                                                            ; fccf: 04          .              ; &13 Net FS operation
+; ***************************************************************************************
+; Indexed by OSWORD number via LDY table,X. Gives the
+;     number of bytes to receive back from the host into
+;     the control block. Entries 1-20 correspond to OSWORD
+;     functions &01-&14. Functions above &14 default to
+;     receiving 16 bytes.
+; 
+;     The first byte (&80) is shared: it serves as both
+;     the OSWORD &14 send length (meaning the length is in
+;     the control block) and the unused recv slot 0.
+; 
+;     For functions >= &80, the receive length is taken from
+;     byte 1 of the control block instead of this table.
+; ***************************************************************************************
 ; &fcd0 referenced 1 time by &fb50
 .osword_recv_lengths
     equb &80                                                          ; fcd0: 80          .              ; &14 send / (recv slot 0 unused)
@@ -1408,7 +1709,10 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
     pla                                                               ; fce7: 68          h              ; Pull stacked processor status
     pha                                                               ; fce8: 48          H              ; Push it back (non-destructive read)
     and #&10                                                          ; fce9: 29 10       ).             ; Isolate BRK flag (bit 4)
-    bne brk_handler_entry                                             ; fceb: d0 10       ..             ; BRK flag set: handle BRK
+    bne brk_handler_entry                                             ; fceb: d0 10       ..             ; BRK flag set: handle BRK; Extract the return address from the stack, subtract 1
+;     to point to the byte after the BRK opcode (the error
+;     block), store the pointer in last_error (&FD/FE),
+;     then re-enable interrupts and dispatch via BRKV.
     jmp (irq1v)                                                       ; fced: 6c 04 02    l..            ; Dispatch via IRQ1V
 
 ; ***************************************************************************************
@@ -1432,15 +1736,14 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
 ;     Otherwise, it is an event notification: reads the
 ;     event parameters (Y, X, event number) from R1 and
 ;     dispatches via EVNTV.
-    equb &6c                                                          ; fcfa: 6c          l              ; Neither: dispatch via IRQ2V
+    jmp (irq2v)                                                       ; fcfa: 6c 06 02    l..            ; Neither: dispatch via IRQ2V
 
 ; ***************************************************************************************
 ; Extract the return address from the stack, subtract 1
-;     to point to the byte after the BRK opcode, store in
-;     last_error, then dispatch via BRKV.
+;     to point to the byte after the BRK opcode (the error
+;     block), store the pointer in last_error (&FD/FE),
+;     then re-enable interrupts and dispatch via BRKV.
 ; ***************************************************************************************
-.brk_handler
-    asl zp_data_base_2                                                ; fcfb: 06 02       ..             ; Merge with BRK entry (ASL is TXA;PHA)
 ; &fcfd referenced 1 time by &fceb
 .brk_handler_entry
     txa                                                               ; fcfd: 8a          .              ; Save X on stack
@@ -1470,7 +1773,10 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
 ; &fd18 referenced 1 time by &fcf8
 .tube_r1_interrupt
     lda tube_r1_data                                                  ; fd18: ad f9 fe    ...            ; Read data from Tube R1
-    bmi set_escape_flag                                               ; fd1b: 30 1c       0.             ; Bit 7 set: Escape state change
+    bmi set_escape_flag                                               ; fd1b: 30 1c       0.             ; Bit 7 set: Escape state change; Called when Tube R1 data has bit 7 set, indicating
+;     an Escape state change. Shifts bit 6 of the received
+;     byte into bit 7 via ASL and stores the result in
+;     escape_flag (&FF). Bit 7 set = Escape active.
     tya                                                               ; fd1d: 98          .              ; Save Y
     pha                                                               ; fd1e: 48          H              ; Push Y
     txa                                                               ; fd1f: 8a          .              ; Save X
@@ -1516,6 +1822,12 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
 .dispatch_event
     jmp (evntv)                                                       ; fd36: 6c 20 02    l .            ; Dispatch event via EVNTV
 
+; ***************************************************************************************
+; Called when Tube R1 data has bit 7 set, indicating
+;     an Escape state change. Shifts bit 6 of the received
+;     byte into bit 7 via ASL and stores the result in
+;     escape_flag (&FF). Bit 7 set = Escape active.
+; ***************************************************************************************
 ; &fd39 referenced 1 time by &fd1b
 .set_escape_flag
     asl a                                                             ; fd39: 0a          .              ; Shift bit 6 into bit 7 for Escape
@@ -1555,12 +1867,20 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
     lda #0                                                            ; fd4d: a9 00       ..             ; A=0 (BRK opcode)
     sta error_buffer                                                  ; fd4f: 8d 36 02    .6.            ; Store BRK at start of error buffer
     tay                                                               ; fd52: a8          .              ; Y=0 for buffer index; Y=&00
-    jsr wait_for_tube_r2_byte                                         ; fd53: 20 75 f9     u.            ; Wait for error number byte
+    jsr wait_for_tube_r2_byte                                         ; fd53: 20 75 f9     u.            ; Wait for error number byte; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     sta error_buffer_errnum                                           ; fd56: 8d 37 02    .7.            ; Store error number in buffer
 ; &fd59 referenced 1 time by &fd60
 .tube_r4_read_error_loop
     iny                                                               ; fd59: c8          .              ; Advance buffer index
-    jsr wait_for_tube_r2_byte                                         ; fd5a: 20 75 f9     u.            ; Wait for next error string byte
+    jsr wait_for_tube_r2_byte                                         ; fd5a: 20 75 f9     u.            ; Wait for next error string byte; Poll Tube R2 status until data is available, then
+;     read and return the byte.
+; 
+;     On exit:
+;       A = byte read from Tube R2
     sta error_buffer_errnum,y                                         ; fd5d: 99 37 02    .7.            ; Store in error buffer
     bne tube_r4_read_error_loop                                       ; fd60: d0 f7       ..             ; Loop until NUL terminator
     jmp error_buffer                                                  ; fd62: 4c 36 02    L6.            ; Execute BRK in error buffer
@@ -1597,7 +1917,9 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
     bpl transfer_wait_id                                              ; fd86: 10 fb       ..             ; Wait until data available
     lda tube_r4_data                                                  ; fd88: ad ff fe    ...            ; Read called ID byte
     cpy #5                                                            ; fd8b: c0 05       ..             ; Type 5: release, no transfer needed
-    beq restore_regs_and_rti                                          ; fd8d: f0 58       .X             ; Yes: exit immediately
+    beq restore_regs_and_rti                                          ; fd8d: f0 58       .X             ; Yes: exit immediately; Common exit path for data transfer setup. Restores Y
+;     from the stack, retrieves saved A from irq_a_store,
+;     and executes RTI.
     tya                                                               ; fd8f: 98          .              ; Save transfer type
     pha                                                               ; fd90: 48          H              ; Push transfer type
     ldy #1                                                            ; fd91: a0 01       ..             ; Y=1 for address byte index
@@ -1633,8 +1955,15 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
     lda tube_r4_data                                                  ; fdc3: ad ff fe    ...            ; Read sync byte
     pla                                                               ; fdc6: 68          h              ; Restore transfer type
     cmp #6                                                            ; fdc7: c9 06       ..             ; Is it type 6 or above?
-    bcc restore_regs_and_rti                                          ; fdc9: 90 1c       ..             ; Below 6: exit (single/double/release)
-    bne transfer_256_bytes_from_tube                                  ; fdcb: d0 1f       ..             ; Not 6: must be type 7 (read block)
+    bcc restore_regs_and_rti                                          ; fdc9: 90 1c       ..             ; Below 6: exit (single/double/release); Common exit path for data transfer setup. Restores Y
+;     from the stack, retrieves saved A from irq_a_store,
+;     and executes RTI.
+    bne transfer_256_bytes_from_tube                                  ; fdcb: d0 1f       ..             ; Not 6: must be type 7 (read block); Read 256 bytes from Tube R3 into memory at the
+;     address patched into the STA instruction. Used for
+;     transfer type 7 (256-byte read from host).
+; 
+;     The target address is set up by data_transfer_setup
+;     via the transfer address pointer table.
     ldy #0                                                            ; fdcd: a0 00       ..             ; Y=0 for 256-byte counter
 ; &fdcf referenced 2 times by &fdd4, &fddd
 .transfer_write_loop
@@ -1652,6 +1981,11 @@ nmi6_transfer_addr = transfer_write_read_byte+1
     bit tube_r3_status                                                ; fddf: 2c fc fe    ,..            ; Poll Tube R3 status
     bpl transfer_write_sync                                           ; fde2: 10 fb       ..             ; Wait until R3 ready
     sta tube_r3_data                                                  ; fde4: 8d fd fe    ...            ; Send final sync byte to R3
+; ***************************************************************************************
+; Common exit path for data transfer setup. Restores Y
+;     from the stack, retrieves saved A from irq_a_store,
+;     and executes RTI.
+; ***************************************************************************************
 ; &fde7 referenced 3 times by &fd8d, &fdc9, &fdfe
 .restore_regs_and_rti
     pla                                                               ; fde7: 68          h              ; Restore Y from stack
@@ -1659,6 +1993,14 @@ nmi6_transfer_addr = transfer_write_read_byte+1
     lda irq_a_store                                                   ; fde9: a5 fc       ..             ; Get saved A from irq_a_store
     rti                                                               ; fdeb: 40          @              ; Return from interrupt
 
+; ***************************************************************************************
+; Read 256 bytes from Tube R3 into memory at the
+;     address patched into the STA instruction. Used for
+;     transfer type 7 (256-byte read from host).
+; 
+;     The target address is set up by data_transfer_setup
+;     via the transfer address pointer table.
+; ***************************************************************************************
 ; &fdec referenced 1 time by &fdcb
 .transfer_256_bytes_from_tube
     ldy #0                                                            ; fdec: a0 00       ..             ; Y=0 for 256-byte counter
@@ -1675,7 +2017,9 @@ nmi7_transfer_addr = transfer_read_store_byte+1
     bne transfer_read_loop                                            ; fdfc: d0 f0       ..             ; Loop for 256 bytes
 .transfer_read_done
 io_page_base = transfer_read_done+1
-    beq restore_regs_and_rti                                          ; fdfe: f0 e7       ..             ; Always branch to exit
+    beq restore_regs_and_rti                                          ; fdfe: f0 e7       ..             ; Always branch to exit; Common exit path for data transfer setup. Restores Y
+;     from the stack, retrieves saved A from irq_a_store,
+;     and executes RTI.
 ; &fdff referenced 2 times by &f819, &f81c
 ; ***************************************************************************************
 ; Transfer type 0. Sends one byte from the transfer
@@ -1778,6 +2122,14 @@ lfe17 = sub_cfe15+2
     pla                                                               ; fe5e: 68          h              ; Restore A
     rti                                                               ; fe5f: 40          @              ; Return from NMI
 
+; ***************************************************************************************
+; Eight entries indexed by transfer type (0-7). Each
+;     entry is the low byte of the address of the two-byte
+;     field that holds the current transfer address for
+;     that type. Types 0-1 and 6-7 point to self-modifying
+;     code address operands; types 2-5 point to the
+;     data_transfer_addr zero page location (&F6).
+; ***************************************************************************************
 ; &fe60 referenced 1 time by &fd79
 .transfer_addr_ptr_table
     equb <(nmi0_transfer_addr)                                        ; fe60: 02          .              ; Low bytes of transfer addr pointers
@@ -1788,6 +2140,11 @@ lfe17 = sub_cfe15+2
     equb <(data_transfer_addr)                                        ; fe65: f6          .
     equb <(nmi6_transfer_addr)                                        ; fe66: d7          .
     equb <(nmi7_transfer_addr)                                        ; fe67: f9          .
+; ***************************************************************************************
+; High bytes corresponding to the low byte table at
+;     &FE60. Together they form 8 pointers to the address
+;     fields used by each transfer type.
+; ***************************************************************************************
 ; &fe68 referenced 1 time by &fd7e
 .transfer_addr_ptr_hi_table
     equb >(nmi0_transfer_addr)                                        ; fe68: fe          .              ; High bytes of transfer addr pointers
@@ -1798,6 +2155,12 @@ lfe17 = sub_cfe15+2
     equb >(data_transfer_addr)                                        ; fe6d: 00          .
     equb >(nmi6_transfer_addr)                                        ; fe6e: fd          .
     equb >(nmi7_transfer_addr)                                        ; fe6f: fd          .
+; ***************************************************************************************
+; Eight entries indexed by transfer type (0-7). Each
+;     entry is the low byte of the NMI handler routine
+;     for that type. Types 0-3 have dedicated handlers;
+;     types 4-7 all use the NMI acknowledge routine.
+; ***************************************************************************************
 ; &fe70 referenced 1 time by &fd6d
 .nmi_routine_addr_table
     equb <(nmi_single_byte_to_tube)                                   ; fe70: 00          .              ; Low bytes of NMI handler addresses
@@ -1808,6 +2171,10 @@ lfe17 = sub_cfe15+2
     equb <(nmi_acknowledge)                                           ; fe75: b3          .
     equb <(nmi_acknowledge)                                           ; fe76: b3          .
     equb <(nmi_acknowledge)                                           ; fe77: b3          .
+; ***************************************************************************************
+; High bytes corresponding to the low byte table at
+;     &FE70. Together they form 8 NMI handler addresses.
+; ***************************************************************************************
 ; &fe78 referenced 1 time by &fd73
 .nmi_routine_addr_hi_table
     equb >(nmi_single_byte_to_tube)                                   ; fe78: fe          .              ; High bytes of NMI handler addresses
@@ -1891,7 +2258,12 @@ lfe17 = sub_cfe15+2
 .print_text_get_char
     lda (control_block_ptr),y                                         ; fea6: b1 fa       ..             ; Read character from inline string
     bmi print_text_resume                                             ; fea8: 30 06       0.             ; Bit 7 set: end of string
-    jsr oswrch_entry                                                  ; feaa: 20 ee ff     ..            ; Print character via OSWRCH
+    jsr oswrch_entry                                                  ; feaa: 20 ee ff     ..            ; Print character via OSWRCH; Write a character to the output stream. Dispatches via WRCHV (&020E).
+; 
+;     On entry:
+;       A = character to write
+;     On exit:
+;       A preserved
     jmp print_text_loop                                               ; fead: 4c a0 fe    L..            ; Loop for next character
 
 ; &feb0 referenced 1 time by &fea8
@@ -1900,8 +2272,11 @@ lfe17 = sub_cfe15+2
 
 ; ***************************************************************************************
 ; Acknowledge an NMI by writing A to Tube R3, then
-;     return from interrupt. Used as the default NMI
-;     handler for transfer types 4-7.
+;     return from interrupt. Used as the NMI handler for
+;     transfer types 4-7 (release and 256-byte block
+;     transfers, which do not use NMI for individual
+;     bytes). Also the initial value of the NMI vector
+;     at reset.
 ; ***************************************************************************************
 .nmi_acknowledge
     sta tube_r3_data                                                  ; feb3: 8d fd fe    ...            ; Write to Tube R3 to acknowledge NMI
@@ -2139,6 +2514,14 @@ lfe17 = sub_cfe15+2
     equb &ff                                                          ; ff7d: ff          .
     equb &ff                                                          ; ff7e: ff          .
     equb &ff                                                          ; ff7f: ff          .
+; ***************************************************************************************
+; 27 two-byte entries (54 bytes) copied to &0200-&0235
+;     at reset. Each entry is the initial value for the
+;     corresponding MOS vector. Vectors for unimplemented
+;     functions point to the 'unsupported' error handler;
+;     unused event and indirect vectors point to
+;     null_return (RTS).
+; ***************************************************************************************
 ; &ff80 referenced 1 time by &f80d
 .default_vector_table
     equw unsupported                                                  ; ff80: b7 fc       ..             ; USERV  - User vector
@@ -2168,22 +2551,60 @@ lfe17 = sub_cfe15+2
     equw null_return                                                  ; ffb0: 7d f9       }.             ; IND1V  - Spare indirect vector 1
     equw null_return                                                  ; ffb2: 7d f9       }.             ; IND2V  - Spare indirect vector 2
     equw null_return                                                  ; ffb4: 7d f9       }.             ; IND3V  - Spare indirect vector 3
+; ***************************************************************************************
+; Three-byte block at &FFB6 used by OSBYTE &FD
+;     (read vector table info). Byte 0 = length of the
+;     vector table in bytes (&36 = 54 = 27 vectors).
+;     Bytes 1-2 = address of the default vector table
+;     (&FF80).
+; ***************************************************************************************
 .vector_table_info
     equb &36                                                          ; ffb6: 36          6              ; Vector table: length &36 at &FF80; Vector count in bytes (&36 = 27 words)
     equw default_vector_table                                         ; ffb7: 80 ff       ..             ; Address of default vector table
 
+; ***************************************************************************************
+; Five consecutive JMP unsupported stubs at &FFB9,
+;     &FFBC, &FFBF, &FFC2, &FFC5. In the v1.10 external
+;     ROM, all five generate a 'Bad' error. These
+;     addresses are reserved for MOS compatibility but
+;     have no function in this Tube Client.
+; ***************************************************************************************
 .mos_stub_unsupported_1
     jmp unsupported                                                   ; ffb9: 4c b7 fc    L..            ; Unsupported: generates 'Bad' error; Generate a 'Bad' error for unsupported MOS calls.
+;     Used as the default handler for USERV, IRQ2V, FSCV,
+;     and several other vectors that have no parasite-side
+;     implementation.
 
 .mos_stub_unsupported_2
-    equb &4c, &b7, &fc                                                ; ffbc: 4c b7 fc    L..
-.mos_stub_unsupported_3
-    equb &4c, &b7, &fc                                                ; ffbf: 4c b7 fc    L..
-.mos_stub_unsupported_4
-    equb &4c, &b7, &fc                                                ; ffc2: 4c b7 fc    L..
-.mos_stub_unsupported_5
-    equb &4c, &b7, &fc                                                ; ffc5: 4c b7 fc    L..
+    jmp unsupported                                                   ; ffbc: 4c b7 fc    L..            ; Generate a 'Bad' error for unsupported MOS calls.
+;     Used as the default handler for USERV, IRQ2V, FSCV,
+;     and several other vectors that have no parasite-side
+;     implementation.
 
+.mos_stub_unsupported_3
+    jmp unsupported                                                   ; ffbf: 4c b7 fc    L..            ; Generate a 'Bad' error for unsupported MOS calls.
+;     Used as the default handler for USERV, IRQ2V, FSCV,
+;     and several other vectors that have no parasite-side
+;     implementation.
+
+.mos_stub_unsupported_4
+    jmp unsupported                                                   ; ffc2: 4c b7 fc    L..            ; Generate a 'Bad' error for unsupported MOS calls.
+;     Used as the default handler for USERV, IRQ2V, FSCV,
+;     and several other vectors that have no parasite-side
+;     implementation.
+
+.mos_stub_unsupported_5
+    jmp unsupported                                                   ; ffc5: 4c b7 fc    L..            ; Generate a 'Bad' error for unsupported MOS calls.
+;     Used as the default handler for USERV, IRQ2V, FSCV,
+;     and several other vectors that have no parasite-side
+;     implementation.
+
+; ***************************************************************************************
+; Jump directly to the OSRDCH implementation,
+;     bypassing RDCHV. Used when the caller needs to
+;     ensure the real RDCH handler runs regardless of
+;     any vector interception.
+; ***************************************************************************************
 .nvrdch
     jmp osrdch_impl                                                   ; ffc8: 4c 6c f9    Ll.            ; Non-vectored RDCH; Read a character from the host via the Tube.
 ; 
@@ -2194,6 +2615,12 @@ lfe17 = sub_cfe15+2
 ;       A = character received
 ;       C = Escape flag
 
+; ***************************************************************************************
+; Jump directly to the OSWRCH implementation,
+;     bypassing WRCHV. Used when the caller needs to
+;     ensure the real WRCH handler runs regardless of
+;     any vector interception.
+; ***************************************************************************************
 .nvwrch
     jmp oswrch_impl                                                   ; ffcb: 4c 62 f9    Lb.            ; Non-vectored WRCH; Send character in A to the host via Tube R1.
 ; 
@@ -2202,48 +2629,148 @@ lfe17 = sub_cfe15+2
 ;     On exit:
 ;       A preserved
 
+; ***************************************************************************************
+; Open or close a file. Dispatches via FINDV (&021C).
+; 
+;     On entry:
+;       A = 0 to close, non-zero to open
+;       Y = handle (close) or XY => filename (open)
+;     On exit:
+;       A = file handle (open) or preserved (close)
+; ***************************************************************************************
 .osfind_entry
     jmp (findv)                                                       ; ffce: 6c 1c 02    l..            ; Dispatch via FINDV
 
+; ***************************************************************************************
+; Multiple-byte get or put. Dispatches via GBPBV (&021A).
+; 
+;     On entry:
+;       A = function, XY => 13-byte control block
+; ***************************************************************************************
 .osgbpb_entry
     jmp (gbpbv)                                                       ; ffd1: 6c 1a 02    l..            ; Dispatch via GBPBV
 
+; ***************************************************************************************
+; Write a byte to an open file. Dispatches via BPUTV (&0218).
+; 
+;     On entry:
+;       A = byte to write, Y = file handle
+; ***************************************************************************************
 .osbput_entry
     jmp (bputv)                                                       ; ffd4: 6c 18 02    l..            ; Dispatch via BPUTV
 
+; ***************************************************************************************
+; Read a byte from an open file. Dispatches via BGETV (&0216).
+; 
+;     On entry:
+;       Y = file handle
+;     On exit:
+;       A = byte read, C = set if EOF
+; ***************************************************************************************
 .osbget_entry
     jmp (bgetv)                                                       ; ffd7: 6c 16 02    l..            ; Dispatch via BGETV
 
+; ***************************************************************************************
+; Read or write open file arguments. Dispatches via ARGSV (&0214).
+; 
+;     On entry:
+;       A = function, X => zero-page data word, Y = handle
+; ***************************************************************************************
 .osargs_entry
     jmp (argsv)                                                       ; ffda: 6c 14 02    l..            ; Dispatch via ARGSV
 
+; ***************************************************************************************
+; Whole-file operations. Dispatches via FILEV (&0212).
+; 
+;     On entry:
+;       A = function, XY => 18-byte control block
+; ***************************************************************************************
 .osfile_entry
     jmp (filev)                                                       ; ffdd: 6c 12 02    l..            ; Dispatch via FILEV
 
+; ***************************************************************************************
+; Read a character from the input stream. Dispatches via RDCHV (&0210).
+; 
+;     On exit:
+;       A = character, C = set if Escape
+; ***************************************************************************************
 .osrdch_entry
     jmp (rdchv)                                                       ; ffe0: 6c 10 02    l..            ; Dispatch via RDCHV
 
+; ***************************************************************************************
+; Write a character, converting CR to CR+LF. If the
+;     character is &0D, falls through to OSNEWL to send
+;     LF then CR. Otherwise jumps directly to OSWRCH.
+; 
+;     On entry:
+;       A = character to write
+; ***************************************************************************************
 .osasci_entry
     cmp #&0d                                                          ; ffe3: c9 0d       ..             ; Is it carriage return?
-    bne oswrch_entry                                                  ; ffe5: d0 07       ..             ; No: skip newline, go to OSWRCH
+    bne oswrch_entry                                                  ; ffe5: d0 07       ..             ; No: skip newline, go to OSWRCH; Write a character to the output stream. Dispatches via WRCHV (&020E).
+; 
+;     On entry:
+;       A = character to write
+;     On exit:
+;       A preserved
+; ***************************************************************************************
+; Send a newline sequence (LF followed by CR) via OSWRCH.
+;     Loads A=&0A, calls OSWRCH, then falls through to
+;     OSWRCR which loads A=&0D and calls OSWRCH.
+; ***************************************************************************************
 ; &ffe7 referenced 2 times by &f948, &f957
 .osnewl_entry
     lda #&0a                                                          ; ffe7: a9 0a       ..             ; Send linefeed first
-    jsr oswrch_entry                                                  ; ffe9: 20 ee ff     ..            ; Send linefeed via OSWRCH
+    jsr oswrch_entry                                                  ; ffe9: 20 ee ff     ..            ; Send linefeed via OSWRCH; Write a character to the output stream. Dispatches via WRCHV (&020E).
+; 
+;     On entry:
+;       A = character to write
+;     On exit:
+;       A preserved
+; ***************************************************************************************
+; Send a carriage return via OSWRCH. Loads A=&0D and
+;     falls through to OSWRCH.
+; ***************************************************************************************
 .oswrcr_entry
     lda #&0d                                                          ; ffec: a9 0d       ..             ; Load carriage return
+; ***************************************************************************************
+; Write a character to the output stream. Dispatches via WRCHV (&020E).
+; 
+;     On entry:
+;       A = character to write
+;     On exit:
+;       A preserved
+; ***************************************************************************************
 ; &ffee referenced 5 times by &f88f, &f951, &feaa, &ffe5, &ffe9
 .oswrch_entry
     jmp (wrchv)                                                       ; ffee: 6c 0e 02    l..            ; Dispatch via WRCHV
 
+; ***************************************************************************************
+; Perform a word-based MOS operation. Dispatches via WORDV (&020C).
+; 
+;     On entry:
+;       A = function, XY => control block
+; ***************************************************************************************
 ; &fff1 referenced 1 time by &f898
 .osword_entry
     jmp (wordv)                                                       ; fff1: 6c 0c 02    l..            ; Dispatch via WORDV
 
+; ***************************************************************************************
+; Perform a byte-based MOS operation. Dispatches via BYTEV (&020A).
+; 
+;     On entry:
+;       A = function, X = parameter 1, Y = parameter 2
+; ***************************************************************************************
 ; &fff4 referenced 1 time by &f8a9
 .osbyte_entry
     jmp (bytev)                                                       ; fff4: 6c 0a 02    l..            ; Dispatch via BYTEV
 
+; ***************************************************************************************
+; Execute a star command. Dispatches via CLIV (&0208).
+; 
+;     On entry:
+;       XY => command string (CR-terminated)
+; ***************************************************************************************
 ; &fff7 referenced 1 time by &f8a1
 .oscli_entry
     jmp (cliv)                                                        ; fff7: 6c 08 02    l..            ; Dispatch via CLIV
@@ -2304,209 +2831,234 @@ irq_vector_hi = irq_vector+1
 save pydis_start, pydis_end
 
 ; Label references by decreasing frequency:
-;     Send byte to Tube R2:                   25
-;     send_byte_to_tube_r2:                   25
-;     send_command:                           25
-;     tube_r2_data:                           25
-;     tube_r2_status:                         25
-;     string_ptr:                             23
-;     wait_for_tube_r2_byte:                  18
-;     control_block_ptr:                      14
-;     tube_r3_data:                           12
-;     data_transfer_addr:                     11
-;     string_ptr_hi:                           9
-;     tube_r4_status:                          8
-;     Send OSCLI command to host:              7
-;     current_program:                         7
-;     data_transfer_addr_hi:                   7
-;     irq_a_store:                             7
-;     last_error:                              7
-;     oscli_send_to_host:                      7
-;     tube_r4_data:                            7
-;     control_block_ptr_hi:                    6
-;     Wait for byte in Tube R1:                5
-;     current_program_hi:                      5
-;     memory_top:                              5
-;     oswrch_entry:                            5
-;     wait_for_tube_r1_byte:                   5
-;     Handle *HELP command:                    4
-;     command_help:                            4
-;     enter_raw_code:                          4
-;     irq_vector_hi:                           4
-;     memory_top_hi:                           4
-;     tube_r1_status:                          4
-;     brkv:                                    3
-;     hex_accumulator:                         3
-;     hex_accumulator_hi:                      3
-;     nmi_vector:                              3
-;     osword_recv_block:                       3
-;     osword_send_block:                       3
-;     restore_regs_and_rti:                    3
-;     scan_hex_return:                         3
-;     transfer_addr_ptr:                       3
-;     tube_r1_data:                            3
-;     tube_r3_status:                          3
-;     zp_data_base_2:                          3
-;     Command prompt loop:                     2
-;     Enter code at transfer address:          2
-;     Execute code and restore state:          2
-;     OSWRCH implementation:                   2
-;     Print inline text:                       2
-;     Send string to Tube R2:                  2
-;     Skip spaces in command string:           2
-;     brkv_hi:                                 2
-;     command_prompt:                          2
-;     copy_rom_page:                           2
-;     enter_code:                              2
-;     error_buffer:                            2
-;     error_buffer_errnum:                     2
-;     escape_flag:                             2
-;     execute_code:                            2
-;     io_page_base:                            2
-;     last_error_hi:                           2
-;     low_memory_code:                         2
-;     osnewl_entry:                            2
-;     osword_recv_bytes_loop:                  2
-;     osword_send_bytes_loop:                  2
-;     oswrch_impl:                             2
-;     print_embedded_text:                     2
-;     rdline_recv_loop:                        2
-;     rdline_send_block_loop:                  2
-;     send_string:                             2
-;     send_string_loop:                        2
-;     skip_spaces:                             2
-;     skip_spaces_step:                        2
-;     transfer_read_loop:                      2
-;     transfer_write_loop:                     2
-;     unused_fill_page_ff:                     2
-;     wait_carry_and_byte:                     2
-;     zp_data_base:                            2
-;     zp_data_base_1:                          2
-;     zp_data_base_3:                          2
-;     Display startup banner and initialise:   1
-;     Handle *GO command:                      1
-;     Handle Tube R1 interrupt:                1
-;     Handle Tube R4 interrupt:                1
-;     Low memory startup code:                 1
-;     OSRDCH implementation:                   1
-;     Parse hexadecimal number:                1
-;     Read line of input (OSWORD 0):           1
-;     Set up data transfer via NMI:            1
-;     Unsupported MOS call:                    1
-;     argsv:                                   1
-;     bgetv:                                   1
-;     bputv:                                   1
-;     brk_handler_entry:                       1
-;     bytev:                                   1
-;     check_oscli_ack:                         1
-;     cliv:                                    1
-;     command_go:                              1
-;     command_prompt_escape:                   1
-;     copy_io_page_loop:                       1
-;     copy_page_ff_loop:                       1
-;     copy_startup_code_loop:                  1
-;     copy_vectors_loop:                       1
-;     data_transfer_setup:                     1
-;     default_vector_table:                    1
-;     dispatch_event:                          1
-;     error_not_6502_code:                     1
-;     error_not_a_language:                    1
-;     evntv:                                   1
-;     filev:                                   1
-;     findv:                                   1
-;     gbpbv:                                   1
-;     irq1v:                                   1
-;     irq_return_addr_hi:                      1
-;     irq_return_addr_lo:                      1
-;     lfe03:                                   1
-;     lfe17:                                   1
-;     low_memory_startup_code:                 1
-;     nmi0_done:                               1
-;     nmi0_transfer_addr:                      1
-;     nmi1_done:                               1
-;     nmi1_transfer_addr:                      1
-;     nmi2_done:                               1
-;     nmi2_second_byte:                        1
-;     nmi3_done:                               1
-;     nmi3_second_byte:                        1
-;     nmi_routine_addr_hi_table:               1
-;     nmi_routine_addr_table:                  1
-;     nmi_vector_hi:                           1
-;     osargs_wait_r2_handle:                   1
-;     osbyte_check_ack:                        1
-;     osbyte_entry:                            1
-;     osbyte_high:                             1
-;     osbyte_high_return:                      1
-;     osbyte_high_wait_carry:                  1
-;     osbyte_high_wait_r2_1:                   1
-;     osbyte_high_wait_r2_2:                   1
-;     osbyte_high_wait_r2_3:                   1
-;     osbyte_high_wait_r2_4:                   1
-;     osbyte_high_wait_x:                      1
-;     osbyte_high_wait_y:                      1
-;     osbyte_low_wait_r2_1:                    1
-;     osbyte_low_wait_r2_2:                    1
-;     osbyte_low_wait_r2_3:                    1
-;     osbyte_low_wait_result:                  1
-;     osbyte_read_high_word_impl:              1
-;     osbyte_read_himem:                       1
-;     osbyte_read_lomem_impl:                  1
-;     oscli_entry:                             1
-;     oscli_skip_stars_loop:                   1
-;     oscli_wait_ack:                          1
-;     osfile_recv_block_loop:                  1
-;     osfile_send_block_loop:                  1
-;     osfind_open:                             1
-;     osgbpb_recv_block_loop:                  1
-;     osgbpb_send_block_loop:                  1
-;     osrdch_impl:                             1
-;     osword_entry:                            1
-;     osword_recv_get_length:                  1
-;     osword_recv_lengths:                     1
-;     osword_recv_low_lookup:                  1
-;     osword_restore_regs:                     1
-;     osword_send_lengths:                     1
-;     osword_send_low_lookup:                  1
-;     osword_wait_r2_cmd:                      1
-;     osword_wait_r2_func:                     1
-;     print_error_done:                        1
-;     print_error_loop:                        1
-;     print_text_get_char:                     1
-;     print_text_loop:                         1
-;     print_text_resume:                       1
-;     rdchv:                                   1
-;     rdline:                                  1
-;     rdline_escape:                           1
-;     rdline_send_addr_low:                    1
-;     scan_hex:                                1
-;     scan_hex_got_digit:                      1
-;     scan_hex_next_char:                      1
-;     scan_hex_shift_loop:                     1
-;     send_string_via_ptr:                     1
-;     set_escape_flag:                         1
-;     soft_reset_jmp_hi:                       1
-;     soft_reset_jmp_lo:                       1
-;     startup_banner:                          1
-;     transfer_256_bytes_from_tube:            1
-;     transfer_addr_ptr_hi:                    1
-;     transfer_addr_ptr_hi_table:              1
-;     transfer_addr_ptr_table:                 1
-;     transfer_read_addr1:                     1
-;     transfer_read_addr2:                     1
-;     transfer_read_addr3:                     1
-;     transfer_read_addr4:                     1
-;     transfer_wait_id:                        1
-;     transfer_wait_sync:                      1
-;     transfer_write_sync:                     1
-;     tube_r1_interrupt:                       1
-;     tube_r1_read_byte:                       1
-;     tube_r4_interrupt:                       1
-;     tube_r4_read_error_loop:                 1
-;     tube_r4_wait_error:                      1
-;     unsupported:                             1
-;     userv:                                   1
-;     wordv:                                   1
-;     wrchv:                                   1
+;     Send byte to Tube R2:                           25
+;     send_byte_to_tube_r2:                           25
+;     send_command:                                   25
+;     tube_r2_data:                                   25
+;     tube_r2_status:                                 25
+;     string_ptr:                                     23
+;     Wait for byte from Tube R2:                     18
+;     wait_for_tube_r2_byte:                          18
+;     control_block_ptr:                              14
+;     tube_r3_data:                                   12
+;     data_transfer_addr:                             11
+;     string_ptr_hi:                                   9
+;     tube_r4_status:                                  8
+;     Send OSCLI command to host:                      7
+;     current_program:                                 7
+;     data_transfer_addr_hi:                           7
+;     irq_a_store:                                     7
+;     last_error:                                      7
+;     oscli_send_to_host:                              7
+;     tube_r4_data:                                    7
+;     control_block_ptr_hi:                            6
+;     MOS entry: OSWRCH:                               5
+;     Unsupported MOS call:                            5
+;     Wait for byte in Tube R1:                        5
+;     current_program_hi:                              5
+;     memory_top:                                      5
+;     oswrch_entry:                                    5
+;     unsupported:                                     5
+;     wait_for_tube_r1_byte:                           5
+;     Enter raw code:                                  4
+;     Handle *HELP command:                            4
+;     command_help:                                    4
+;     enter_raw_code:                                  4
+;     irq_vector_hi:                                   4
+;     memory_top_hi:                                   4
+;     tube_r1_status:                                  4
+;     Restore registers and return from interrupt:     3
+;     brkv:                                            3
+;     hex_accumulator:                                 3
+;     hex_accumulator_hi:                              3
+;     nmi_vector:                                      3
+;     osword_recv_block:                               3
+;     osword_send_block:                               3
+;     restore_regs_and_rti:                            3
+;     scan_hex_return:                                 3
+;     transfer_addr_ptr:                               3
+;     tube_r1_data:                                    3
+;     tube_r3_status:                                  3
+;     Command prompt loop:                             2
+;     Enter code at transfer address:                  2
+;     Execute code and restore state:                  2
+;     MOS entry: OSNEWL:                               2
+;     OSWRCH implementation:                           2
+;     Print inline text:                               2
+;     Send string to Tube R2:                          2
+;     Skip spaces in command string:                   2
+;     Wait for carry byte and data byte:               2
+;     brkv_hi:                                         2
+;     command_prompt:                                  2
+;     copy_rom_page:                                   2
+;     enter_code:                                      2
+;     error_buffer:                                    2
+;     error_buffer_errnum:                             2
+;     escape_flag:                                     2
+;     execute_code:                                    2
+;     io_page_base:                                    2
+;     last_error_hi:                                   2
+;     low_memory_code:                                 2
+;     osnewl_entry:                                    2
+;     osword_recv_bytes_loop:                          2
+;     osword_send_bytes_loop:                          2
+;     oswrch_impl:                                     2
+;     print_embedded_text:                             2
+;     rdline_recv_loop:                                2
+;     rdline_send_block_loop:                          2
+;     send_string:                                     2
+;     send_string_loop:                                2
+;     skip_spaces:                                     2
+;     skip_spaces_step:                                2
+;     transfer_read_loop:                              2
+;     transfer_write_loop:                             2
+;     unused_fill_page_ff:                             2
+;     wait_carry_and_byte:                             2
+;     zp_data_base:                                    2
+;     zp_data_base_1:                                  2
+;     zp_data_base_2:                                  2
+;     zp_data_base_3:                                  2
+;     BRK handler dispatch:                            1
+;     Check OSCLI acknowledgement (OSBYTE &8E path):   1
+;     Default MOS vector table:                        1
+;     Display startup banner and initialise:           1
+;     Generate 'not 6502 code' error:                  1
+;     Generate 'not a language' error:                 1
+;     Handle *GO command:                              1
+;     Handle Tube R1 interrupt (escape and events):    1
+;     Handle Tube R4 interrupt:                        1
+;     Low memory startup code:                         1
+;     MOS entry: OSBYTE:                               1
+;     MOS entry: OSCLI:                                1
+;     MOS entry: OSWORD:                               1
+;     NMI routine address table (high bytes):          1
+;     NMI routine address table (low bytes):           1
+;     OSBYTE &84: read top of memory:                  1
+;     OSRDCH implementation:                           1
+;     OSWORD receive block length table:               1
+;     OSWORD send block length table:                  1
+;     Parse hexadecimal number:                        1
+;     Read line of input (OSWORD 0):                   1
+;     Set escape flag from Tube R1 data:               1
+;     Set up data transfer via NMI:                    1
+;     Transfer 256 bytes from Tube via R3:             1
+;     Transfer address pointer table (high bytes):     1
+;     Transfer address pointer table (low bytes):      1
+;     Wait for OSCLI acknowledgement:                  1
+;     argsv:                                           1
+;     bgetv:                                           1
+;     bputv:                                           1
+;     brk_handler_entry:                               1
+;     bytev:                                           1
+;     check_oscli_ack:                                 1
+;     cliv:                                            1
+;     command_go:                                      1
+;     command_prompt_escape:                           1
+;     copy_io_page_loop:                               1
+;     copy_page_ff_loop:                               1
+;     copy_startup_code_loop:                          1
+;     copy_vectors_loop:                               1
+;     data_transfer_setup:                             1
+;     default_vector_table:                            1
+;     dispatch_event:                                  1
+;     error_not_6502_code:                             1
+;     error_not_a_language:                            1
+;     evntv:                                           1
+;     filev:                                           1
+;     findv:                                           1
+;     gbpbv:                                           1
+;     irq1v:                                           1
+;     irq2v:                                           1
+;     irq_return_addr_hi:                              1
+;     irq_return_addr_lo:                              1
+;     lfe03:                                           1
+;     lfe17:                                           1
+;     low_memory_startup_code:                         1
+;     nmi0_done:                                       1
+;     nmi0_transfer_addr:                              1
+;     nmi1_done:                                       1
+;     nmi1_transfer_addr:                              1
+;     nmi2_done:                                       1
+;     nmi2_second_byte:                                1
+;     nmi3_done:                                       1
+;     nmi3_second_byte:                                1
+;     nmi_routine_addr_hi_table:                       1
+;     nmi_routine_addr_table:                          1
+;     nmi_vector_hi:                                   1
+;     osargs_wait_r2_handle:                           1
+;     osbyte_check_ack:                                1
+;     osbyte_entry:                                    1
+;     osbyte_high:                                     1
+;     osbyte_high_return:                              1
+;     osbyte_high_wait_carry:                          1
+;     osbyte_high_wait_r2_1:                           1
+;     osbyte_high_wait_r2_2:                           1
+;     osbyte_high_wait_r2_3:                           1
+;     osbyte_high_wait_r2_4:                           1
+;     osbyte_high_wait_x:                              1
+;     osbyte_high_wait_y:                              1
+;     osbyte_low_wait_r2_1:                            1
+;     osbyte_low_wait_r2_2:                            1
+;     osbyte_low_wait_r2_3:                            1
+;     osbyte_low_wait_result:                          1
+;     osbyte_read_high_word_impl:                      1
+;     osbyte_read_himem:                               1
+;     osbyte_read_lomem_impl:                          1
+;     oscli_entry:                                     1
+;     oscli_skip_stars_loop:                           1
+;     oscli_wait_ack:                                  1
+;     osfile_recv_block_loop:                          1
+;     osfile_send_block_loop:                          1
+;     osfind_open:                                     1
+;     osgbpb_recv_block_loop:                          1
+;     osgbpb_send_block_loop:                          1
+;     osrdch_impl:                                     1
+;     osword_entry:                                    1
+;     osword_recv_get_length:                          1
+;     osword_recv_lengths:                             1
+;     osword_recv_low_lookup:                          1
+;     osword_restore_regs:                             1
+;     osword_send_lengths:                             1
+;     osword_send_low_lookup:                          1
+;     osword_wait_r2_cmd:                              1
+;     osword_wait_r2_func:                             1
+;     print_error_done:                                1
+;     print_error_loop:                                1
+;     print_text_get_char:                             1
+;     print_text_loop:                                 1
+;     print_text_resume:                               1
+;     rdchv:                                           1
+;     rdline:                                          1
+;     rdline_escape:                                   1
+;     rdline_send_addr_low:                            1
+;     scan_hex:                                        1
+;     scan_hex_got_digit:                              1
+;     scan_hex_next_char:                              1
+;     scan_hex_shift_loop:                             1
+;     send_string_via_ptr:                             1
+;     set_escape_flag:                                 1
+;     soft_reset_jmp_hi:                               1
+;     soft_reset_jmp_lo:                               1
+;     startup_banner:                                  1
+;     transfer_256_bytes_from_tube:                    1
+;     transfer_addr_ptr_hi:                            1
+;     transfer_addr_ptr_hi_table:                      1
+;     transfer_addr_ptr_table:                         1
+;     transfer_read_addr1:                             1
+;     transfer_read_addr2:                             1
+;     transfer_read_addr3:                             1
+;     transfer_read_addr4:                             1
+;     transfer_wait_id:                                1
+;     transfer_wait_sync:                              1
+;     transfer_write_sync:                             1
+;     tube_r1_interrupt:                               1
+;     tube_r1_read_byte:                               1
+;     tube_r4_interrupt:                               1
+;     tube_r4_read_error_loop:                         1
+;     tube_r4_wait_error:                              1
+;     userv:                                           1
+;     wordv:                                           1
+;     wrchv:                                           1
 
 ; Automatically generated labels:
 ;     lfe03
@@ -2515,11 +3067,11 @@ save pydis_start, pydis_end
 
 ; Stats:
 ;     Total size (Code + Data) = 2048 bytes
-;     Code                     = 1591 bytes (78%)
-;     Data                     = 457 bytes (22%)
+;     Code                     = 1603 bytes (78%)
+;     Data                     = 445 bytes (22%)
 ;
-;     Number of instructions   = 780
-;     Number of data bytes     = 300 bytes
+;     Number of instructions   = 784
+;     Number of data bytes     = 288 bytes
 ;     Number of data words     = 62 bytes
 ;     Number of string bytes   = 95 bytes
 ;     Number of strings        = 6
