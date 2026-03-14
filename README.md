@@ -11,6 +11,7 @@ This repository contains annotated disassemblies of the Acorn 6502 Tube Client R
 - **Acorn 6502 Tube Client 1.10**
   - [Formatted disassembly on acornaeology.uk](https://acornaeology.uk/acorn-6502-tube-client/1.10.html)
   - [Raw assembly source](versions/tube-6502-client-1.10/output/tube-6502-client-1.10.asm)
+  - [Acorn 6502 Tube Client 1.10 in The BBC Micro ROM Library](https://tobylobster.github.io/rom_library/?md5=8c3b9252ac812c892aa21b9252abf94c)
 
 ## How it works
 
@@ -28,6 +29,10 @@ uv run acorn-tube-client-disasm-tool disassemble 1.10
 uv run acorn-tube-client-disasm-tool verify 1.10
 ```
 
+## References
+
+- [Acorn 6502 Tube Client ROM v1.20 source code](https://github.com/stardot/Acorn6502TubeROM)
+  Original source code for the v1.20 ROM. While a different version, its comments and labels provide important guidance in understanding the earlier v1.10 code.
 
 ## Credits
 

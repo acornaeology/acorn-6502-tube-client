@@ -4,5 +4,11 @@
     "description": "Tube Host client ROM for the 65C02 second (parasite) processor used with the BBC Micro.",
     "glossary": "GLOSSARY.md",
     "versions": ["1.10"],
-    "references": []
+    "references": [
+        {
+            "label": "Acorn 6502 Tube Client ROM v1.20 source code",
+            "url": "https://github.com/stardot/Acorn6502TubeROM",
+            "note": "Original source code for the v1.20 ROM. While a different version, its comments and labels provide important guidance in understanding the earlier v1.10 code."
+        }
+    ]
 }
