@@ -1323,8 +1323,53 @@ comment(0xFCB4, "Get carry and result byte", inline=True)
 comment(0xFCB7, "Generate error 255: 'Bad'", inline=True)
 
 # --- Data tables ---
-comment(0xFCBC, "OSWORD 1-20 send block lengths", inline=True)
-comment(0xFCD0, "OSWORD 1-20 receive block lengths", inline=True)
+# OSWORD send block lengths (indexed by X = OSWORD number)
+# Index 0 is never used (OSWORD 0 is handled by rdline)
+comment(0xFCBC, "(unused: OSWORD 0 handled separately)", inline=True)
+comment(0xFCBD, "&01 Read system clock", inline=True)
+comment(0xFCBE, "&02 Write system clock", inline=True)
+comment(0xFCBF, "&03 Read interval timer", inline=True)
+comment(0xFCC0, "&04 Write interval timer", inline=True)
+comment(0xFCC1, "&05 Read I/O memory (2-byte addr)", inline=True)
+comment(0xFCC2, "&06 Read real-time clock", inline=True)
+comment(0xFCC3, "&07 Write real-time clock / sound", inline=True)
+comment(0xFCC4, "&08 Define envelope", inline=True)
+comment(0xFCC5, "&09 Read pixel colour", inline=True)
+comment(0xFCC6, "&0A Read character definition", inline=True)
+comment(0xFCC7, "&0B Read palette", inline=True)
+comment(0xFCC8, "&0C Write palette", inline=True)
+comment(0xFCC9, "&0D Read last two graphics cursor posns", inline=True)
+comment(0xFCCA, "&0E Read clock as string", inline=True)
+comment(0xFCCB, "&0F Write clock as string", inline=True)
+comment(0xFCCC, "&10 Net transmit", inline=True)
+comment(0xFCCD, "&11 Net receive", inline=True)
+comment(0xFCCE, "&12 Net read arguments", inline=True)
+comment(0xFCCF, "&13 Net FS operation", inline=True)
+
+# OSWORD receive block lengths (indexed by X = OSWORD number)
+# The byte at &FCD0 is shared: it is also the send length
+# for OSWORD &14 (&80 = length in control block).
+comment(0xFCD0, "&14 send / (recv slot 0 unused)", inline=True)
+comment(0xFCD1, "&01 Read system clock", inline=True)
+comment(0xFCD2, "&02 Write system clock", inline=True)
+comment(0xFCD3, "&03 Read interval timer", inline=True)
+comment(0xFCD4, "&04 Write interval timer", inline=True)
+comment(0xFCD5, "&05 Read I/O memory", inline=True)
+comment(0xFCD6, "&06 Read real-time clock", inline=True)
+comment(0xFCD7, "&07 Write real-time clock / sound", inline=True)
+comment(0xFCD8, "&08 Define envelope", inline=True)
+comment(0xFCD9, "&09 Read pixel colour", inline=True)
+comment(0xFCDA, "&0A Read character definition", inline=True)
+comment(0xFCDB, "&0B Read palette", inline=True)
+comment(0xFCDC, "&0C Write palette", inline=True)
+comment(0xFCDD, "&0D Read last two graphics cursor posns", inline=True)
+comment(0xFCDE, "&0E Read clock as string", inline=True)
+comment(0xFCDF, "&0F Write clock as string", inline=True)
+comment(0xFCE0, "&10 Net transmit", inline=True)
+comment(0xFCE1, "&11 Net receive", inline=True)
+comment(0xFCE2, "&12 Net read arguments", inline=True)
+comment(0xFCE3, "&13 Net FS operation", inline=True)
+comment(0xFCE4, "&14 Net FS operation", inline=True)
 
 # --- Interrupt handler (&FCE5) ---
 comment(0xFCE5, "Save A in irq_a_store", inline=True)
@@ -1705,7 +1750,7 @@ comment(0xFFFE, "IRQ/BRK vector", inline=True)
 # OSWORD length tables
 for addr in range(0xFCBC, 0xFCD0):
     byte(addr)
-for addr in range(0xFCD0, 0xFCE4):
+for addr in range(0xFCD0, 0xFCE5):
     byte(addr)
 
 # Transfer address pointer tables

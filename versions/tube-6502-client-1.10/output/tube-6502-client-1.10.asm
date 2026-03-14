@@ -1354,49 +1354,49 @@ osbyte_read_high_word = osbyte_lomem_y_value+1
     equs "Bad"                                                        ; fcb9: 42 61 64    Bad
 ; &fcbc referenced 1 time by &fb24
 .osword_send_lengths
-    equb 0                                                            ; fcbc: 00          .              ; OSWORD 1-20 send block lengths
-    equb 0                                                            ; fcbd: 00          .
-    equb 5                                                            ; fcbe: 05          .
-    equb 0                                                            ; fcbf: 00          .
-    equb 5                                                            ; fcc0: 05          .
-    equb 2                                                            ; fcc1: 02          .
-    equb 5                                                            ; fcc2: 05          .
-    equb 8                                                            ; fcc3: 08          .
-    equb &0e                                                          ; fcc4: 0e          .
-    equb 4                                                            ; fcc5: 04          .
-    equb 1                                                            ; fcc6: 01          .
-    equb 1                                                            ; fcc7: 01          .
-    equb 5                                                            ; fcc8: 05          .
-    equb 0                                                            ; fcc9: 00          .
-    equb 1                                                            ; fcca: 01          .
-    equb &20                                                          ; fccb: 20
-    equb &10                                                          ; fccc: 10          .
-    equb &0d                                                          ; fccd: 0d          .
-    equb 0                                                            ; fcce: 00          .
-    equb 4                                                            ; fccf: 04          .
+    equb 0                                                            ; fcbc: 00          .              ; (unused: OSWORD 0 handled separately)
+    equb 0                                                            ; fcbd: 00          .              ; &01 Read system clock
+    equb 5                                                            ; fcbe: 05          .              ; &02 Write system clock
+    equb 0                                                            ; fcbf: 00          .              ; &03 Read interval timer
+    equb 5                                                            ; fcc0: 05          .              ; &04 Write interval timer
+    equb 2                                                            ; fcc1: 02          .              ; &05 Read I/O memory (2-byte addr)
+    equb 5                                                            ; fcc2: 05          .              ; &06 Read real-time clock
+    equb 8                                                            ; fcc3: 08          .              ; &07 Write real-time clock / sound
+    equb &0e                                                          ; fcc4: 0e          .              ; &08 Define envelope
+    equb 4                                                            ; fcc5: 04          .              ; &09 Read pixel colour
+    equb 1                                                            ; fcc6: 01          .              ; &0A Read character definition
+    equb 1                                                            ; fcc7: 01          .              ; &0B Read palette
+    equb 5                                                            ; fcc8: 05          .              ; &0C Write palette
+    equb 0                                                            ; fcc9: 00          .              ; &0D Read last two graphics cursor posns
+    equb 1                                                            ; fcca: 01          .              ; &0E Read clock as string
+    equb &20                                                          ; fccb: 20                         ; &0F Write clock as string
+    equb &10                                                          ; fccc: 10          .              ; &10 Net transmit
+    equb &0d                                                          ; fccd: 0d          .              ; &11 Net receive
+    equb 0                                                            ; fcce: 00          .              ; &12 Net read arguments
+    equb 4                                                            ; fccf: 04          .              ; &13 Net FS operation
 ; &fcd0 referenced 1 time by &fb50
 .osword_recv_lengths
-    equb &80                                                          ; fcd0: 80          .              ; OSWORD 1-20 receive block lengths
-    equb 5                                                            ; fcd1: 05          .
-    equb 0                                                            ; fcd2: 00          .
-    equb 5                                                            ; fcd3: 05          .
-    equb 0                                                            ; fcd4: 00          .
-    equb 5                                                            ; fcd5: 05          .
-    equb 0                                                            ; fcd6: 00          .
-    equb 0                                                            ; fcd7: 00          .
-    equb 0                                                            ; fcd8: 00          .
-    equb 5                                                            ; fcd9: 05          .
-    equb 9                                                            ; fcda: 09          .
-    equb 5                                                            ; fcdb: 05          .
-    equb 0                                                            ; fcdc: 00          .
-    equb 8                                                            ; fcdd: 08          .
-    equb &18                                                          ; fcde: 18          .
-    equb 0                                                            ; fcdf: 00          .
-    equb 1                                                            ; fce0: 01          .
-    equb &0d                                                          ; fce1: 0d          .
-    equb &80                                                          ; fce2: 80          .
-    equb 4                                                            ; fce3: 04          .
-    equb &80                                                          ; fce4: 80          .
+    equb &80                                                          ; fcd0: 80          .              ; &14 send / (recv slot 0 unused)
+    equb 5                                                            ; fcd1: 05          .              ; &01 Read system clock
+    equb 0                                                            ; fcd2: 00          .              ; &02 Write system clock
+    equb 5                                                            ; fcd3: 05          .              ; &03 Read interval timer
+    equb 0                                                            ; fcd4: 00          .              ; &04 Write interval timer
+    equb 5                                                            ; fcd5: 05          .              ; &05 Read I/O memory
+    equb 0                                                            ; fcd6: 00          .              ; &06 Read real-time clock
+    equb 0                                                            ; fcd7: 00          .              ; &07 Write real-time clock / sound
+    equb 0                                                            ; fcd8: 00          .              ; &08 Define envelope
+    equb 5                                                            ; fcd9: 05          .              ; &09 Read pixel colour
+    equb 9                                                            ; fcda: 09          .              ; &0A Read character definition
+    equb 5                                                            ; fcdb: 05          .              ; &0B Read palette
+    equb 0                                                            ; fcdc: 00          .              ; &0C Write palette
+    equb 8                                                            ; fcdd: 08          .              ; &0D Read last two graphics cursor posns
+    equb &18                                                          ; fcde: 18          .              ; &0E Read clock as string
+    equb 0                                                            ; fcdf: 00          .              ; &0F Write clock as string
+    equb 1                                                            ; fce0: 01          .              ; &10 Net transmit
+    equb &0d                                                          ; fce1: 0d          .              ; &11 Net receive
+    equb &80                                                          ; fce2: 80          .              ; &12 Net read arguments
+    equb 4                                                            ; fce3: 04          .              ; &13 Net FS operation
+    equb &80                                                          ; fce4: 80          .              ; &14 Net FS operation
 
 ; ***************************************************************************************
 ; Hardware interrupt entry point. Saves A, checks the
