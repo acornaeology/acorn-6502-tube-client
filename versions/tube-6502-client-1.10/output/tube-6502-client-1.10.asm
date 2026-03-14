@@ -2139,36 +2139,36 @@ lfe17 = sub_cfe15+2
     equb &ff                                                          ; ff7f: ff          .
 ; &ff80 referenced 1 time by &f80d
 .default_vector_table
-    equw &fcb7                                                        ; ff80: b7 fc       ..             ; Default MOS vector table (27 entries)
-    equw &f945                                                        ; ff82: 45 f9       E.
-    equw &fcf0                                                        ; ff84: f0 fc       ..
-    equw &fcb7                                                        ; ff86: b7 fc       ..
-    equw &f9ca                                                        ; ff88: ca f9       ..
-    equw &fa73                                                        ; ff8a: 73 fa       s.
-    equw &faff                                                        ; ff8c: ff fa       ..
-    equw &f962                                                        ; ff8e: 62 f9       b.
-    equw &f96c                                                        ; ff90: 6c f9       l.
-    equw &fc53                                                        ; ff92: 53 fc       S.
-    equw &fbcc                                                        ; ff94: cc fb       ..
-    equw &fc2a                                                        ; ff96: 2a fc       *.
-    equw &fc36                                                        ; ff98: 36 fc       6.
-    equw &fc8e                                                        ; ff9a: 8e fc       ..
-    equw &fc0c                                                        ; ff9c: 0c fc       ..
-    equw &fcb7                                                        ; ff9e: b7 fc       ..
-    equw &f97d                                                        ; ffa0: 7d f9       }.
-    equw &fcb7                                                        ; ffa2: b7 fc       ..
-    equw &fcb7                                                        ; ffa4: b7 fc       ..
-    equw &fcb7                                                        ; ffa6: b7 fc       ..
-    equw &fcb7                                                        ; ffa8: b7 fc       ..
-    equw &fcb7                                                        ; ffaa: b7 fc       ..
-    equw &fcb7                                                        ; ffac: b7 fc       ..
-    equw &fcb7                                                        ; ffae: b7 fc       ..
-    equw &f97d                                                        ; ffb0: 7d f9       }.
-    equw &f97d                                                        ; ffb2: 7d f9       }.
-    equw &f97d                                                        ; ffb4: 7d f9       }.
+    equw unsupported                                                  ; ff80: b7 fc       ..             ; USERV  - User vector
+    equw error_handler                                                ; ff82: 45 f9       E.             ; BRKV   - BRK vector
+    equw irq1_handler                                                 ; ff84: f0 fc       ..             ; IRQ1V  - Primary IRQ handler
+    equw unsupported                                                  ; ff86: b7 fc       ..             ; IRQ2V  - Secondary IRQ handler
+    equw oscli_impl                                                   ; ff88: ca f9       ..             ; CLIV   - OSCLI vector
+    equw osbyte_impl                                                  ; ff8a: 73 fa       s.             ; BYTEV  - OSBYTE vector
+    equw osword_impl                                                  ; ff8c: ff fa       ..             ; WORDV  - OSWORD vector
+    equw oswrch_impl                                                  ; ff8e: 62 f9       b.             ; WRCHV  - OSWRCH vector
+    equw osrdch_impl                                                  ; ff90: 6c f9       l.             ; RDCHV  - OSRDCH vector
+    equw osfile_impl                                                  ; ff92: 53 fc       S.             ; FILEV  - OSFILE vector
+    equw osargs_impl                                                  ; ff94: cc fb       ..             ; ARGSV  - OSARGS vector
+    equw osbget_impl                                                  ; ff96: 2a fc       *.             ; BGetV  - OSBGET vector
+    equw osbput_impl                                                  ; ff98: 36 fc       6.             ; BPutV  - OSBPUT vector
+    equw osgbpb_impl                                                  ; ff9a: 8e fc       ..             ; GBPBV  - OSGBPB vector
+    equw osfind_impl                                                  ; ff9c: 0c fc       ..             ; FINDV  - OSFIND vector
+    equw unsupported                                                  ; ff9e: b7 fc       ..             ; FSCV   - FS control vector
+    equw null_return                                                  ; ffa0: 7d f9       }.             ; EVNTV  - Event vector
+    equw unsupported                                                  ; ffa2: b7 fc       ..             ; UPTV   - User print vector
+    equw unsupported                                                  ; ffa4: b7 fc       ..             ; NETV   - Network vector
+    equw unsupported                                                  ; ffa6: b7 fc       ..             ; VduV   - Unrecognised VDU vector
+    equw unsupported                                                  ; ffa8: b7 fc       ..             ; KEYV   - Keyboard vector
+    equw unsupported                                                  ; ffaa: b7 fc       ..             ; INSV   - Insert buffer vector
+    equw unsupported                                                  ; ffac: b7 fc       ..             ; RemV   - Remove buffer vector
+    equw unsupported                                                  ; ffae: b7 fc       ..             ; CNPV   - Count/purge buffer vector
+    equw null_return                                                  ; ffb0: 7d f9       }.             ; IND1V  - Spare indirect vector 1
+    equw null_return                                                  ; ffb2: 7d f9       }.             ; IND2V  - Spare indirect vector 2
+    equw null_return                                                  ; ffb4: 7d f9       }.             ; IND3V  - Spare indirect vector 3
 .vector_table_info
-    equb &36                                                          ; ffb6: 36          6              ; Vector table: length &36 at &FF80
-    equw &ff80                                                        ; ffb7: 80 ff       ..
+    equb &36                                                          ; ffb6: 36          6              ; Vector table: length &36 at &FF80; Vector count in bytes (&36 = 27 words)
+    equw default_vector_table                                         ; ffb7: 80 ff       ..             ; Address of default vector table
 
 .mos_stub_unsupported_1
     jmp unsupported                                                   ; ffb9: 4c b7 fc    L..            ; Unsupported: generates 'Bad' error; Generate a 'Bad' error for unsupported MOS calls.
@@ -2249,13 +2249,13 @@ lfe17 = sub_cfe15+2
 ; &fffa referenced 3 times by &fd65, &fd6a, &fd70
 .nmi_vector
 nmi_vector_hi = nmi_vector+1
-    equw &feb3                                                        ; fffa: b3 fe       ..             ; NMI vector
+    equw nmi_acknowledge                                              ; fffa: b3 fe       ..             ; NMI vector (patched at runtime)
 ; &fffb referenced 1 time by &fd76
 .reset_vector
-    equw &f800                                                        ; fffc: 00 f8       ..             ; RESET vector
+    equw reset                                                        ; fffc: 00 f8       ..             ; RESET vector
 .irq_vector
 irq_vector_hi = irq_vector+1
-    equw &fce5                                                        ; fffe: e5 fc       ..             ; IRQ/BRK vector
+    equw interrupt_handler                                            ; fffe: e5 fc       ..             ; IRQ/BRK vector
 ; &ffff referenced 4 times by &fdd6, &fdf8, &fe01, &fe15
 .pydis_end
 
@@ -2279,6 +2279,25 @@ irq_vector_hi = irq_vector+1
     assert >(nmi_single_byte_to_tube) == &fe
     assert >(nmi_two_bytes_from_tube) == &fe
     assert >(nmi_two_bytes_to_tube) == &fe
+    assert default_vector_table == &ff80
+    assert error_handler == &f945
+    assert interrupt_handler == &fce5
+    assert irq1_handler == &fcf0
+    assert nmi_acknowledge == &feb3
+    assert null_return == &f97d
+    assert osargs_impl == &fbcc
+    assert osbget_impl == &fc2a
+    assert osbput_impl == &fc36
+    assert osbyte_impl == &fa73
+    assert oscli_impl == &f9ca
+    assert osfile_impl == &fc53
+    assert osfind_impl == &fc0c
+    assert osgbpb_impl == &fc8e
+    assert osrdch_impl == &f96c
+    assert osword_impl == &faff
+    assert oswrch_impl == &f962
+    assert reset == &f800
+    assert unsupported == &fcb7
 
 save pydis_start, pydis_end
 

@@ -1584,9 +1584,6 @@ comment(0xFF00, "LDA/STA &FF00,X but only &FF80 onwards")
 comment(0xFF00, "contains the default vector table and")
 comment(0xFF00, "MOS entry points.")
 
-# --- Default vector table ---
-comment(0xFF80, "Default MOS vector table (27 entries)", inline=True)
-
 # --- MOS entry point stubs ---
 comment(0xFFB6, "Vector table: length &36 at &FF80", inline=True)
 comment(0xFFB9, "Unsupported: generates 'Bad' error", inline=True)
@@ -1609,10 +1606,7 @@ comment(0xFFF1, "Dispatch via WORDV", inline=True)
 comment(0xFFF4, "Dispatch via BYTEV", inline=True)
 comment(0xFFF7, "Dispatch via CLIV", inline=True)
 
-# --- Hardware vectors ---
-comment(0xFFFA, "NMI vector", inline=True)
-comment(0xFFFC, "RESET vector", inline=True)
-comment(0xFFFE, "IRQ/BRK vector", inline=True)
+# Hardware vector comments are in the data declarations section below
 
 # =====================================================================
 # Data declarations
@@ -1637,18 +1631,58 @@ for addr in range(0xFEF8, 0xFF00):
 for addr in range(0xFF00, 0xFF80):
     byte(addr)
 
-# Default vector table (27 x 2-byte words)
-for addr in range(0xFF80, 0xFFB6, 2):
+# Default vector table (27 x 2-byte words, copied to &0200-&0236 at reset)
+_default_vectors = [
+    (0xFF80, "unsupported",              "USERV  - User vector"),
+    (0xFF82, "error_handler",            "BRKV   - BRK vector"),
+    (0xFF84, "irq1_handler",             "IRQ1V  - Primary IRQ handler"),
+    (0xFF86, "unsupported",              "IRQ2V  - Secondary IRQ handler"),
+    (0xFF88, "oscli_impl",               "CLIV   - OSCLI vector"),
+    (0xFF8A, "osbyte_impl",              "BYTEV  - OSBYTE vector"),
+    (0xFF8C, "osword_impl",              "WORDV  - OSWORD vector"),
+    (0xFF8E, "oswrch_impl",              "WRCHV  - OSWRCH vector"),
+    (0xFF90, "osrdch_impl",              "RDCHV  - OSRDCH vector"),
+    (0xFF92, "osfile_impl",              "FILEV  - OSFILE vector"),
+    (0xFF94, "osargs_impl",              "ARGSV  - OSARGS vector"),
+    (0xFF96, "osbget_impl",              "BGetV  - OSBGET vector"),
+    (0xFF98, "osbput_impl",              "BPutV  - OSBPUT vector"),
+    (0xFF9A, "osgbpb_impl",              "GBPBV  - OSGBPB vector"),
+    (0xFF9C, "osfind_impl",              "FINDV  - OSFIND vector"),
+    (0xFF9E, "unsupported",              "FSCV   - FS control vector"),
+    (0xFFA0, "null_return",              "EVNTV  - Event vector"),
+    (0xFFA2, "unsupported",              "UPTV   - User print vector"),
+    (0xFFA4, "unsupported",              "NETV   - Network vector"),
+    (0xFFA6, "unsupported",              "VduV   - Unrecognised VDU vector"),
+    (0xFFA8, "unsupported",              "KEYV   - Keyboard vector"),
+    (0xFFAA, "unsupported",              "INSV   - Insert buffer vector"),
+    (0xFFAC, "unsupported",              "RemV   - Remove buffer vector"),
+    (0xFFAE, "unsupported",              "CNPV   - Count/purge buffer vector"),
+    (0xFFB0, "null_return",              "IND1V  - Spare indirect vector 1"),
+    (0xFFB2, "null_return",              "IND2V  - Spare indirect vector 2"),
+    (0xFFB4, "null_return",              "IND3V  - Spare indirect vector 3"),
+]
+for addr, target, desc in _default_vectors:
     word(addr)
+    expr(addr, target)
+    comment(addr, desc, inline=True)
 
-# Vector table info block
+# Vector table info block: length byte, then pointer to table
 byte(0xFFB6)
+comment(0xFFB6, "Vector count in bytes (&36 = 27 words)", inline=True)
 word(0xFFB7)
+expr(0xFFB7, "default_vector_table")
+comment(0xFFB7, "Address of default vector table", inline=True)
 
 # Hardware vectors
 word(0xFFFA)
+expr(0xFFFA, "nmi_acknowledge")
+comment(0xFFFA, "NMI vector (patched at runtime)", inline=True)
 word(0xFFFC)
+expr(0xFFFC, "reset")
+comment(0xFFFC, "RESET vector", inline=True)
 word(0xFFFE)
+expr(0xFFFE, "interrupt_handler")
+comment(0xFFFE, "IRQ/BRK vector", inline=True)
 
 # OSWORD length tables
 for addr in range(0xFCBC, 0xFCD0):
