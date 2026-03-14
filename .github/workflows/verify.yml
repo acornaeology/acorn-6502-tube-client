@@ -1,0 +1,58 @@
+name: Verify disassembly
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Check README.md is up to date
+        run: uv run generate_readme.py --check
+
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: ["1.10"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Build beebasm
+        uses: actions/cache@v4
+        id: beebasm-cache
+        with:
+          path: /usr/local/bin/beebasm
+          key: beebasm-v1.11-rebuild
+
+      - name: Build beebasm from source
+        if: steps.beebasm-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch v1.11 https://github.com/stardot/beebasm.git /tmp/beebasm
+          cmake -S /tmp/beebasm -B /tmp/beebasm/build
+          make -C /tmp/beebasm/build -j$(nproc)
+          sudo cp /tmp/beebasm/build/beebasm /usr/local/bin/
+
+      - name: Disassemble Acorn 6502 Tube Client ${{ matrix.version }}
+        run: uv run acorn-tube-client-disasm-tool disassemble ${{ matrix.version }}
+
+      - name: Lint Acorn 6502 Tube Client ${{ matrix.version }}
+        run: uv run acorn-tube-client-disasm-tool lint ${{ matrix.version }}
+
+      - name: Verify Acorn 6502 Tube Client ${{ matrix.version }}
+        run: uv run acorn-tube-client-disasm-tool verify ${{ matrix.version }}

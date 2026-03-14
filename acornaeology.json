@@ -1,0 +1,8 @@
+{
+    "slug": "acorn-6502-tube-client",
+    "name": "Acorn 6502 Tube Client",
+    "description": "Tube Host client ROM for the 65C02 second (parasite) processor used with the BBC Micro.",
+    "glossary": "GLOSSARY.md",
+    "versions": ["1.10"],
+    "references": []
+}
