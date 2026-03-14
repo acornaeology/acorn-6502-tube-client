@@ -38,6 +38,18 @@ _tmp.close()
 load(0xF800, _tmp.name, "65C02")
 os.unlink(_tmp.name)
 
+# =====================================================================
+# Relocated code block
+# =====================================================================
+# The reset routine copies 7 bytes of startup code from ROM at &F859
+# to low memory at &0100, then jumps there to page out the ROM.
+# move(dest, src, length) tells py8dis the runtime address for this block.
+
+move(0x0100, 0xF859, 0x07)
+
+# ROM-address label for the move() block origin (referenced by copy routine)
+label(0xF859, "reloc_low_memory_src")
+
 # Tube I/O registers are labelled rather than constant() because the
 # addresses fall within the loaded ROM range. The actual hardware
 # registers overlay these ROM addresses when the Tube ULA is active.
@@ -105,7 +117,7 @@ hook_subroutine(0xFE98, "print_embedded_text", stringhi_hook)
 # =====================================================================
 
 entry(0xF800)
-entry(0xF859)
+entry(0x0100)
 entry(0xF860)
 entry(0xF88D)
 entry(0xF8B5)
@@ -168,7 +180,6 @@ entry(0xFFF7)
 # =====================================================================
 
 label(0xF800, "reset")
-label(0xF859, "low_memory_startup_code")
 label(0xF860, "startup_banner")
 label(0xF88D, "command_prompt")
 label(0xF8A7, "command_prompt_escape")
@@ -391,10 +402,10 @@ Copies the ROM contents to RAM, sets up the default MOS
 vectors, clears the escape flag, and jumps via low memory
 to page out the ROM and start the operating system.""")
 
-subroutine(0xF859, "low_memory_startup_code", hook=None,
-    title="Low memory startup code",
+subroutine(0x0100, "low_memory_startup_code", hook=None,
+    title="Low memory startup code (relocated from ROM at reloc_low_memory_src)",
     description="""\
-Executed from &0100 after being copied from ROM.
+Copied from ROM to &0100 by the reset routine.
 
 Reads Tube R1 status to page out the ROM, enables
 interrupts, then jumps to display the startup banner.
@@ -1222,10 +1233,10 @@ comment(0xF852, "High byte = &F8 (start of ROM)", inline=True)
 comment(0xF854, "Set memory top to &F800", inline=True)
 comment(0xF856, "Jump to low memory to page ROM out", inline=True)
 
-# --- Low memory startup code (&F859) ---
-comment(0xF859, "Read Tube R1 status to page ROM out", inline=True)
-comment(0xF85C, "Enable interrupts for data transfers", inline=True)
-comment(0xF85D, "Patched after first boot to skip banner", inline=True)
+# --- Low memory startup code (relocated to &0100) ---
+comment(0x0100, "Read Tube R1 status to page ROM out", inline=True)
+comment(0x0103, "Enable interrupts for data transfers", inline=True)
+comment(0x0104, "Patched after first boot to skip banner", inline=True)
 
 # --- Startup banner (&F860) ---
 comment(0xF860, "Print inline startup banner string", inline=True)

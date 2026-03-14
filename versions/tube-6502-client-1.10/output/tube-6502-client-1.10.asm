@@ -23,9 +23,6 @@ irq_a_store             = &00fc
 last_error              = &00fd
 last_error_hi           = &00fe
 escape_flag             = &00ff
-low_memory_code         = &0100
-irq_return_addr_lo      = &0103
-irq_return_addr_hi      = &0104
 userv                   = &0200
 brkv                    = &0202
 brkv_hi                 = &0203
@@ -45,6 +42,52 @@ findv                   = &021c
 evntv                   = &0220
 error_buffer            = &0236
 error_buffer_errnum     = &0237
+soft_reset_jmp          = &f85d
+soft_reset_jmp_lo       = &f85e
+soft_reset_jmp_hi       = &f85f
+
+    org &f859
+
+.reloc_low_memory_src
+
+; Move 1: &f859 to &0100 for length 7
+    org &0100
+; ***************************************************************************************
+; Low memory startup code (relocated from ROM at reloc_low_memory_src)
+; 
+; Copied from ROM to &0100 by the reset routine.
+; 
+; Reads Tube R1 status to page out the ROM, enables
+; interrupts, then jumps to display the startup banner.
+; On subsequent soft resets, the JMP target at &F85E is
+; patched to skip the banner and enter the command prompt
+; directly.
+; ***************************************************************************************
+; &f859 referenced 2 times by &f83e, &f856
+.low_memory_code
+.low_memory_startup_code
+    lda tube_r1_status                                                ; f859: ad f8 fe    ... :0100[1]   ; Read Tube R1 status to page ROM out
+; &f85c referenced 1 time by &fd00
+.irq_return_addr_lo
+    cli                                                               ; f85c: 58          X   :0103[1]   ; Enable interrupts for data transfers
+; &f85d referenced 1 time by &fd09
+.irq_return_addr_hi
+    jmp startup_banner                                                ; f85d: 4c 60 f8    L`. :0104[1]   ; Patched after first boot to skip banner
+
+
+    ; Copy the newly assembled block of code back to it's proper place in the binary
+    ; file.
+    ; (Note the parameter order: 'copyblock <start>,<end>,<dest>')
+    copyblock low_memory_code, *, reloc_low_memory_src
+
+    ; Clear the area of memory we just temporarily used to assemble the new block,
+    ; allowing us to assemble there again if needed
+    clear low_memory_code, &0107
+
+    ; Set the program counter to the next position in the binary file.
+    org reloc_low_memory_src + (* - low_memory_code)
+
+.startup_banner
 
     org &f800
 
@@ -98,7 +141,7 @@ error_buffer_errnum     = &0237
     ldx #&10                                                          ; f839: a2 10       ..             ; 17 bytes of startup code to copy
 ; &f83b referenced 1 time by &f842
 .copy_startup_code_loop
-    lda low_memory_startup_code,x                                     ; f83b: bd 59 f8    .Y.            ; Read startup code byte
+    lda reloc_low_memory_src,x                                        ; f83b: bd 59 f8    .Y.            ; Read startup code byte
     sta low_memory_code,x                                             ; f83e: 9d 00 01    ...            ; Write to low memory at &0100
     dex                                                               ; f841: ca          .              ; Next byte
     bpl copy_startup_code_loop                                        ; f842: 10 f7       ..             ; Loop until all startup code copied
@@ -113,28 +156,10 @@ error_buffer_errnum     = &0237
     sta memory_top_hi                                                 ; f854: 85 f3       ..             ; Set memory top to &F800
     jmp low_memory_code                                               ; f856: 4c 00 01    L..            ; Jump to low memory to page ROM out
 
-; ***************************************************************************************
-; Low memory startup code
-; 
-; Executed from &0100 after being copied from ROM.
-; 
-; Reads Tube R1 status to page out the ROM, enables
-; interrupts, then jumps to display the startup banner.
-; On subsequent soft resets, the JMP target at &F85E is
-; patched to skip the banner and enter the command prompt
-; directly.
-; ***************************************************************************************
 ; &f859 referenced 1 time by &f83b
-.low_memory_startup_code
-    lda tube_r1_status                                                ; f859: ad f8 fe    ...            ; Read Tube R1 status to page ROM out
-    cli                                                               ; f85c: 58          X              ; Enable interrupts for data transfers
-.soft_reset_jmp
-soft_reset_jmp_lo = soft_reset_jmp+1
-soft_reset_jmp_hi = soft_reset_jmp+2
-    jmp startup_banner                                                ; f85d: 4c 60 f8    L`.            ; Patched after first boot to skip banner
 
-; &f85e referenced 1 time by &f87e
-; &f85f referenced 1 time by &f883
+    org &f860
+
 ; ***************************************************************************************
 ; Display startup banner and initialise
 ; 
@@ -145,8 +170,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; If the acknowledge has bit 7 set, the host is requesting
 ; code execution; otherwise enters the command prompt.
 ; ***************************************************************************************
-; &f860 referenced 1 time by &f85d
-.startup_banner
+; &f860 referenced 1 time by &0104[1]
     jsr print_embedded_text                                           ; f860: 20 98 fe     ..            ; Print inline startup banner string
     equs &0a, "Acorn TUBE 6502 64K", &0a, &0a, &0d, 0                 ; f863: 0a 41 63... .Ac
 
@@ -1936,7 +1960,7 @@ lfe17 = sub_cfe15+2
     equb &ff                                                          ; fef5: ff          .              ; Tube R3 data (mirror, not used)
     equb &ff                                                          ; fef6: ff          .              ; Tube R4 status (mirror, not used)
     equb &ff                                                          ; fef7: ff          .              ; Tube R4 data (mirror, not used)
-; &fef8 referenced 4 times by &f859, &f962, &fcf5, &fe80
+; &fef8 referenced 4 times by &0100[1], &f962, &fcf5, &fe80
 .tube_r1_status
     equb &ff                                                          ; fef8: ff          .              ; Tube register 1 status
 ; &fef9 referenced 3 times by &f968, &fd18, &fe94
@@ -2463,6 +2487,7 @@ save pydis_start, pydis_end
 ;     io_page_base:                   2
 ;     last_error_hi:                  2
 ;     low_memory_code:                2
+;     low_memory_startup_code:        2
 ;     osnewl_entry:                   2
 ;     osword_recv_bytes_loop:         2
 ;     osword_send_bytes_loop:         2
@@ -2510,7 +2535,6 @@ save pydis_start, pydis_end
 ;     irq_return_addr_lo:             1
 ;     lfe03:                          1
 ;     lfe17:                          1
-;     low_memory_startup_code:        1
 ;     nmi0_done:                      1
 ;     nmi0_transfer_addr:             1
 ;     nmi1_done:                      1
@@ -2568,6 +2592,7 @@ save pydis_start, pydis_end
 ;     rdline:                         1
 ;     rdline_escape:                  1
 ;     rdline_send_addr_low:           1
+;     reloc_low_memory_src:           1
 ;     scan_hex:                       1
 ;     scan_hex_got_digit:             1
 ;     scan_hex_next_char:             1
