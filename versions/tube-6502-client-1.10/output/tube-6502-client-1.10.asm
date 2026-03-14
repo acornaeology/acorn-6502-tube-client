@@ -180,7 +180,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: the v1.10 ROM always enters with A=1 regardless
 ;     of whether it is a RESET or OSCLI entry, and does not
-;     pass the carry flag. JGH identifies this as a bug.
+;     pass the carry flag. J.G. Harston identifies this as a bug.
 ; ***************************************************************************************
 ; The main supervisor command prompt.
 ; 
@@ -246,7 +246,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: the v1.10 ROM always enters with A=1 regardless
 ;     of whether it is a RESET or OSCLI entry, and does not
-;     pass the carry flag. JGH identifies this as a bug.
+;     pass the carry flag. J.G. Harston identifies this as a bug.
 ; ***************************************************************************************
 ; &f8b5 referenced 2 times by &f88b, &fa62
 .enter_code
@@ -271,7 +271,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     ROM header. Loads A=1 and jumps via the memory top
 ;     pointer (which has been set to the transfer address).
 ; 
-;     Note: JGH identifies a bug where raw code should be
+;     Note: J.G. Harston identifies a bug where raw code should be
 ;     entered with A=0, and the carry should indicate
 ;     whether the entry is from RESET or OSCLI.
     iny                                                               ; f8d7: c8          .              ; Y=1 to check '('; Y=&01
@@ -281,7 +281,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     ROM header. Loads A=1 and jumps via the memory top
 ;     pointer (which has been set to the transfer address).
 ; 
-;     Note: JGH identifies a bug where raw code should be
+;     Note: J.G. Harston identifies a bug where raw code should be
 ;     entered with A=0, and the carry should indicate
 ;     whether the entry is from RESET or OSCLI.
     iny                                                               ; f8de: c8          .              ; Y=2 to check 'C'; Y=&02
@@ -291,7 +291,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     ROM header. Loads A=1 and jumps via the memory top
 ;     pointer (which has been set to the transfer address).
 ; 
-;     Note: JGH identifies a bug where raw code should be
+;     Note: J.G. Harston identifies a bug where raw code should be
 ;     entered with A=0, and the carry should indicate
 ;     whether the entry is from RESET or OSCLI.
     iny                                                               ; f8e5: c8          .              ; Y=3 to check ')'; Y=&03
@@ -301,7 +301,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     ROM header. Loads A=1 and jumps via the memory top
 ;     pointer (which has been set to the transfer address).
 ; 
-;     Note: JGH identifies a bug where raw code should be
+;     Note: J.G. Harston identifies a bug where raw code should be
 ;     entered with A=0, and the carry should indicate
 ;     whether the entry is from RESET or OSCLI.
     ldy #6                                                            ; f8ec: a0 06       ..             ; Offset 6 = ROM type byte
@@ -323,7 +323,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ;     ROM header. Loads A=1 and jumps via the memory top
 ;     pointer (which has been set to the transfer address).
 ; 
-;     Note: JGH identifies a bug where raw code should be
+;     Note: J.G. Harston identifies a bug where raw code should be
 ;     entered with A=0, and the carry should indicate
 ;     whether the entry is from RESET or OSCLI.
 ; ***************************************************************************************
@@ -638,7 +638,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: does not check for a separator after 'GO', so
 ;     commands like *GOAD would be incorrectly matched.
-;     JGH identifies this as a bug.
+;     J.G. Harston identifies this as a bug.
     cpx #&48 ; 'H'                                                    ; f9e2: e0 48       .H             ; Is first letter 'H'?
     bne oscli_send_to_host                                            ; f9e4: d0 47       .G             ; No: pass command to host; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
@@ -766,7 +766,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: in v1.10, the carry flag is not explicitly set
 ;     before calling enter_code, so entered code cannot
-;     reliably distinguish RESET from OSCLI entry. JGH
+;     reliably distinguish RESET from OSCLI entry. J.G. Harston
 ;     identifies this as a bug.
     pla                                                               ; fa3c: 68          h              ; Restore saved A
     rts                                                               ; fa3d: 60          `              ; Return to caller
@@ -779,7 +779,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: does not check for a separator after 'GO', so
 ;     commands like *GOAD would be incorrectly matched.
-;     JGH identifies this as a bug.
+;     J.G. Harston identifies this as a bug.
 ; ***************************************************************************************
 ; &fa3e referenced 1 time by &f9e0
 .command_go
@@ -826,7 +826,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: in v1.10, the carry flag is not explicitly set
 ;     before calling enter_code, so entered code cannot
-;     reliably distinguish RESET from OSCLI entry. JGH
+;     reliably distinguish RESET from OSCLI entry. J.G. Harston
 ;     identifies this as a bug.
     lda hex_accumulator                                               ; fa54: a5 f0       ..             ; Get parsed address low byte
     sta data_transfer_addr                                            ; fa56: 85 f6       ..             ; Set transfer address low
@@ -839,7 +839,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: in v1.10, the carry flag is not explicitly set
 ;     before calling enter_code, so entered code cannot
-;     reliably distinguish RESET from OSCLI entry. JGH
+;     reliably distinguish RESET from OSCLI entry. J.G. Harston
 ;     identifies this as a bug.
 ; ***************************************************************************************
 ; &fa5c referenced 2 times by &fa3a, &fa52
@@ -861,7 +861,7 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; 
 ;     Note: the v1.10 ROM always enters with A=1 regardless
 ;     of whether it is a RESET or OSCLI entry, and does not
-;     pass the carry flag. JGH identifies this as a bug.
+;     pass the carry flag. J.G. Harston identifies this as a bug.
     pla                                                               ; fa65: 68          h              ; Restore current program low
     sta current_program                                               ; fa66: 85 ee       ..             ; Set current program low
     sta memory_top                                                    ; fa68: 85 f2       ..             ; Also restore memory top low

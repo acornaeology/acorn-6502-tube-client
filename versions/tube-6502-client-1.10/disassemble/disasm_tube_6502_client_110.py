@@ -428,14 +428,14 @@ subroutine(0xF8B5, "Enter code at transfer address",
 
     Note: the v1.10 ROM always enters with A=1 regardless
     of whether it is a RESET or OSCLI entry, and does not
-    pass the carry flag. JGH identifies this as a bug.""")
+    pass the carry flag. J.G. Harston identifies this as a bug.""")
 
 subroutine(0xF8FA, "Enter raw code",
     """Enter code at the transfer address without a valid
     ROM header. Loads A=1 and jumps via the memory top
     pointer (which has been set to the transfer address).
 
-    Note: JGH identifies a bug where raw code should be
+    Note: J.G. Harston identifies a bug where raw code should be
     entered with A=0, and the carry should indicate
     whether the entry is from RESET or OSCLI.""")
 
@@ -578,7 +578,7 @@ subroutine(0xFA3E, "Handle *GO command",
 
     Note: does not check for a separator after 'GO', so
     commands like *GOAD would be incorrectly matched.
-    JGH identifies this as a bug.""")
+    J.G. Harston identifies this as a bug.""")
 
 subroutine(0xFA5C, "Execute code and restore state",
     """Save the current program pointer, call enter_code,
@@ -587,7 +587,7 @@ subroutine(0xFA5C, "Execute code and restore state",
 
     Note: in v1.10, the carry flag is not explicitly set
     before calling enter_code, so entered code cannot
-    reliably distinguish RESET from OSCLI entry. JGH
+    reliably distinguish RESET from OSCLI entry. J.G. Harston
     identifies this as a bug.""")
 
 subroutine(0xFA71, "Check OSCLI acknowledgement (OSBYTE &8E path)",
