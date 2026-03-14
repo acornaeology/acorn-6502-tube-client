@@ -338,7 +338,8 @@ label(0xFE94, "tube_r1_read_byte")
 label(0xFEA0, "print_text_loop")
 label(0xFEA6, "print_text_get_char")
 label(0xFEB0, "print_text_resume")
-label(0xFEB7, "unused_rom_fill")
+label(0xFEB7, "unused_fill_pre_io")
+label(0xFEF0, "tube_ula_io_window")
 label(0xFEA4, "print_text_inc_high")
 
 # Zero page data references used with indexed addressing
@@ -351,7 +352,7 @@ label(0x0003, "zp_data_base_3")
 label(0xF85E, "soft_reset_jmp_lo")
 label(0xF85F, "soft_reset_jmp_hi")
 label(0xFDFF, "io_page_base")
-label(0xFF00, "page_ff")
+label(0xFF00, "unused_fill_page_ff")
 label(0xFFFB, "nmi_vector_hi")
 
 # Tube I/O register labels (within the ROM address space but mapped to hardware)
@@ -714,8 +715,8 @@ subroutine(0xFEB3, "NMI acknowledge",
 
 # --- Reset (&F800) ---
 comment(0xF800, "Start copy index at 0", inline=True)
-comment(0xF802, "Read ROM byte", inline=True)
-comment(0xF805, "Write to RAM (self-copy page &FF)", inline=True)
+comment(0xF802, "Read byte from page &FF of ROM", inline=True)
+comment(0xF805, "Copy to RAM (vectors + MOS entries)", inline=True)
 comment(0xF808, "Next byte", inline=True)
 comment(0xF809, "Loop until all 256 bytes copied", inline=True)
 comment(0xF80B, "54 bytes = 27 default vector entries", inline=True)
@@ -724,9 +725,9 @@ comment(0xF810, "Write to MOS vector table", inline=True)
 comment(0xF813, "Next entry", inline=True)
 comment(0xF814, "Loop until all vectors set", inline=True)
 comment(0xF816, "Clear the stack (X=&FF from loop)", inline=True)
-comment(0xF817, "X=&F0: avoid Tube I/O at &FEFx", inline=True)
-comment(0xF819, "Read ROM byte from &FE00 region", inline=True)
-comment(0xF81C, "Write to RAM", inline=True)
+comment(0xF817, "X=&F0: copy &FE00-&FEEF to RAM", inline=True)
+comment(0xF819, "Read ROM byte below Tube I/O window", inline=True)
+comment(0xF81C, "Copy to RAM", inline=True)
 comment(0xF81F, "Next byte", inline=True)
 comment(0xF820, "Loop until &FE00-&FEEF copied", inline=True)
 comment(0xF822, "Y=0 for page offset", inline=True)
@@ -739,7 +740,7 @@ comment(0xF82E, "Next byte in page", inline=True)
 comment(0xF82F, "Loop until 256 bytes copied", inline=True)
 comment(0xF831, "Move to next page", inline=True)
 comment(0xF833, "Get current page number", inline=True)
-comment(0xF835, "Reached I/O space at &FE00?", inline=True)
+comment(0xF835, "Reached Tube I/O window at &FE00?", inline=True)
 comment(0xF837, "No, copy next page", inline=True)
 comment(0xF839, "17 bytes of startup code to copy", inline=True)
 comment(0xF83B, "Read startup code byte", inline=True)
@@ -1573,8 +1574,15 @@ comment(0xFEB0, "Resume execution after string", inline=True)
 comment(0xFEB3, "Write to Tube R3 to acknowledge NMI", inline=True)
 
 # --- Spare/unused regions ---
-comment(0xFEB7, "Unused ROM space, filled with &FF", inline=True)
-comment(0xFF00, "Unused ROM space, filled with &FF", inline=True)
+comment(0xFEB7, "Unused fill between code and I/O window")
+comment(0xFEF0, "Tube ULA I/O window: hardware registers")
+comment(0xFEF0, "overlay these ROM addresses. The ROM")
+comment(0xFEF0, "bytes here are never read by the CPU.")
+comment(0xFF00, "Unused fill in lower page &FF. The reset")
+comment(0xFF00, "code copies all of page &FF to RAM with")
+comment(0xFF00, "LDA/STA &FF00,X but only &FF80 onwards")
+comment(0xFF00, "contains the default vector table and")
+comment(0xFF00, "MOS entry points.")
 
 # --- Default vector table ---
 comment(0xFF80, "Default MOS vector table (27 entries)", inline=True)
@@ -1615,10 +1623,17 @@ for addr in [0xF95D, 0xF95E, 0xF95F, 0xF960, 0xF961]:
     byte(addr)
 
 # Spare space filled with &FF
-# &FEB7-&FEFF: unused ROM space (includes Tube I/O window at &FEF0-&FEFF)
-for addr in range(0xFEB7, 0xFF00):
+# &FEB7-&FEEF: unused ROM fill between code and I/O window
+for addr in range(0xFEB7, 0xFEF0):
     byte(addr)
-# &FF00-&FF7F: unused ROM space before default vector table
+# &FEF0-&FEF7: Tube ULA I/O window (hardware overlays these ROM addresses;
+# the 8 bytes here precede the Tube register pairs at &FEF8-&FEFF)
+for addr in range(0xFEF0, 0xFEF8):
+    byte(addr)
+# &FEF8-&FEFF: Tube register addresses (labelled individually above)
+for addr in range(0xFEF8, 0xFF00):
+    byte(addr)
+# &FF00-&FF7F: unused fill in lower half of page &FF
 for addr in range(0xFF00, 0xFF80):
     byte(addr)
 

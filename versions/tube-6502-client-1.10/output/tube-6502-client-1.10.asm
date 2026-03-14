@@ -60,8 +60,8 @@ error_buffer_errnum     = &0237
     ldx #0                                                            ; f800: a2 00       ..             ; Start copy index at 0
 ; &f802 referenced 1 time by &f809
 .copy_page_ff_loop
-    lda page_ff,x                                                     ; f802: bd 00 ff    ...            ; Read ROM byte
-    sta page_ff,x                                                     ; f805: 9d 00 ff    ...            ; Write to RAM (self-copy page &FF)
+    lda unused_fill_page_ff,x                                         ; f802: bd 00 ff    ...            ; Read byte from page &FF of ROM
+    sta unused_fill_page_ff,x                                         ; f805: 9d 00 ff    ...            ; Copy to RAM (vectors + MOS entries)
     dex                                                               ; f808: ca          .              ; Next byte
     bne copy_page_ff_loop                                             ; f809: d0 f7       ..             ; Loop until all 256 bytes copied
     ldx #&36 ; '6'                                                    ; f80b: a2 36       .6             ; 54 bytes = 27 default vector entries
@@ -72,11 +72,11 @@ error_buffer_errnum     = &0237
     dex                                                               ; f813: ca          .              ; Next entry
     bpl copy_vectors_loop                                             ; f814: 10 f7       ..             ; Loop until all vectors set
     txs                                                               ; f816: 9a          .              ; Clear the stack (X=&FF from loop)
-    ldx #&f0                                                          ; f817: a2 f0       ..             ; X=&F0: avoid Tube I/O at &FEFx
+    ldx #&f0                                                          ; f817: a2 f0       ..             ; X=&F0: copy &FE00-&FEEF to RAM
 ; &f819 referenced 1 time by &f820
 .copy_io_page_loop
-    lda io_page_base,x                                                ; f819: bd ff fd    ...            ; Read ROM byte from &FE00 region
-    sta io_page_base,x                                                ; f81c: 9d ff fd    ...            ; Write to RAM
+    lda io_page_base,x                                                ; f819: bd ff fd    ...            ; Read ROM byte below Tube I/O window
+    sta io_page_base,x                                                ; f81c: 9d ff fd    ...            ; Copy to RAM
     dex                                                               ; f81f: ca          .              ; Next byte
     bne copy_io_page_loop                                             ; f820: d0 f7       ..             ; Loop until &FE00-&FEEF copied
     ldy #0                                                            ; f822: a0 00       ..             ; Y=0 for page offset
@@ -91,7 +91,7 @@ error_buffer_errnum     = &0237
     bne copy_rom_page                                                 ; f82f: d0 f9       ..             ; Loop until 256 bytes copied
     inc string_ptr_hi                                                 ; f831: e6 f9       ..             ; Move to next page
     lda string_ptr_hi                                                 ; f833: a5 f9       ..             ; Get current page number
-    cmp #&fe                                                          ; f835: c9 fe       ..             ; Reached I/O space at &FE00?
+    cmp #&fe                                                          ; f835: c9 fe       ..             ; Reached Tube I/O window at &FE00?
     bne copy_rom_page                                                 ; f837: d0 f1       ..             ; No, copy next page
     ldx #&10                                                          ; f839: a2 10       ..             ; 17 bytes of startup code to copy
 ; &f83b referenced 1 time by &f842
@@ -1907,8 +1907,9 @@ lfe17 = sub_cfe15+2
     sta tube_r3_data                                                  ; feb3: 8d fd fe    ...            ; Write to Tube R3 to acknowledge NMI
     rti                                                               ; feb6: 40          @
 
-.unused_rom_fill
-    equb &ff                                                          ; feb7: ff          .              ; Unused ROM space, filled with &FF
+; Unused fill between code and I/O window
+.unused_fill_pre_io
+    equb &ff                                                          ; feb7: ff          .
     equb &ff                                                          ; feb8: ff          .
     equb &ff                                                          ; feb9: ff          .
     equb &ff                                                          ; feba: ff          .
@@ -1965,6 +1966,10 @@ lfe17 = sub_cfe15+2
     equb &ff                                                          ; feed: ff          .
     equb &ff                                                          ; feee: ff          .
     equb &ff                                                          ; feef: ff          .
+; Tube ULA I/O window: hardware registers
+; overlay these ROM addresses. The ROM
+; bytes here are never read by the CPU.
+.tube_ula_io_window
     equb &ff                                                          ; fef0: ff          .
     equb &ff                                                          ; fef1: ff          .
     equb &ff                                                          ; fef2: ff          .
@@ -1997,9 +2002,14 @@ lfe17 = sub_cfe15+2
 ; &feff referenced 7 times by &fd3f, &fd88, &fd98, &fda0, &fda8, &fdb3, &fdc3
 .tube_r4_data
     equb &ff                                                          ; feff: ff          .
+; Unused fill in lower page &FF. The reset
+; code copies all of page &FF to RAM with
+; LDA/STA &FF00,X but only &FF80 onwards
+; contains the default vector table and
+; MOS entry points.
 ; &ff00 referenced 2 times by &f802, &f805
-.page_ff
-    equb &ff                                                          ; ff00: ff          .              ; Unused ROM space, filled with &FF
+.unused_fill_page_ff
+    equb &ff                                                          ; ff00: ff          .
     equb &ff                                                          ; ff01: ff          .
     equb &ff                                                          ; ff02: ff          .
     equb &ff                                                          ; ff03: ff          .
@@ -2338,7 +2348,6 @@ save pydis_start, pydis_end
 ;     osword_recv_bytes_loop:                  2
 ;     osword_send_bytes_loop:                  2
 ;     oswrch_impl:                             2
-;     page_ff:                                 2
 ;     print_embedded_text:                     2
 ;     rdline_recv_loop:                        2
 ;     rdline_send_block_loop:                  2
@@ -2348,6 +2357,7 @@ save pydis_start, pydis_end
 ;     skip_spaces_step:                        2
 ;     transfer_read_loop:                      2
 ;     transfer_write_loop:                     2
+;     unused_fill_page_ff:                     2
 ;     wait_carry_and_byte:                     2
 ;     zp_data_base:                            2
 ;     zp_data_base_1:                          2
