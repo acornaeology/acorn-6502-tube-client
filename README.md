@@ -31,8 +31,8 @@ uv run acorn-tube-client-disasm-tool verify 1.10
 
 ## References
 
-- [Acorn 6502 Tube Client ROM v1.20 source code](https://github.com/stardot/Acorn6502TubeROM)
-  Original source code for the v1.20 ROM. While a different version, its comments and labels provide important guidance in understanding the earlier v1.10 code.
+- [Acorn 6502 Tube ROM source code](https://github.com/stardot/Acorn6502TubeROM)
+  Original source code for the v1.20 ROM in MASM format, plus the v1.10 source in UADE format (in the uadesrc/ directory). The v1.20 sources include a change history documenting the bug fixes applied between v1.10 and v1.20.
 
 ## Credits
 
