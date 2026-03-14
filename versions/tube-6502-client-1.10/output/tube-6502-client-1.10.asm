@@ -444,6 +444,19 @@ soft_reset_jmp_hi       = &f85f
 .null_return
     rts                                                               ; f97d: 60          `              ; Return
 
+; ***************************************************************************************
+; Advance and skip spaces in command string
+; 
+; Increment Y then fall through to skip_spaces. Called
+; when the current character has been consumed and any
+; following spaces should be skipped.
+; 
+; On entry:
+;   Y = offset of the character just consumed
+; On exit:
+;   A = first non-space character after skipped spaces
+;   Y = offset of that character
+; ***************************************************************************************
 ; &f97e referenced 2 times by &f983, &fa44
 .skip_spaces_step
     iny                                                               ; f97e: c8          .              ; Advance past current character

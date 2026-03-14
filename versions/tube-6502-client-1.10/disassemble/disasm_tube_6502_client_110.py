@@ -194,7 +194,6 @@ label(0xF96C, "osrdch_impl")
 label(0xF971, "wait_carry_and_byte")
 label(0xF975, "wait_for_tube_r2_byte")
 label(0xF97D, "null_return")
-label(0xF97E, "skip_spaces_step")
 label(0xF97F, "skip_spaces")
 label(0xF986, "scan_hex")
 label(0xF9B2, "send_string")
@@ -544,6 +543,19 @@ subroutine(0xF97D, "null_return", hook=None,
     description="""\
 An RTS used as a no-op handler for vectors that have
 no action (EVNTV, IND1V-IND3V in the default table).""")
+
+subroutine(0xF97E, "skip_spaces_step", hook=None,
+    title="Advance and skip spaces in command string",
+    description="""\
+Increment Y then fall through to skip_spaces. Called
+when the current character has been consumed and any
+following spaces should be skipped.
+
+On entry:
+  Y = offset of the character just consumed
+On exit:
+  A = first non-space character after skipped spaces
+  Y = offset of that character""")
 
 subroutine(0xF97F, "skip_spaces", hook=None,
     title="Skip spaces in command string",
