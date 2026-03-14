@@ -478,12 +478,10 @@ to the command prompt.""")
 subroutine(0xF95D, "rdline_control_block", hook=None,
     title="OSWORD 0 control block",
     description="""\
-Control block for the supervisor command prompt input.
-
-Byte 0-1: buffer address (&0236)
-Byte 2:   buffer length (&CA = 202 bytes, up to &0300)
-Byte 3:   minimum acceptable ASCII value (&20 = space)
-Byte 4:   maximum acceptable ASCII value (&FF)""")
+Parameter block passed to OSWORD 0 (read line) when reading
+input at the supervisor command prompt. Specifies where to
+store the input text, the buffer size, and the range of
+acceptable character codes.""")
 
 subroutine(0xF962, "oswrch_impl", hook=None,
     title="OSWRCH implementation",
@@ -1321,7 +1319,11 @@ comment(0xF957, "Print trailing newline", inline=True)
 comment(0xF95A, "Return to command prompt", inline=True)
 
 # --- OSWORD 0 control block (&F95D) ---
-comment(0xF95D, "Buffer at &0236, length &CA", inline=True)
+comment(0xF95D, "Buffer address low (&0236)", inline=True)
+comment(0xF95E, "Buffer address high", inline=True)
+comment(0xF95F, "Buffer length (&CA = 202 bytes)", inline=True)
+comment(0xF960, "Minimum ASCII value (&20 = space)", inline=True)
+comment(0xF961, "Maximum ASCII value (&FF = all)", inline=True)
 
 # --- OSWRCH (&F962) ---
 comment(0xF962, "Check Tube R1 status", inline=True)

@@ -333,19 +333,17 @@ soft_reset_jmp_hi = soft_reset_jmp+2
 ; ***************************************************************************************
 ; OSWORD 0 control block
 ; 
-; Control block for the supervisor command prompt input.
-; 
-; Byte 0-1: buffer address (&0236)
-; Byte 2:   buffer length (&CA = 202 bytes, up to &0300)
-; Byte 3:   minimum acceptable ASCII value (&20 = space)
-; Byte 4:   maximum acceptable ASCII value (&FF)
+; Parameter block passed to OSWORD 0 (read line) when reading
+; input at the supervisor command prompt. Specifies where to
+; store the input text, the buffer size, and the range of
+; acceptable character codes.
 ; ***************************************************************************************
 .rdline_control_block
-    equb &36                                                          ; f95d: 36          6              ; Buffer at &0236, length &CA
-    equb 2                                                            ; f95e: 02          .
-    equb &ca                                                          ; f95f: ca          .
-    equb &20                                                          ; f960: 20
-    equb &ff                                                          ; f961: ff          .
+    equb &36                                                          ; f95d: 36          6              ; Buffer address low (&0236)
+    equb 2                                                            ; f95e: 02          .              ; Buffer address high
+    equb &ca                                                          ; f95f: ca          .              ; Buffer length (&CA = 202 bytes)
+    equb &20                                                          ; f960: 20                         ; Minimum ASCII value (&20 = space)
+    equb &ff                                                          ; f961: ff          .              ; Maximum ASCII value (&FF = all)
 
 ; ***************************************************************************************
 ; OSWRCH implementation
