@@ -12,6 +12,11 @@ dependencies = [
     "py8dis @ git+https://github.com/acornaeology/py8dis.git",
 ]
 
+[dependency-groups]
+dev = [
+    "pre-commit>=3.0",
+]
+
 [tool.uv]
 index-url = "https://pypi.org/simple"
 
