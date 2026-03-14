@@ -8,6 +8,11 @@
             "label": "Acorn 6502 Tube Client 1.10 in The BBC Micro ROM Library",
             "url": "https://tobylobster.github.io/rom_library/?md5=8c3b9252ac812c892aa21b9252abf94c",
             "icon": "chip"
+        },
+        {
+            "label": "Original v1.10 source code (UADE format)",
+            "url": "https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade",
+            "icon": "github"
         }
     ]
 }
