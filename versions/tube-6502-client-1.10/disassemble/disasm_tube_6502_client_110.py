@@ -267,9 +267,9 @@ label(0xFFFE, "irq_vector")
 
 label(0xFF80, "default_vector_table")
 
-# NMI self-modifying address labels
-label(0xFE03, "nmi0_transfer_addr")
-label(0xFE15, "nmi1_transfer_addr")
+# NMI self-modifying address operands (low byte of the abs address)
+label(0xFE02, "nmi0_transfer_addr")
+label(0xFE16, "nmi1_transfer_addr")
 label(0xFDD7, "nmi6_transfer_addr")
 label(0xFDF9, "nmi7_transfer_addr")
 
@@ -358,9 +358,6 @@ label(0x0003, "zp_data_base_3")
 # Misc auto-generated labels
 label(0xF85E, "soft_reset_jmp_lo")
 label(0xF85F, "soft_reset_jmp_hi")
-label(0xFE02, "nmi0_transfer_addr_lo")
-label(0xFE16, "nmi1_transfer_addr_lo")
-label(0xFE17, "nmi1_transfer_addr_hi")
 label(0xFDFF, "io_page_base")
 label(0xFF00, "spare_rom_space")
 label(0xFFFB, "nmi_vector_hi")
@@ -1653,16 +1650,42 @@ for addr in range(0xFCD0, 0xFCE4):
     byte(addr)
 
 # Transfer address pointer tables
-for addr in range(0xFE60, 0xFE68):
-    byte(addr)
-for addr in range(0xFE68, 0xFE70):
-    byte(addr)
+# Each entry points to the address field to update for a given transfer type.
+# Types 0-1 use self-modifying code; types 2-5 use zero-page data_transfer_addr;
+# types 6-7 use self-modifying code in the 256-byte transfer routines.
+_transfer_addr_ptrs = [
+    "nmi0_transfer_addr",       # type 0: single byte to Tube
+    "nmi1_transfer_addr",       # type 1: single byte from Tube
+    "data_transfer_addr",       # type 2: two bytes to Tube
+    "data_transfer_addr",       # type 3: two bytes from Tube
+    "data_transfer_addr",       # type 4: (release)
+    "data_transfer_addr",       # type 5: (release)
+    "nmi6_transfer_addr",       # type 6: 256-byte write
+    "nmi7_transfer_addr",       # type 7: 256-byte read
+]
+for i, name in enumerate(_transfer_addr_ptrs):
+    byte(0xFE60 + i)
+    expr(0xFE60 + i, f"<({name})")
+    byte(0xFE68 + i)
+    expr(0xFE68 + i, f">({name})")
 
 # NMI routine address tables
-for addr in range(0xFE70, 0xFE78):
-    byte(addr)
-for addr in range(0xFE78, 0xFE80):
-    byte(addr)
+# Each entry is the address of the NMI handler for a given transfer type.
+_nmi_routines = [
+    "nmi_single_byte_to_tube",    # type 0
+    "nmi_single_byte_from_tube",  # type 1
+    "nmi_two_bytes_to_tube",      # type 2
+    "nmi_two_bytes_from_tube",    # type 3
+    "nmi_acknowledge",            # type 4
+    "nmi_acknowledge",            # type 5
+    "nmi_acknowledge",            # type 6
+    "nmi_acknowledge",            # type 7
+]
+for i, name in enumerate(_nmi_routines):
+    byte(0xFE70 + i)
+    expr(0xFE70 + i, f"<({name})")
+    byte(0xFE78 + i)
+    expr(0xFE78 + i, f">({name})")
 
 # =====================================================================
 # Generate output

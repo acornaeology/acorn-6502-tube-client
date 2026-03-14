@@ -1694,15 +1694,15 @@ io_page_base = transfer_read_done+1
 .nmi_single_byte_to_tube
     pha                                                               ; fe00: 48          H              ; Save A
 .nmi0_read_byte
-nmi0_transfer_addr_lo = nmi0_read_byte+1
-nmi0_transfer_addr = nmi0_read_byte+2
+nmi0_transfer_addr = nmi0_read_byte+1
+lfe03 = nmi0_read_byte+2
     lda irq_vector_hi                                                 ; fe01: ad ff ff    ...            ; Read byte (address patched by setup)
 ; &fe02 referenced 1 time by &fe07
 ; &fe03 referenced 1 time by &fe0c
     sta tube_r3_data_reg                                              ; fe04: 8d fd fe    ...            ; Send byte to Tube R3
-    inc nmi0_transfer_addr_lo                                         ; fe07: ee 02 fe    ...            ; Increment address low byte
+    inc nmi0_transfer_addr                                            ; fe07: ee 02 fe    ...            ; Increment address low byte
     bne nmi0_done                                                     ; fe0a: d0 03       ..             ; No carry: skip high byte increment
-    inc nmi0_transfer_addr                                            ; fe0c: ee 03 fe    ...            ; Increment address high byte
+    inc lfe03                                                         ; fe0c: ee 03 fe    ...            ; Increment address high byte
 ; &fe0f referenced 1 time by &fe0a
 .nmi0_done
     pla                                                               ; fe0f: 68          h              ; Restore A
@@ -1716,15 +1716,15 @@ nmi0_transfer_addr = nmi0_read_byte+2
 .nmi_single_byte_from_tube
     pha                                                               ; fe11: 48          H              ; Save A
     lda tube_r3_data_reg                                              ; fe12: ad fd fe    ...            ; Read byte from Tube R3
-.nmi1_transfer_addr
-nmi1_transfer_addr_lo = nmi1_transfer_addr+1
-nmi1_transfer_addr_hi = nmi1_transfer_addr+2
+.sub_cfe15
+nmi1_transfer_addr = sub_cfe15+1
+lfe17 = sub_cfe15+2
     sta irq_vector_hi                                                 ; fe15: 8d ff ff    ...            ; Store byte (address patched by setup)
 ; &fe16 referenced 1 time by &fe18
 ; &fe17 referenced 1 time by &fe1d
-    inc nmi1_transfer_addr_lo                                         ; fe18: ee 16 fe    ...            ; Increment address low byte
+    inc nmi1_transfer_addr                                            ; fe18: ee 16 fe    ...            ; Increment address low byte
     bne nmi1_done                                                     ; fe1b: d0 03       ..             ; No carry: skip high byte increment
-    inc nmi1_transfer_addr_hi                                         ; fe1d: ee 17 fe    ...            ; Increment address high byte
+    inc lfe17                                                         ; fe1d: ee 17 fe    ...            ; Increment address high byte
 ; &fe20 referenced 1 time by &fe1b
 .nmi1_done
     pla                                                               ; fe20: 68          h              ; Restore A
@@ -1790,44 +1790,44 @@ nmi1_transfer_addr_hi = nmi1_transfer_addr+2
 
 ; &fe60 referenced 1 time by &fd79
 .transfer_addr_ptr_table
-    equb 2                                                            ; fe60: 02          .              ; Low bytes of transfer addr pointers
-    equb &16                                                          ; fe61: 16          .
-    equb &f6                                                          ; fe62: f6          .
-    equb &f6                                                          ; fe63: f6          .
-    equb &f6                                                          ; fe64: f6          .
-    equb &f6                                                          ; fe65: f6          .
-    equb &d7                                                          ; fe66: d7          .
-    equb &f9                                                          ; fe67: f9          .
+    equb <(nmi0_transfer_addr)                                        ; fe60: 02          .              ; Low bytes of transfer addr pointers
+    equb <(nmi1_transfer_addr)                                        ; fe61: 16          .
+    equb <(data_transfer_addr)                                        ; fe62: f6          .
+    equb <(data_transfer_addr)                                        ; fe63: f6          .
+    equb <(data_transfer_addr)                                        ; fe64: f6          .
+    equb <(data_transfer_addr)                                        ; fe65: f6          .
+    equb <(nmi6_transfer_addr)                                        ; fe66: d7          .
+    equb <(nmi7_transfer_addr)                                        ; fe67: f9          .
 ; &fe68 referenced 1 time by &fd7e
 .transfer_addr_ptr_hi_table
-    equb &fe                                                          ; fe68: fe          .              ; High bytes of transfer addr pointers
-    equb &fe                                                          ; fe69: fe          .
-    equb 0                                                            ; fe6a: 00          .
-    equb 0                                                            ; fe6b: 00          .
-    equb 0                                                            ; fe6c: 00          .
-    equb 0                                                            ; fe6d: 00          .
-    equb &fd                                                          ; fe6e: fd          .
-    equb &fd                                                          ; fe6f: fd          .
+    equb >(nmi0_transfer_addr)                                        ; fe68: fe          .              ; High bytes of transfer addr pointers
+    equb >(nmi1_transfer_addr)                                        ; fe69: fe          .
+    equb >(data_transfer_addr)                                        ; fe6a: 00          .
+    equb >(data_transfer_addr)                                        ; fe6b: 00          .
+    equb >(data_transfer_addr)                                        ; fe6c: 00          .
+    equb >(data_transfer_addr)                                        ; fe6d: 00          .
+    equb >(nmi6_transfer_addr)                                        ; fe6e: fd          .
+    equb >(nmi7_transfer_addr)                                        ; fe6f: fd          .
 ; &fe70 referenced 1 time by &fd6d
 .nmi_routine_addr_table
-    equb 0                                                            ; fe70: 00          .              ; Low bytes of NMI handler addresses
-    equb &11                                                          ; fe71: 11          .
-    equb &22                                                          ; fe72: 22          "
-    equb &41                                                          ; fe73: 41          A
-    equb &b3                                                          ; fe74: b3          .
-    equb &b3                                                          ; fe75: b3          .
-    equb &b3                                                          ; fe76: b3          .
-    equb &b3                                                          ; fe77: b3          .
+    equb <(nmi_single_byte_to_tube)                                   ; fe70: 00          .              ; Low bytes of NMI handler addresses
+    equb <(nmi_single_byte_from_tube)                                 ; fe71: 11          .
+    equb <(nmi_two_bytes_to_tube)                                     ; fe72: 22          "
+    equb <(nmi_two_bytes_from_tube)                                   ; fe73: 41          A
+    equb <(nmi_acknowledge)                                           ; fe74: b3          .
+    equb <(nmi_acknowledge)                                           ; fe75: b3          .
+    equb <(nmi_acknowledge)                                           ; fe76: b3          .
+    equb <(nmi_acknowledge)                                           ; fe77: b3          .
 ; &fe78 referenced 1 time by &fd73
 .nmi_routine_addr_hi_table
-    equb &fe                                                          ; fe78: fe          .              ; High bytes of NMI handler addresses
-    equb &fe                                                          ; fe79: fe          .
-    equb &fe                                                          ; fe7a: fe          .
-    equb &fe                                                          ; fe7b: fe          .
-    equb &fe                                                          ; fe7c: fe          .
-    equb &fe                                                          ; fe7d: fe          .
-    equb &fe                                                          ; fe7e: fe          .
-    equb &fe                                                          ; fe7f: fe          .
+    equb >(nmi_single_byte_to_tube)                                   ; fe78: fe          .              ; High bytes of NMI handler addresses
+    equb >(nmi_single_byte_from_tube)                                 ; fe79: fe          .
+    equb >(nmi_two_bytes_to_tube)                                     ; fe7a: fe          .
+    equb >(nmi_two_bytes_from_tube)                                   ; fe7b: fe          .
+    equb >(nmi_acknowledge)                                           ; fe7c: fe          .
+    equb >(nmi_acknowledge)                                           ; fe7d: fe          .
+    equb >(nmi_acknowledge)                                           ; fe7e: fe          .
+    equb >(nmi_acknowledge)                                           ; fe7f: fe          .
 
 ; ***************************************************************************************
 ; Wait for data in Tube R1, allowing Tube R4 transfer
@@ -2258,6 +2258,26 @@ irq_vector_hi = irq_vector+1
 ; &ffff referenced 4 times by &fdd6, &fdf8, &fe01, &fe15
 .pydis_end
 
+    assert <(data_transfer_addr) == &f6
+    assert <(nmi0_transfer_addr) == &02
+    assert <(nmi1_transfer_addr) == &16
+    assert <(nmi6_transfer_addr) == &d7
+    assert <(nmi7_transfer_addr) == &f9
+    assert <(nmi_acknowledge) == &b3
+    assert <(nmi_single_byte_from_tube) == &11
+    assert <(nmi_single_byte_to_tube) == &00
+    assert <(nmi_two_bytes_from_tube) == &41
+    assert <(nmi_two_bytes_to_tube) == &22
+    assert >(data_transfer_addr) == &00
+    assert >(nmi0_transfer_addr) == &fe
+    assert >(nmi1_transfer_addr) == &fe
+    assert >(nmi6_transfer_addr) == &fd
+    assert >(nmi7_transfer_addr) == &fd
+    assert >(nmi_acknowledge) == &fe
+    assert >(nmi_single_byte_from_tube) == &fe
+    assert >(nmi_single_byte_to_tube) == &fe
+    assert >(nmi_two_bytes_from_tube) == &fe
+    assert >(nmi_two_bytes_to_tube) == &fe
 
 save pydis_start, pydis_end
 
@@ -2376,13 +2396,13 @@ save pydis_start, pydis_end
 ;     irq1v:                                   1
 ;     irq_return_addr_hi:                      1
 ;     irq_return_addr_lo:                      1
+;     lfe03:                                   1
+;     lfe17:                                   1
 ;     low_memory_startup_code:                 1
 ;     nmi0_done:                               1
 ;     nmi0_transfer_addr:                      1
-;     nmi0_transfer_addr_lo:                   1
 ;     nmi1_done:                               1
-;     nmi1_transfer_addr_hi:                   1
-;     nmi1_transfer_addr_lo:                   1
+;     nmi1_transfer_addr:                      1
 ;     nmi2_done:                               1
 ;     nmi2_second_byte:                        1
 ;     nmi3_done:                               1
@@ -2465,6 +2485,11 @@ save pydis_start, pydis_end
 ;     userv:                                   1
 ;     wordv:                                   1
 ;     wrchv:                                   1
+
+; Automatically generated labels:
+;     lfe03
+;     lfe17
+;     sub_cfe15
 
 ; Stats:
 ;     Total size (Code + Data) = 2048 bytes
