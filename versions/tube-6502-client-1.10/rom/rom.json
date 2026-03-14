@@ -13,6 +13,11 @@
             "label": "Original v1.10 source code (UADE format)",
             "url": "https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade",
             "icon": "github"
+        },
+        {
+            "label": "J.G. Harston's reassembly of the v1.10 Tube Client (BBC BASIC)",
+            "url": "https://web.archive.org/web/20200613192357/http://mdfs.net/Software/Tube/6502/Clnt65v1.src",
+            "icon": "chip"
         }
     ]
 }
