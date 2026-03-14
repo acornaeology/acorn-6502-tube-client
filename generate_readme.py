@@ -55,7 +55,7 @@ def main():
             "id": version_id,
             "title": rom_meta.get("title", f"{manifest['name']} {version_id}"),
             "site_url": f"{SITE_URL}/{slug}/{version_id}.html",
-            "asm_path": f"versions/{version_dirname}/output/{PREFIX}-{version_id}.asm",
+            "asm_path": f"{REPO_URL}/blob/main/versions/{version_dirname}/output/{PREFIX}-{version_id}.asm",
             "links": rom_meta.get("links", []),
             "docs": docs,
         })
