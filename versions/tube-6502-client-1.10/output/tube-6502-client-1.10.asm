@@ -11,10 +11,10 @@ tube_r4_data    = 65279
 tube_r4_status  = 65278
 
 ; Memory locations
-l0000                   = &0000
-l0001                   = &0001
-l0002                   = &0002
-l0003                   = &0003
+zp_data_base            = &0000
+zp_data_base_1          = &0001
+zp_data_base_2          = &0002
+zp_data_base_3          = &0003
 current_program         = &00ee
 current_program_hi      = &00ef
 hex_accumulator         = &00f0
@@ -67,76 +67,59 @@ error_buffer_errnum     = &0237
 ; ***************************************************************************************
 .pydis_start
 .reset
-    ldx #0                                                            ; f800: a2 00       ..
-; Copy &FF00-&FFFF to RAM (self-copy)
+    ldx #0                                                            ; f800: a2 00       ..             ; Start copy index at 0
 ; &f802 referenced 1 time by &f809
-.loop_cf802
-    lda lff00,x                                                       ; f802: bd 00 ff    ...
-    sta lff00,x                                                       ; f805: 9d 00 ff    ...
-    dex                                                               ; f808: ca          .
-    bne loop_cf802                                                    ; f809: d0 f7       ..
-; 54 bytes = 27 default vector entries
-    ldx #&36 ; '6'                                                    ; f80b: a2 36       .6
-; Copy default vector table to &0200-&0236
+.copy_page_ff_loop
+    lda spare_rom_space,x                                             ; f802: bd 00 ff    ...            ; Read ROM byte
+    sta spare_rom_space,x                                             ; f805: 9d 00 ff    ...            ; Write to RAM (self-copy page &FF)
+    dex                                                               ; f808: ca          .              ; Next byte
+    bne copy_page_ff_loop                                             ; f809: d0 f7       ..             ; Loop until all 256 bytes copied
+    ldx #&36 ; '6'                                                    ; f80b: a2 36       .6             ; 54 bytes = 27 default vector entries
 ; &f80d referenced 1 time by &f814
-.loop_cf80d
-    lda default_vector_table,x                                        ; f80d: bd 80 ff    ...
-    sta userv,x                                                       ; f810: 9d 00 02    ...
-    dex                                                               ; f813: ca          .
-    bpl loop_cf80d                                                    ; f814: 10 f7       ..
-; Clear the stack
-    txs                                                               ; f816: 9a          .
-; X=&F0: copy &FE00-&FEEF, avoiding Tube I/O
-    ldx #&f0                                                          ; f817: a2 f0       ..
-; Copy pages &FE-&FD to RAM, skipping Tube registers
+.copy_vectors_loop
+    lda default_vector_table,x                                        ; f80d: bd 80 ff    ...            ; Read default vector value
+    sta userv,x                                                       ; f810: 9d 00 02    ...            ; Write to MOS vector table
+    dex                                                               ; f813: ca          .              ; Next entry
+    bpl copy_vectors_loop                                             ; f814: 10 f7       ..             ; Loop until all vectors set
+    txs                                                               ; f816: 9a          .              ; Clear the stack (X=&FF from loop)
+    ldx #&f0                                                          ; f817: a2 f0       ..             ; X=&F0: avoid Tube I/O at &FEFx
 ; &f819 referenced 1 time by &f820
-.loop_cf819
-    lda lfdff,x                                                       ; f819: bd ff fd    ...
-    sta lfdff,x                                                       ; f81c: 9d ff fd    ...
-    dex                                                               ; f81f: ca          .
-    bne loop_cf819                                                    ; f820: d0 f7       ..
-; Point string_ptr to start of ROM (&F800)
-    ldy #0                                                            ; f822: a0 00       ..
-    sty string_ptr                                                    ; f824: 84 f8       ..
-    lda #&f8                                                          ; f826: a9 f8       ..
-    sta string_ptr_hi                                                 ; f828: 85 f9       ..
-; Copy a page of ROM to RAM
+.copy_io_page_loop
+    lda io_page_base,x                                                ; f819: bd ff fd    ...            ; Read ROM byte from &FE00 region
+    sta io_page_base,x                                                ; f81c: 9d ff fd    ...            ; Write to RAM
+    dex                                                               ; f81f: ca          .              ; Next byte
+    bne copy_io_page_loop                                             ; f820: d0 f7       ..             ; Loop until &FE00-&FEEF copied
+    ldy #0                                                            ; f822: a0 00       ..             ; Y=0 for page offset
+    sty string_ptr                                                    ; f824: 84 f8       ..             ; Point string_ptr low to &00
+    lda #&f8                                                          ; f826: a9 f8       ..             ; High byte = &F8 (start of ROM)
+    sta string_ptr_hi                                                 ; f828: 85 f9       ..             ; Set string_ptr to &F800
 ; &f82a referenced 2 times by &f82f, &f837
-.cf82a
-    lda (string_ptr),y                                                ; f82a: b1 f8       ..
-    sta (string_ptr),y                                                ; f82c: 91 f8       ..
-    iny                                                               ; f82e: c8          .
-    bne cf82a                                                         ; f82f: d0 f9       ..
-; Next page
-    inc string_ptr_hi                                                 ; f831: e6 f9       ..
-    lda string_ptr_hi                                                 ; f833: a5 f9       ..
-; Stop before I/O space at &FE00
-    cmp #&fe                                                          ; f835: c9 fe       ..
-    bne cf82a                                                         ; f837: d0 f1       ..
-; 17 bytes of low memory startup code
-    ldx #&10                                                          ; f839: a2 10       ..
-; Copy startup code to &0100
+.copy_rom_page
+    lda (string_ptr),y                                                ; f82a: b1 f8       ..             ; Read byte from ROM page
+    sta (string_ptr),y                                                ; f82c: 91 f8       ..             ; Write to RAM (self-copy)
+    iny                                                               ; f82e: c8          .              ; Next byte in page
+    bne copy_rom_page                                                 ; f82f: d0 f9       ..             ; Loop until 256 bytes copied
+    inc string_ptr_hi                                                 ; f831: e6 f9       ..             ; Move to next page
+    lda string_ptr_hi                                                 ; f833: a5 f9       ..             ; Get current page number
+    cmp #&fe                                                          ; f835: c9 fe       ..             ; Reached I/O space at &FE00?
+    bne copy_rom_page                                                 ; f837: d0 f1       ..             ; No, copy next page
+    ldx #&10                                                          ; f839: a2 10       ..             ; 17 bytes of startup code to copy
 ; &f83b referenced 1 time by &f842
-.loop_cf83b
-    lda low_memory_startup_code,x                                     ; f83b: bd 59 f8    .Y.
-    sta low_memory_code,x                                             ; f83e: 9d 00 01    ...
-    dex                                                               ; f841: ca          .
-    bpl loop_cf83b                                                    ; f842: 10 f7       ..
-; Copy current program address to transfer address
-    lda current_program                                               ; f844: a5 ee       ..
-    sta data_transfer_addr                                            ; f846: 85 f6       ..
-    lda current_program_hi                                            ; f848: a5 ef       ..
-    sta data_transfer_addr_hi                                         ; f84a: 85 f7       ..
-; Clear escape flag
-    lda #0                                                            ; f84c: a9 00       ..
-    sta escape_flag                                                   ; f84e: 85 ff       ..
-; Set low byte of memory top
-    sta memory_top                                                    ; f850: 85 f2       ..
-; Memory top = start of ROM code
-    lda #&f8                                                          ; f852: a9 f8       ..
-    sta memory_top_hi                                                 ; f854: 85 f3       ..
-; Jump to low memory to page ROM out
-    jmp low_memory_code                                               ; f856: 4c 00 01    L..
+.copy_startup_code_loop
+    lda low_memory_startup_code,x                                     ; f83b: bd 59 f8    .Y.            ; Read startup code byte
+    sta low_memory_code,x                                             ; f83e: 9d 00 01    ...            ; Write to low memory at &0100
+    dex                                                               ; f841: ca          .              ; Next byte
+    bpl copy_startup_code_loop                                        ; f842: 10 f7       ..             ; Loop until all startup code copied
+    lda current_program                                               ; f844: a5 ee       ..             ; Get current program low byte
+    sta data_transfer_addr                                            ; f846: 85 f6       ..             ; Set as transfer address low
+    lda current_program_hi                                            ; f848: a5 ef       ..             ; Get current program high byte
+    sta data_transfer_addr_hi                                         ; f84a: 85 f7       ..             ; Set as transfer address high
+    lda #0                                                            ; f84c: a9 00       ..             ; A=0 for clearing
+    sta escape_flag                                                   ; f84e: 85 ff       ..             ; Clear Escape flag
+    sta memory_top                                                    ; f850: 85 f2       ..             ; Set memory top low byte to 0
+    lda #&f8                                                          ; f852: a9 f8       ..             ; High byte = &F8 (start of ROM)
+    sta memory_top_hi                                                 ; f854: 85 f3       ..             ; Set memory top to &F800
+    jmp low_memory_code                                               ; f856: 4c 00 01    L..            ; Jump to low memory to page ROM out
 
 ; ***************************************************************************************
 ; Executed from &0100 after being copied from ROM.
@@ -147,17 +130,14 @@ error_buffer_errnum     = &0237
 ;     patched to skip the banner and enter the command prompt
 ;     directly.
 ; ***************************************************************************************
-; Read Tube R1 status to page ROM out
 ; &f859 referenced 1 time by &f83b
 .low_memory_startup_code
-    lda lfef8                                                         ; f859: ad f8 fe    ...
-; Enable IRQs for data transfers
-    cli                                                               ; f85c: 58          X
-; Target patched after first boot to skip banner
-.sub_cf85d
-lf85e = sub_cf85d+1
-lf85f = sub_cf85d+2
-    jmp startup_banner                                                ; f85d: 4c 60 f8    L`.            ; Print the startup banner, patch the soft reset entry
+    lda tube_r1_status_reg                                            ; f859: ad f8 fe    ...            ; Read Tube R1 status to page ROM out
+    cli                                                               ; f85c: 58          X              ; Enable interrupts for data transfers
+.soft_reset_jmp
+soft_reset_jmp_lo = soft_reset_jmp+1
+soft_reset_jmp_hi = soft_reset_jmp+2
+    jmp startup_banner                                                ; f85d: 4c 60 f8    L`.            ; Patched after first boot to skip banner; Print the startup banner, patch the soft reset entry
 ;     to skip the banner on future resets, then wait for the
 ;     host's acknowledge byte.
 ; 
@@ -176,7 +156,7 @@ lf85f = sub_cf85d+2
 ; ***************************************************************************************
 ; &f860 referenced 1 time by &f85d
 .startup_banner
-    jsr print_embedded_text                                           ; f860: 20 98 fe     ..            ; Print the text string embedded immediately after the
+    jsr print_embedded_text                                           ; f860: 20 98 fe     ..            ; Print inline startup banner string; Print the text string embedded immediately after the
 ;     JSR to this routine. Characters are sent to OSWRCH
 ;     until a byte with bit 7 set is encountered, which
 ;     terminates the string. Execution resumes after the
@@ -185,19 +165,15 @@ lf85f = sub_cf85d+2
 ;     On exit:
 ;       A = terminator byte (bit 7 set)
     equs &0a, "Acorn TUBE 6502 64K", &0a, &0a, &0d, 0                 ; f863: 0a 41 63... .Ac
-; Patch the low memory JMP target to command_prompt
 
-    nop                                                               ; f87b: ea          .
-    lda #&8d                                                          ; f87c: a9 8d       ..
-    sta lf85e                                                         ; f87e: 8d 5e f8    .^.
-; Wait for host's acknowledge byte
-    lda #&f8                                                          ; f881: a9 f8       ..
-; Bit 7 set means host wants code entered
-    sta lf85f                                                         ; f883: 8d 5f f8    ._.
-; Otherwise enter the command prompt
-    jsr wait_for_tube_r2_byte                                         ; f886: 20 75 f9     u.
-    cmp #&80                                                          ; f889: c9 80       ..
-    beq enter_code                                                    ; f88b: f0 28       .(             ; Check whether the code at the data transfer address
+    nop                                                               ; f87b: ea          .              ; Padding NOP
+    lda #&8d                                                          ; f87c: a9 8d       ..             ; Low byte of command_prompt address
+    sta soft_reset_jmp_lo                                             ; f87e: 8d 5e f8    .^.            ; Patch JMP target low byte
+    lda #&f8                                                          ; f881: a9 f8       ..             ; High byte of command_prompt address
+    sta soft_reset_jmp_hi                                             ; f883: 8d 5f f8    ._.            ; Patch JMP target high byte
+    jsr wait_for_tube_r2_byte                                         ; f886: 20 75 f9     u.            ; Wait for host acknowledge byte
+    cmp #&80                                                          ; f889: c9 80       ..             ; Is it &80 (enter code)?
+    beq enter_code                                                    ; f88b: f0 28       .(             ; Yes, enter transferred code; Check whether the code at the data transfer address
 ;     has a valid ROM header with a (C) string, and if so
 ;     verify it is a 6502 language ROM.
 ; 
@@ -215,38 +191,30 @@ lf85f = sub_cf85d+2
 ;     Handles Escape by acknowledging it and reporting
 ;     the error.
 ; ***************************************************************************************
-; Print '*' prompt
 ; &f88d referenced 2 times by &f8a4, &f95a
 .command_prompt
-    lda #&2a ; '*'                                                    ; f88d: a9 2a       .*
-    jsr oswrch_entry                                                  ; f88f: 20 ee ff     ..
-; Point to rdline control block
-    ldx #&5d ; ']'                                                    ; f892: a2 5d       .]
-    ldy #&f9                                                          ; f894: a0 f9       ..
-; OSWORD 0: read line
-    lda #0                                                            ; f896: a9 00       ..
-    jsr osword_entry                                                  ; f898: 20 f1 ff     ..
-; Escape pressed during input
-    bcs command_prompt_escape                                         ; f89b: b0 0a       ..
-; Point XY to input buffer at &0236
-    ldx #&36 ; '6'                                                    ; f89d: a2 36       .6
-    ldy #2                                                            ; f89f: a0 02       ..
-; Execute the command via OSCLI
-    jsr oscli_entry                                                   ; f8a1: 20 f7 ff     ..
-    jmp command_prompt                                                ; f8a4: 4c 8d f8    L..            ; The main supervisor command prompt.
+    lda #&2a ; '*'                                                    ; f88d: a9 2a       .*             ; Print '*' prompt character
+    jsr oswrch_entry                                                  ; f88f: 20 ee ff     ..            ; Send '*' via OSWRCH
+    ldx #&5d ; ']'                                                    ; f892: a2 5d       .]             ; Low byte of rdline control block
+    ldy #&f9                                                          ; f894: a0 f9       ..             ; High byte of rdline control block
+    lda #0                                                            ; f896: a9 00       ..             ; OSWORD 0: read line of input
+    jsr osword_entry                                                  ; f898: 20 f1 ff     ..            ; Call OSWORD
+    bcs command_prompt_escape                                         ; f89b: b0 0a       ..             ; Carry set: Escape was pressed
+    ldx #&36 ; '6'                                                    ; f89d: a2 36       .6             ; Low byte of input buffer &0236
+    ldy #2                                                            ; f89f: a0 02       ..             ; High byte of input buffer
+    jsr oscli_entry                                                   ; f8a1: 20 f7 ff     ..            ; Execute command via OSCLI
+    jmp command_prompt                                                ; f8a4: 4c 8d f8    L..            ; Loop back for next command; The main supervisor command prompt.
 ; 
 ;     Prints a '*' prompt, reads a line of input using
 ;     OSWORD 0, and passes it to OSCLI for execution.
 ;     Handles Escape by acknowledging it and reporting
 ;     the error.
 
-; OSBYTE &7E: acknowledge Escape
 ; &f8a7 referenced 1 time by &f89b
 .command_prompt_escape
-    lda #&7e ; '~'                                                    ; f8a7: a9 7e       .~
-    jsr osbyte_entry                                                  ; f8a9: 20 f4 ff     ..
-; BRK with error 17: 'Escape'
-    brk                                                               ; f8ac: 00          .
+    lda #&7e ; '~'                                                    ; f8a7: a9 7e       .~             ; OSBYTE &7E: acknowledge Escape
+    jsr osbyte_entry                                                  ; f8a9: 20 f4 ff     ..            ; Call OSBYTE
+    brk                                                               ; f8ac: 00          .              ; Generate error 17: 'Escape'
 
     equb &11                                                          ; f8ad: 11          .
     equs "Escape"                                                     ; f8ae: 45 73 63... Esc
@@ -264,87 +232,69 @@ lf85f = sub_cf85d+2
 ;     ROM type indicates it is not a language or not 6502
 ;     code.
 ; ***************************************************************************************
-; Set current program from transfer address
 ; &f8b5 referenced 2 times by &f88b, &fa62
 .enter_code
-    lda data_transfer_addr                                            ; f8b5: a5 f6       ..
-    sta current_program                                               ; f8b7: 85 ee       ..
-; Also set memory top
-    sta memory_top                                                    ; f8b9: 85 f2       ..
-    lda data_transfer_addr_hi                                         ; f8bb: a5 f7       ..
-    sta current_program_hi                                            ; f8bd: 85 ef       ..
-    sta memory_top_hi                                                 ; f8bf: 85 f3       ..
-; Offset 7 in ROM header = copyright offset
-    ldy #7                                                            ; f8c1: a0 07       ..
-    lda (current_program),y                                           ; f8c3: b1 ee       ..
-; Clear decimal mode, compute copyright pointer
-    cld                                                               ; f8c5: d8          .
-    clc                                                               ; f8c6: 18          .
-    adc current_program                                               ; f8c7: 65 ee       e.
-; last_error now points to copyright string
-    sta last_error                                                    ; f8c9: 85 fd       ..
-    lda #0                                                            ; f8cb: a9 00       ..
-    adc current_program_hi                                            ; f8cd: 65 ef       e.
-    sta last_error_hi                                                 ; f8cf: 85 fe       ..
-    ldy #0                                                            ; f8d1: a0 00       ..
-; Check for &00 before '(C)'
-    lda (last_error),y                                                ; f8d3: b1 fd       ..
-    bne enter_raw_code                                                ; f8d5: d0 23       .#
-; Check for '('
-    iny                                                               ; f8d7: c8          .              ; Y=&01
-    lda (last_error),y                                                ; f8d8: b1 fd       ..
-    cmp #&28 ; '('                                                    ; f8da: c9 28       .(
-    bne enter_raw_code                                                ; f8dc: d0 1c       ..
-; Check for 'C'
-    iny                                                               ; f8de: c8          .              ; Y=&02
-    lda (last_error),y                                                ; f8df: b1 fd       ..
-    cmp #&43 ; 'C'                                                    ; f8e1: c9 43       .C
-    bne enter_raw_code                                                ; f8e3: d0 15       ..
-; Check for ')'
-    iny                                                               ; f8e5: c8          .              ; Y=&03
-    lda (last_error),y                                                ; f8e6: b1 fd       ..
-    cmp #&29 ; ')'                                                    ; f8e8: c9 29       .)
-    bne enter_raw_code                                                ; f8ea: d0 0e       ..
-; Offset 6 = ROM type byte
-    ldy #6                                                            ; f8ec: a0 06       ..
-    lda (current_program),y                                           ; f8ee: b1 ee       ..
-; Mask to check language and 6502 bits
-    and #&4f ; 'O'                                                    ; f8f0: 29 4f       )O
-; Bit 6 clear means not a language
-    cmp #&40 ; '@'                                                    ; f8f2: c9 40       .@
-    bcc error_not_a_language                                          ; f8f4: 90 09       ..
-; Type 0 or 2 = 6502 code
-    and #&0d                                                          ; f8f6: 29 0d       ).
-    bne error_not_6502_code                                           ; f8f8: d0 28       .(
-; Enter code with A=1
+    lda data_transfer_addr                                            ; f8b5: a5 f6       ..             ; Get transfer address low byte
+    sta current_program                                               ; f8b7: 85 ee       ..             ; Set as current program low
+    sta memory_top                                                    ; f8b9: 85 f2       ..             ; Also set memory top low
+    lda data_transfer_addr_hi                                         ; f8bb: a5 f7       ..             ; Get transfer address high byte
+    sta current_program_hi                                            ; f8bd: 85 ef       ..             ; Set as current program high
+    sta memory_top_hi                                                 ; f8bf: 85 f3       ..             ; Also set memory top high
+    ldy #7                                                            ; f8c1: a0 07       ..             ; Offset 7 = copyright string offset
+    lda (current_program),y                                           ; f8c3: b1 ee       ..             ; Read copyright offset from header
+    cld                                                               ; f8c5: d8          .              ; Clear decimal mode
+    clc                                                               ; f8c6: 18          .              ; Clear carry for addition
+    adc current_program                                               ; f8c7: 65 ee       e.             ; Add base address to offset
+    sta last_error                                                    ; f8c9: 85 fd       ..             ; Store copyright pointer low
+    lda #0                                                            ; f8cb: a9 00       ..             ; A=0 for high byte add
+    adc current_program_hi                                            ; f8cd: 65 ef       e.             ; Add carry to high byte
+    sta last_error_hi                                                 ; f8cf: 85 fe       ..             ; Store copyright pointer high
+    ldy #0                                                            ; f8d1: a0 00       ..             ; Y=0 to check first byte
+    lda (last_error),y                                                ; f8d3: b1 fd       ..             ; Read byte at copyright pointer
+    bne enter_raw_code                                                ; f8d5: d0 23       .#             ; Not zero: no valid header, enter raw
+    iny                                                               ; f8d7: c8          .              ; Y=1 to check '('; Y=&01
+    lda (last_error),y                                                ; f8d8: b1 fd       ..             ; Read next byte
+    cmp #&28 ; '('                                                    ; f8da: c9 28       .(             ; Is it '('?
+    bne enter_raw_code                                                ; f8dc: d0 1c       ..             ; No: enter as raw code
+    iny                                                               ; f8de: c8          .              ; Y=2 to check 'C'; Y=&02
+    lda (last_error),y                                                ; f8df: b1 fd       ..             ; Read next byte
+    cmp #&43 ; 'C'                                                    ; f8e1: c9 43       .C             ; Is it 'C'?
+    bne enter_raw_code                                                ; f8e3: d0 15       ..             ; No: enter as raw code
+    iny                                                               ; f8e5: c8          .              ; Y=3 to check ')'; Y=&03
+    lda (last_error),y                                                ; f8e6: b1 fd       ..             ; Read next byte
+    cmp #&29 ; ')'                                                    ; f8e8: c9 29       .)             ; Is it ')'?
+    bne enter_raw_code                                                ; f8ea: d0 0e       ..             ; No: enter as raw code
+    ldy #6                                                            ; f8ec: a0 06       ..             ; Offset 6 = ROM type byte
+    lda (current_program),y                                           ; f8ee: b1 ee       ..             ; Read ROM type
+    and #&4f ; 'O'                                                    ; f8f0: 29 4f       )O             ; Mask language and CPU type bits
+    cmp #&40 ; '@'                                                    ; f8f2: c9 40       .@             ; Bit 6 clear: not a language ROM
+    bcc error_not_a_language                                          ; f8f4: 90 09       ..             ; Generate 'not a language' error
+    and #&0d                                                          ; f8f6: 29 0d       ).             ; Mask CPU type: 0 or 2 = 6502
+    bne error_not_6502_code                                           ; f8f8: d0 28       .(             ; Non-zero: not 6502 code
 ; &f8fa referenced 4 times by &f8d5, &f8dc, &f8e3, &f8ea
 .enter_raw_code
-    lda #1                                                            ; f8fa: a9 01       ..
-    jmp (memory_top)                                                  ; f8fc: 6c f2 00    l..
+    lda #1                                                            ; f8fa: a9 01       ..             ; Enter code with A=1
+    jmp (memory_top)                                                  ; f8fc: 6c f2 00    l..            ; Jump to code via memory top pointer
 
-; Set up error handler before reporting error
 ; &f8ff referenced 1 time by &f8f4
 .error_not_a_language
-    lda #&45 ; 'E'                                                    ; f8ff: a9 45       .E
-    sta brkv                                                          ; f901: 8d 02 02    ...
-    lda #&f9                                                          ; f904: a9 f9       ..
-    sta brkv_hi                                                       ; f906: 8d 03 02    ...
-; BRK: 'This is not a language'
-    brk                                                               ; f909: 00          .
+    lda #&45 ; 'E'                                                    ; f8ff: a9 45       .E             ; Set BRKV low to error handler
+    sta brkv                                                          ; f901: 8d 02 02    ...            ; Store BRKV low byte
+    lda #&f9                                                          ; f904: a9 f9       ..             ; Set BRKV high to error handler
+    sta brkv_hi                                                       ; f906: 8d 03 02    ...            ; Store BRKV high byte
+    brk                                                               ; f909: 00          .              ; Generate 'not a language' error
 
     equb 0                                                            ; f90a: 00          .
     equs "This is not a language"                                     ; f90b: 54 68 69... Thi
     equb 0                                                            ; f921: 00          .
 
-; Set up error handler before reporting error
 ; &f922 referenced 1 time by &f8f8
 .error_not_6502_code
-    lda #&45 ; 'E'                                                    ; f922: a9 45       .E
-    sta brkv                                                          ; f924: 8d 02 02    ...
-    lda #&f9                                                          ; f927: a9 f9       ..
-    sta brkv_hi                                                       ; f929: 8d 03 02    ...
-; BRK: error 0, 'I cannot run this code'
-    brk                                                               ; f92c: 00          .
+    lda #&45 ; 'E'                                                    ; f922: a9 45       .E             ; Set BRKV low to error handler
+    sta brkv                                                          ; f924: 8d 02 02    ...            ; Store BRKV low byte
+    lda #&f9                                                          ; f927: a9 f9       ..             ; Set BRKV high to error handler
+    sta brkv_hi                                                       ; f929: 8d 03 02    ...            ; Store BRKV high byte
+    brk                                                               ; f92c: 00          .              ; Generate 'I cannot run this code'
 
     equb 0                                                            ; f92d: 00          .
     equs "I cannot run this code"                                     ; f92e: 49 20 63... I c
@@ -355,35 +305,30 @@ lf85f = sub_cf85d+2
 ;     error message from the BRK instruction, and returns
 ;     to the command prompt.
 ; ***************************************************************************************
-; Reset the stack
 .error_handler
-    ldx #&ff                                                          ; f945: a2 ff       ..
-    txs                                                               ; f947: 9a          .
-; Print newline
-    jsr osnewl_entry                                                  ; f948: 20 e7 ff     ..
-    ldy #1                                                            ; f94b: a0 01       ..
-; Print error message characters
+    ldx #&ff                                                          ; f945: a2 ff       ..             ; Reset stack pointer to &FF
+    txs                                                               ; f947: 9a          .              ; Clear the stack
+    jsr osnewl_entry                                                  ; f948: 20 e7 ff     ..            ; Print newline before error message
+    ldy #1                                                            ; f94b: a0 01       ..             ; Start at offset 1 (skip error number)
 ; &f94d referenced 1 time by &f955
-.loop_cf94d
-    lda (last_error),y                                                ; f94d: b1 fd       ..
-    beq cf957                                                         ; f94f: f0 06       ..
-    jsr oswrch_entry                                                  ; f951: 20 ee ff     ..
-    iny                                                               ; f954: c8          .
-    bne loop_cf94d                                                    ; f955: d0 f6       ..
-; Print newline and return to command prompt
+.print_error_loop
+    lda (last_error),y                                                ; f94d: b1 fd       ..             ; Get next error message character
+    beq print_error_done                                              ; f94f: f0 06       ..             ; Zero: end of error message
+    jsr oswrch_entry                                                  ; f951: 20 ee ff     ..            ; Print character via OSWRCH
+    iny                                                               ; f954: c8          .              ; Next character
+    bne print_error_loop                                              ; f955: d0 f6       ..             ; Loop until all characters printed
 ; &f957 referenced 1 time by &f94f
-.cf957
-    jsr osnewl_entry                                                  ; f957: 20 e7 ff     ..
-    jmp command_prompt                                                ; f95a: 4c 8d f8    L..            ; The main supervisor command prompt.
+.print_error_done
+    jsr osnewl_entry                                                  ; f957: 20 e7 ff     ..            ; Print trailing newline
+    jmp command_prompt                                                ; f95a: 4c 8d f8    L..            ; Return to command prompt; The main supervisor command prompt.
 ; 
 ;     Prints a '*' prompt, reads a line of input using
 ;     OSWORD 0, and passes it to OSCLI for execution.
 ;     Handles Escape by acknowledging it and reporting
 ;     the error.
 
-; Buffer at &0236, length &CA, min &20, max &FF
 .rdline_control_block
-    equb &36                                                          ; f95d: 36          6
+    equb &36                                                          ; f95d: 36          6              ; Buffer at &0236, length &CA
     equb 2                                                            ; f95e: 02          .
     equb &ca                                                          ; f95f: ca          .
     equb &20                                                          ; f960: 20
@@ -397,22 +342,18 @@ lf85f = sub_cf85d+2
 ;     On exit:
 ;       A preserved
 ; ***************************************************************************************
-; Check Tube R1 status
 ; &f962 referenced 2 times by &f966, &ffcb
 .oswrch_impl
-    bit lfef8                                                         ; f962: 2c f8 fe    ,..
-; NOP for timing
-    nop                                                               ; f965: ea          .
-; Wait until Tube R1 is ready for data
-    bvc oswrch_impl                                                   ; f966: 50 fa       P.             ; Send character in A to the host via Tube R1.
+    bit tube_r1_status_reg                                            ; f962: 2c f8 fe    ,..            ; Check Tube R1 status
+    nop                                                               ; f965: ea          .              ; NOP for timing
+    bvc oswrch_impl                                                   ; f966: 50 fa       P.             ; Wait until R1 ready to accept data; Send character in A to the host via Tube R1.
 ; 
 ;     On entry:
 ;       A = character to send
 ;     On exit:
 ;       A preserved
-; Send character to Tube R1 data register
-    sta lfef9                                                         ; f968: 8d f9 fe    ...
-    rts                                                               ; f96b: 60          `
+    sta tube_r1_data_reg                                              ; f968: 8d f9 fe    ...            ; Send character to Tube R1
+    rts                                                               ; f96b: 60          `              ; Return with A preserved
 
 ; ***************************************************************************************
 ; Read a character from the host via the Tube.
@@ -424,35 +365,30 @@ lf85f = sub_cf85d+2
 ;       A = character received
 ;       C = Escape flag
 ; ***************************************************************************************
-; Send command &00 to host via R2: OSRDCH
 ; &f96c referenced 1 time by &ffc8
 .osrdch_impl
-    lda #0                                                            ; f96c: a9 00       ..
-    jsr send_command                                                  ; f96e: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    lda #0                                                            ; f96c: a9 00       ..             ; Command &00: request character
+    jsr send_command                                                  ; f96e: 20 4a fc     J.            ; Send command to host via Tube R2; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Wait for carry byte from R2
 ; &f971 referenced 2 times by &fc33, &fcb4
 .wait_carry_and_byte
-    jsr wait_for_tube_r2_byte                                         ; f971: 20 75 f9     u.
-; Shift carry into C flag via ASL
-    asl a                                                             ; f974: 0a          .
-; Poll Tube R2 status for data available
+    jsr wait_for_tube_r2_byte                                         ; f971: 20 75 f9     u.            ; Wait for carry byte from host
+    asl a                                                             ; f974: 0a          .              ; Shift carry flag into C
 ; &f975 referenced 18 times by &f886, &f971, &f978, &fa35, &fba3, &fbf2, &fbf6, &fbfb, &fc00, &fc05, &fc1f, &fc27, &fc45, &fc78, &fc7e, &fca8, &fd53, &fd5a
 .wait_for_tube_r2_byte
-    bit lfefa                                                         ; f975: 2c fa fe    ,..
-    bpl wait_for_tube_r2_byte                                         ; f978: 10 fb       ..
-; Read byte from Tube R2
-    lda lfefb                                                         ; f97a: ad fb fe    ...
+    bit tube_r2_status_reg                                            ; f975: 2c fa fe    ,..            ; Poll Tube R2 status
+    bpl wait_for_tube_r2_byte                                         ; f978: 10 fb       ..             ; Loop until data available
+    lda tube_r2_data_reg                                              ; f97a: ad fb fe    ...            ; Read data byte from Tube R2
 .null_return
-    rts                                                               ; f97d: 60          `
+    rts                                                               ; f97d: 60          `              ; Return
 
 ; &f97e referenced 2 times by &f983, &fa44
 .skip_spaces_step
-    iny                                                               ; f97e: c8          .
+    iny                                                               ; f97e: c8          .              ; Advance past current character
 ; ***************************************************************************************
 ; Advance past space characters in the string at
 ;     (string_ptr),Y.
@@ -463,14 +399,12 @@ lf85f = sub_cf85d+2
 ;       A = first non-space character
 ;       Y = offset of that character
 ; ***************************************************************************************
-; Load character from (string_ptr),Y
 ; &f97f referenced 2 times by &f9d1, &fa4a
 .skip_spaces
-    lda (string_ptr),y                                                ; f97f: b1 f8       ..
-; Is it a space?
-    cmp #&20 ; ' '                                                    ; f981: c9 20       .
-    beq skip_spaces_step                                              ; f983: f0 f9       ..
-    rts                                                               ; f985: 60          `
+    lda (string_ptr),y                                                ; f97f: b1 f8       ..             ; Get character from string
+    cmp #&20 ; ' '                                                    ; f981: c9 20       .              ; Is it a space?
+    beq skip_spaces_step                                              ; f983: f0 f9       ..             ; Yes: skip and check next
+    rts                                                               ; f985: 60          `              ; Return with non-space char in A
 
 ; ***************************************************************************************
 ; Read a hexadecimal number from the string at
@@ -484,50 +418,42 @@ lf85f = sub_cf85d+2
 ;       Y = offset past last hex digit
 ;       A = first non-hex character
 ; ***************************************************************************************
-; Clear hex accumulator
 ; &f986 referenced 1 time by &fa47
 .scan_hex
-    ldx #0                                                            ; f986: a2 00       ..
-    stx hex_accumulator                                               ; f988: 86 f0       ..
-    stx hex_accumulator_hi                                            ; f98a: 86 f1       ..
-; Get next character
+    ldx #0                                                            ; f986: a2 00       ..             ; X=0: no digits parsed yet
+    stx hex_accumulator                                               ; f988: 86 f0       ..             ; Clear hex accumulator low
+    stx hex_accumulator_hi                                            ; f98a: 86 f1       ..             ; Clear hex accumulator high
 ; &f98c referenced 1 time by &f9af
-.cf98c
-    lda (string_ptr),y                                                ; f98c: b1 f8       ..
-; Below '0': not a hex digit
-    cmp #&30 ; '0'                                                    ; f98e: c9 30       .0
-    bcc return_1                                                      ; f990: 90 1f       ..
-; Below ':': it's '0'-'9'
-    cmp #&3a ; ':'                                                    ; f992: c9 3a       .:
-    bcc cf9a0                                                         ; f994: 90 0a       ..
-; Force uppercase and adjust for A-F
-    and #&df                                                          ; f996: 29 df       ).
-    sbc #7                                                            ; f998: e9 07       ..
-    bcc return_1                                                      ; f99a: 90 15       ..
-; Above 'F': not a hex digit
-    cmp #&40 ; '@'                                                    ; f99c: c9 40       .@
-    bcs return_1                                                      ; f99e: b0 11       ..
-; Shift digit into upper nybble
+.scan_hex_next_char
+    lda (string_ptr),y                                                ; f98c: b1 f8       ..             ; Get current character
+    cmp #&30 ; '0'                                                    ; f98e: c9 30       .0             ; Below '0': not a hex digit
+    bcc scan_hex_return                                               ; f990: 90 1f       ..             ; Exit if not a digit
+    cmp #&3a ; ':'                                                    ; f992: c9 3a       .:             ; Below ':': it is a decimal digit
+    bcc scan_hex_got_digit                                            ; f994: 90 0a       ..             ; Process digit 0-9
+    and #&df                                                          ; f996: 29 df       ).             ; Force uppercase
+    sbc #7                                                            ; f998: e9 07       ..             ; Adjust for hex letter offset
+    bcc scan_hex_return                                               ; f99a: 90 15       ..             ; Below 'A': not a hex digit
+    cmp #&40 ; '@'                                                    ; f99c: c9 40       .@             ; Above 'F': not a hex digit
+    bcs scan_hex_return                                               ; f99e: b0 11       ..             ; Exit if out of range
 ; &f9a0 referenced 1 time by &f994
-.cf9a0
-    asl a                                                             ; f9a0: 0a          .
-    asl a                                                             ; f9a1: 0a          .
-    asl a                                                             ; f9a2: 0a          .
-    asl a                                                             ; f9a3: 0a          .
-; Rotate 4 bits into accumulator
-    ldx #3                                                            ; f9a4: a2 03       ..
+.scan_hex_got_digit
+    asl a                                                             ; f9a0: 0a          .              ; Shift digit into upper nybble
+    asl a                                                             ; f9a1: 0a          .              ; Second shift
+    asl a                                                             ; f9a2: 0a          .              ; Third shift
+    asl a                                                             ; f9a3: 0a          .              ; Fourth shift (digit now in bits 7-4)
+    ldx #3                                                            ; f9a4: a2 03       ..             ; 4 bits to rotate in
 ; &f9a6 referenced 1 time by &f9ac
-.loop_cf9a6
-    asl a                                                             ; f9a6: 0a          .
-    rol hex_accumulator                                               ; f9a7: 26 f0       &.
-    rol hex_accumulator_hi                                            ; f9a9: 26 f1       &.
-    dex                                                               ; f9ab: ca          .
-    bpl loop_cf9a6                                                    ; f9ac: 10 f8       ..
-    iny                                                               ; f9ae: c8          .
-    bne cf98c                                                         ; f9af: d0 db       ..
+.scan_hex_shift_loop
+    asl a                                                             ; f9a6: 0a          .              ; Shift bit out of digit
+    rol hex_accumulator                                               ; f9a7: 26 f0       &.             ; Rotate into accumulator low
+    rol hex_accumulator_hi                                            ; f9a9: 26 f1       &.             ; Rotate into accumulator high
+    dex                                                               ; f9ab: ca          .              ; Next bit
+    bpl scan_hex_shift_loop                                           ; f9ac: 10 f8       ..             ; Loop for 4 bits
+    iny                                                               ; f9ae: c8          .              ; Move to next input character
+    bne scan_hex_next_char                                            ; f9af: d0 db       ..             ; Loop for more hex digits
 ; &f9b1 referenced 3 times by &f990, &f99a, &f99e
-.return_1
-    rts                                                               ; f9b1: 60          `
+.scan_hex_return
+    rts                                                               ; f9b1: 60          `              ; Return
 
 ; ***************************************************************************************
 ; Send a CR-terminated string to the host via Tube R2.
@@ -538,29 +464,24 @@ lf85f = sub_cf85d+2
 ;     On exit:
 ;       Y restored from string_ptr_hi
 ; ***************************************************************************************
-; Store string address in string_ptr
 ; &f9b2 referenced 2 times by &fc24, &fc71
 .send_string
-    stx string_ptr                                                    ; f9b2: 86 f8       ..
-    sty string_ptr_hi                                                 ; f9b4: 84 f9       ..
+    stx string_ptr                                                    ; f9b2: 86 f8       ..             ; Set string pointer low byte
+    sty string_ptr_hi                                                 ; f9b4: 84 f9       ..             ; Set string pointer high byte
 ; &f9b6 referenced 1 time by &fa32
 .send_string_via_ptr
-    ldy #0                                                            ; f9b6: a0 00       ..
-; Wait for Tube R2 free
+    ldy #0                                                            ; f9b6: a0 00       ..             ; Start at offset 0
 ; &f9b8 referenced 2 times by &f9bb, &f9c5
-.cf9b8
-    bit lfefa                                                         ; f9b8: 2c fa fe    ,..
-    bvc cf9b8                                                         ; f9bb: 50 fb       P.
-; Send character from (string_ptr),Y
-    lda (string_ptr),y                                                ; f9bd: b1 f8       ..
-    sta lfefb                                                         ; f9bf: 8d fb fe    ...
-    iny                                                               ; f9c2: c8          .
-; Loop until CR sent
-    cmp #&0d                                                          ; f9c3: c9 0d       ..
-    bne cf9b8                                                         ; f9c5: d0 f1       ..
-; Restore Y from string_ptr_hi
-    ldy string_ptr_hi                                                 ; f9c7: a4 f9       ..
-    rts                                                               ; f9c9: 60          `
+.send_string_loop
+    bit tube_r2_status_reg                                            ; f9b8: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc send_string_loop                                              ; f9bb: 50 fb       P.             ; Wait until R2 ready
+    lda (string_ptr),y                                                ; f9bd: b1 f8       ..             ; Get character from string
+    sta tube_r2_data_reg                                              ; f9bf: 8d fb fe    ...            ; Send to Tube R2
+    iny                                                               ; f9c2: c8          .              ; Next character
+    cmp #&0d                                                          ; f9c3: c9 0d       ..             ; Was it carriage return?
+    bne send_string_loop                                              ; f9c5: d0 f1       ..             ; No: send next character
+    ldy string_ptr_hi                                                 ; f9c7: a4 f9       ..             ; Restore Y from string_ptr_hi
+    rts                                                               ; f9c9: 60          `              ; Return
 
 ; ***************************************************************************************
 ; Execute a * command. Parses the command to check for
@@ -571,16 +492,14 @@ lf85f = sub_cf85d+2
 ;       X = command string address low byte
 ;       Y = command string address high byte
 ; ***************************************************************************************
-; Save A, store command string address
 .oscli_impl
-    pha                                                               ; f9ca: 48          H
-    stx string_ptr                                                    ; f9cb: 86 f8       ..
-    sty string_ptr_hi                                                 ; f9cd: 84 f9       ..
-    ldy #0                                                            ; f9cf: a0 00       ..
-; Skip leading spaces and stars
+    pha                                                               ; f9ca: 48          H              ; Save A on stack
+    stx string_ptr                                                    ; f9cb: 86 f8       ..             ; Store command string low byte
+    sty string_ptr_hi                                                 ; f9cd: 84 f9       ..             ; Store command string high byte
+    ldy #0                                                            ; f9cf: a0 00       ..             ; Start at offset 0
 ; &f9d1 referenced 1 time by &f9d7
-.loop_cf9d1
-    jsr skip_spaces                                                   ; f9d1: 20 7f f9     ..            ; Advance past space characters in the string at
+.oscli_skip_stars_loop
+    jsr skip_spaces                                                   ; f9d1: 20 7f f9     ..            ; Skip leading spaces; Advance past space characters in the string at
 ;     (string_ptr),Y.
 ; 
 ;     On entry:
@@ -588,92 +507,80 @@ lf85f = sub_cf85d+2
 ;     On exit:
 ;       A = first non-space character
 ;       Y = offset of that character
-    iny                                                               ; f9d4: c8          .
-    cmp #&2a ; '*'                                                    ; f9d5: c9 2a       .*
-    beq loop_cf9d1                                                    ; f9d7: f0 f8       ..
-; Force uppercase for command matching
-    and #&df                                                          ; f9d9: 29 df       ).
-    tax                                                               ; f9db: aa          .
-; Peek at next character
-    lda (string_ptr),y                                                ; f9dc: b1 f8       ..
-; Check for *GO
-    cpx #&47 ; 'G'                                                    ; f9de: e0 47       .G
-    beq command_go                                                    ; f9e0: f0 5c       .\             ; Parse *GO [address]. If an address is given, set the
+    iny                                                               ; f9d4: c8          .              ; Advance past character
+    cmp #&2a ; '*'                                                    ; f9d5: c9 2a       .*             ; Is it a '*'?
+    beq oscli_skip_stars_loop                                         ; f9d7: f0 f8       ..             ; Yes: skip leading stars
+    and #&df                                                          ; f9d9: 29 df       ).             ; Force uppercase for matching
+    tax                                                               ; f9db: aa          .              ; Save first command letter in X
+    lda (string_ptr),y                                                ; f9dc: b1 f8       ..             ; Peek at next character
+    cpx #&47 ; 'G'                                                    ; f9de: e0 47       .G             ; Is first letter 'G'?
+    beq command_go                                                    ; f9e0: f0 5c       .\             ; Yes: check for *GO; Parse *GO [address]. If an address is given, set the
 ;     transfer address to it. If no address given, use the
 ;     current transfer address. Falls through to execute
 ;     the code.
 ; 
 ;     Note: does not check for a separator after 'GO', so
 ;     commands like *GOAD would be incorrectly matched.
-; Check for *H...
-    cpx #&48 ; 'H'                                                    ; f9e2: e0 48       .H
-    bne oscli_send_to_host                                            ; f9e4: d0 47       .G             ; Forward the command string at (string_ptr) to the
+    cpx #&48 ; 'H'                                                    ; f9e2: e0 48       .H             ; Is first letter 'H'?
+    bne oscli_send_to_host                                            ; f9e4: d0 47       .G             ; No: pass command to host; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
 ; 
 ;     Tube protocol: &02 string &0D -- &7F or &80
 ; 
 ;     If the response has bit 7 set, code needs to be
 ;     entered (a language was selected).
-; Abbreviated: H.
-    cmp #&2e ; '.'                                                    ; f9e6: c9 2e       ..
-    beq command_help                                                  ; f9e8: f0 2d       .-             ; Print local help text showing the Tube Client
+    cmp #&2e ; '.'                                                    ; f9e6: c9 2e       ..             ; Is next char '.' (abbreviated)?
+    beq command_help                                                  ; f9e8: f0 2d       .-             ; H. matches *HELP; Print local help text showing the Tube Client
 ;     version, then fall through to forward the *HELP
 ;     command to the host.
-    and #&df                                                          ; f9ea: 29 df       ).
-; Check for *HE...
-    cmp #&45 ; 'E'                                                    ; f9ec: c9 45       .E
-    bne oscli_send_to_host                                            ; f9ee: d0 3d       .=             ; Forward the command string at (string_ptr) to the
+    and #&df                                                          ; f9ea: 29 df       ).             ; Force uppercase
+    cmp #&45 ; 'E'                                                    ; f9ec: c9 45       .E             ; Is it 'E'?
+    bne oscli_send_to_host                                            ; f9ee: d0 3d       .=             ; No: pass to host; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
 ; 
 ;     Tube protocol: &02 string &0D -- &7F or &80
 ; 
 ;     If the response has bit 7 set, code needs to be
 ;     entered (a language was selected).
-    iny                                                               ; f9f0: c8          .
-    lda (string_ptr),y                                                ; f9f1: b1 f8       ..
-; Abbreviated: HE.
-    cmp #&2e ; '.'                                                    ; f9f3: c9 2e       ..
-    beq command_help                                                  ; f9f5: f0 20       .              ; Print local help text showing the Tube Client
+    iny                                                               ; f9f0: c8          .              ; Advance past 'E'
+    lda (string_ptr),y                                                ; f9f1: b1 f8       ..             ; Get next character
+    cmp #&2e ; '.'                                                    ; f9f3: c9 2e       ..             ; Is it '.' (abbreviated)?
+    beq command_help                                                  ; f9f5: f0 20       .              ; HE. matches *HELP; Print local help text showing the Tube Client
 ;     version, then fall through to forward the *HELP
 ;     command to the host.
-    and #&df                                                          ; f9f7: 29 df       ).
-; Check for *HEL...
-    cmp #&4c ; 'L'                                                    ; f9f9: c9 4c       .L
-    bne oscli_send_to_host                                            ; f9fb: d0 30       .0             ; Forward the command string at (string_ptr) to the
+    and #&df                                                          ; f9f7: 29 df       ).             ; Force uppercase
+    cmp #&4c ; 'L'                                                    ; f9f9: c9 4c       .L             ; Is it 'L'?
+    bne oscli_send_to_host                                            ; f9fb: d0 30       .0             ; No: pass to host; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
 ; 
 ;     Tube protocol: &02 string &0D -- &7F or &80
 ; 
 ;     If the response has bit 7 set, code needs to be
 ;     entered (a language was selected).
-    iny                                                               ; f9fd: c8          .
-    lda (string_ptr),y                                                ; f9fe: b1 f8       ..
-; Abbreviated: HEL.
-    cmp #&2e ; '.'                                                    ; fa00: c9 2e       ..
-    beq command_help                                                  ; fa02: f0 13       ..             ; Print local help text showing the Tube Client
+    iny                                                               ; f9fd: c8          .              ; Advance past 'L'
+    lda (string_ptr),y                                                ; f9fe: b1 f8       ..             ; Get next character
+    cmp #&2e ; '.'                                                    ; fa00: c9 2e       ..             ; Is it '.' (abbreviated)?
+    beq command_help                                                  ; fa02: f0 13       ..             ; HEL. matches *HELP; Print local help text showing the Tube Client
 ;     version, then fall through to forward the *HELP
 ;     command to the host.
-    and #&df                                                          ; fa04: 29 df       ).
-; Check for *HELP...
-    cmp #&50 ; 'P'                                                    ; fa06: c9 50       .P
-    bne oscli_send_to_host                                            ; fa08: d0 23       .#             ; Forward the command string at (string_ptr) to the
+    and #&df                                                          ; fa04: 29 df       ).             ; Force uppercase
+    cmp #&50 ; 'P'                                                    ; fa06: c9 50       .P             ; Is it 'P'?
+    bne oscli_send_to_host                                            ; fa08: d0 23       .#             ; No: pass to host; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
 ; 
 ;     Tube protocol: &02 string &0D -- &7F or &80
 ; 
 ;     If the response has bit 7 set, code needs to be
 ;     entered (a language was selected).
-    iny                                                               ; fa0a: c8          .
-    lda (string_ptr),y                                                ; fa0b: b1 f8       ..
-; Terminated by non-letter: it's *HELP
-    and #&df                                                          ; fa0d: 29 df       ).
-    cmp #&41 ; 'A'                                                    ; fa0f: c9 41       .A
-    bcc command_help                                                  ; fa11: 90 04       ..             ; Print local help text showing the Tube Client
+    iny                                                               ; fa0a: c8          .              ; Advance past 'P'
+    lda (string_ptr),y                                                ; fa0b: b1 f8       ..             ; Get next character
+    and #&df                                                          ; fa0d: 29 df       ).             ; Force uppercase
+    cmp #&41 ; 'A'                                                    ; fa0f: c9 41       .A             ; Below 'A': end of command, it is HELP
+    bcc command_help                                                  ; fa11: 90 04       ..             ; Non-letter terminates: do *HELP; Print local help text showing the Tube Client
 ;     version, then fall through to forward the *HELP
 ;     command to the host.
-; Followed by letter: pass to host
-    cmp #&5b ; '['                                                    ; fa13: c9 5b       .[
-    bcc oscli_send_to_host                                            ; fa15: 90 16       ..             ; Forward the command string at (string_ptr) to the
+    cmp #&5b ; '['                                                    ; fa13: c9 5b       .[             ; Below '[': followed by letter
+    bcc oscli_send_to_host                                            ; fa15: 90 16       ..             ; Letter follows: pass to host; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
 ; 
 ;     Tube protocol: &02 string &0D -- &7F or &80
@@ -685,16 +592,19 @@ lf85f = sub_cf85d+2
 ;     version, then fall through to forward the *HELP
 ;     command to the host.
 ; ***************************************************************************************
-; Print help text with version string
 ; &fa17 referenced 4 times by &f9e8, &f9f5, &fa02, &fa11
 .command_help
-    equb &20                                                          ; fa17: 20
-
-    tya                                                               ; fa18: 98          .
-    equb &fe                                                          ; fa19: fe          .
+    jsr print_embedded_text                                           ; fa17: 20 98 fe     ..            ; Print inline version string; Print the text string embedded immediately after the
+;     JSR to this routine. Characters are sent to OSWRCH
+;     until a byte with bit 7 set is encountered, which
+;     terminates the string. Execution resumes after the
+;     terminator byte.
+; 
+;     On exit:
+;       A = terminator byte (bit 7 set)
     equs &0a, &0d, "6502 TUBE 1.10", &0a, &0d                         ; fa1a: 0a 0d 36... ..6
 
-    nop                                                               ; fa2c: ea          .
+    nop                                                               ; fa2c: ea          .              ; Padding NOP after inline string
 ; ***************************************************************************************
 ; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
@@ -704,30 +614,25 @@ lf85f = sub_cf85d+2
 ;     If the response has bit 7 set, code needs to be
 ;     entered (a language was selected).
 ; ***************************************************************************************
-; Send command &02 to host: OSCLI
 ; &fa2d referenced 7 times by &f9e4, &f9ee, &f9fb, &fa08, &fa15, &fa42, &fa4f
 .oscli_send_to_host
-    lda #2                                                            ; fa2d: a9 02       ..
-    jsr send_command                                                  ; fa2f: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    lda #2                                                            ; fa2d: a9 02       ..             ; Command &02: OSCLI
+    jsr send_command                                                  ; fa2f: 20 4a fc     J.            ; Send command code to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Send the command string via string_ptr
-    jsr send_string_via_ptr                                           ; fa32: 20 b6 f9     ..
-; Wait for host acknowledgement
+    jsr send_string_via_ptr                                           ; fa32: 20 b6 f9     ..            ; Send command string via string_ptr
 ; &fa35 referenced 1 time by &fa71
 .oscli_wait_ack
-    jsr wait_for_tube_r2_byte                                         ; fa35: 20 75 f9     u.
-; Bit 7 set: host wants us to enter code
-    cmp #&80                                                          ; fa38: c9 80       ..
-    beq execute_code                                                  ; fa3a: f0 20       .              ; Save the current program pointer, call enter_code,
+    jsr wait_for_tube_r2_byte                                         ; fa35: 20 75 f9     u.            ; Wait for host acknowledgement
+    cmp #&80                                                          ; fa38: c9 80       ..             ; &80: host wants code entered
+    beq execute_code                                                  ; fa3a: f0 20       .              ; Enter transferred code; Save the current program pointer, call enter_code,
 ;     then restore the current program and memory top
 ;     on return.
-; Restore A and return to caller
-    pla                                                               ; fa3c: 68          h
-    rts                                                               ; fa3d: 60          `
+    pla                                                               ; fa3c: 68          h              ; Restore saved A
+    rts                                                               ; fa3d: 60          `              ; Return to caller
 
 ; ***************************************************************************************
 ; Parse *GO [address]. If an address is given, set the
@@ -738,22 +643,19 @@ lf85f = sub_cf85d+2
 ;     Note: does not check for a separator after 'GO', so
 ;     commands like *GOAD would be incorrectly matched.
 ; ***************************************************************************************
-; Check for 'O' after 'G'
 ; &fa3e referenced 1 time by &f9e0
 .command_go
-    and #&df                                                          ; fa3e: 29 df       ).
-    cmp #&4f ; 'O'                                                    ; fa40: c9 4f       .O
-    bne oscli_send_to_host                                            ; fa42: d0 e9       ..             ; Forward the command string at (string_ptr) to the
+    and #&df                                                          ; fa3e: 29 df       ).             ; Force uppercase
+    cmp #&4f ; 'O'                                                    ; fa40: c9 4f       .O             ; Is it 'O' (completing GO)?
+    bne oscli_send_to_host                                            ; fa42: d0 e9       ..             ; No: pass to host; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
 ; 
 ;     Tube protocol: &02 string &0D -- &7F or &80
 ; 
 ;     If the response has bit 7 set, code needs to be
 ;     entered (a language was selected).
-; Skip past 'O' and any spaces
-    jsr skip_spaces_step                                              ; fa44: 20 7e f9     ~.
-; Parse optional hex address
-    jsr scan_hex                                                      ; fa47: 20 86 f9     ..            ; Read a hexadecimal number from the string at
+    jsr skip_spaces_step                                              ; fa44: 20 7e f9     ~.            ; Skip past 'O' and spaces
+    jsr scan_hex                                                      ; fa47: 20 86 f9     ..            ; Parse optional hex address; Read a hexadecimal number from the string at
 ;     (string_ptr),Y into the hex accumulator at &F0/F1.
 ; 
 ;     On entry:
@@ -763,8 +665,7 @@ lf85f = sub_cf85d+2
 ;       X = non-zero if any digits were parsed
 ;       Y = offset past last hex digit
 ;       A = first non-hex character
-; Skip trailing spaces
-    jsr skip_spaces                                                   ; fa4a: 20 7f f9     ..            ; Advance past space characters in the string at
+    jsr skip_spaces                                                   ; fa4a: 20 7f f9     ..            ; Skip trailing spaces; Advance past space characters in the string at
 ;     (string_ptr),Y.
 ; 
 ;     On entry:
@@ -772,39 +673,34 @@ lf85f = sub_cf85d+2
 ;     On exit:
 ;       A = first non-space character
 ;       Y = offset of that character
-; More parameters: pass to host instead
-    cmp #&0d                                                          ; fa4d: c9 0d       ..
-; X=0 means no address given: use default
-    bne oscli_send_to_host                                            ; fa4f: d0 dc       ..             ; Forward the command string at (string_ptr) to the
+    cmp #&0d                                                          ; fa4d: c9 0d       ..             ; End of line (CR)?
+    bne oscli_send_to_host                                            ; fa4f: d0 dc       ..             ; No: extra params, pass to host; Forward the command string at (string_ptr) to the
 ;     host via Tube R2 with command code &02.
 ; 
 ;     Tube protocol: &02 string &0D -- &7F or &80
 ; 
 ;     If the response has bit 7 set, code needs to be
 ;     entered (a language was selected).
-; Set transfer address from parsed hex value
-    txa                                                               ; fa51: 8a          .
-    beq execute_code                                                  ; fa52: f0 08       ..             ; Save the current program pointer, call enter_code,
+    txa                                                               ; fa51: 8a          .              ; X=0 means no address was given
+    beq execute_code                                                  ; fa52: f0 08       ..             ; Use current transfer address; Save the current program pointer, call enter_code,
 ;     then restore the current program and memory top
 ;     on return.
-    lda hex_accumulator                                               ; fa54: a5 f0       ..
-    sta data_transfer_addr                                            ; fa56: 85 f6       ..
-    lda hex_accumulator_hi                                            ; fa58: a5 f1       ..
-    sta data_transfer_addr_hi                                         ; fa5a: 85 f7       ..
+    lda hex_accumulator                                               ; fa54: a5 f0       ..             ; Get parsed address low byte
+    sta data_transfer_addr                                            ; fa56: 85 f6       ..             ; Set transfer address low
+    lda hex_accumulator_hi                                            ; fa58: a5 f1       ..             ; Get parsed address high byte
+    sta data_transfer_addr_hi                                         ; fa5a: 85 f7       ..             ; Set transfer address high
 ; ***************************************************************************************
 ; Save the current program pointer, call enter_code,
 ;     then restore the current program and memory top
 ;     on return.
 ; ***************************************************************************************
-; Save current program on stack
 ; &fa5c referenced 2 times by &fa3a, &fa52
 .execute_code
-    lda current_program_hi                                            ; fa5c: a5 ef       ..
-    pha                                                               ; fa5e: 48          H
-    lda current_program                                               ; fa5f: a5 ee       ..
-    pha                                                               ; fa61: 48          H
-; Enter the code
-    jsr enter_code                                                    ; fa62: 20 b5 f8     ..            ; Check whether the code at the data transfer address
+    lda current_program_hi                                            ; fa5c: a5 ef       ..             ; Get current program high byte
+    pha                                                               ; fa5e: 48          H              ; Save on stack
+    lda current_program                                               ; fa5f: a5 ee       ..             ; Get current program low byte
+    pha                                                               ; fa61: 48          H              ; Save on stack
+    jsr enter_code                                                    ; fa62: 20 b5 f8     ..            ; Enter the code at transfer address; Check whether the code at the data transfer address
 ;     has a valid ROM header with a (C) string, and if so
 ;     verify it is a 6502 language ROM.
 ; 
@@ -814,21 +710,19 @@ lf85f = sub_cf85d+2
 ;     anyway (raw code entry). Generates an error if the
 ;     ROM type indicates it is not a language or not 6502
 ;     code.
-; Restore current program and memory top
-    pla                                                               ; fa65: 68          h
-    sta current_program                                               ; fa66: 85 ee       ..
-    sta memory_top                                                    ; fa68: 85 f2       ..
-; Restore A and return
-    pla                                                               ; fa6a: 68          h
-    sta current_program_hi                                            ; fa6b: 85 ef       ..
-    sta memory_top_hi                                                 ; fa6d: 85 f3       ..
-    pla                                                               ; fa6f: 68          h
-    rts                                                               ; fa70: 60          `
+    pla                                                               ; fa65: 68          h              ; Restore current program low
+    sta current_program                                               ; fa66: 85 ee       ..             ; Set current program low
+    sta memory_top                                                    ; fa68: 85 f2       ..             ; Also restore memory top low
+    pla                                                               ; fa6a: 68          h              ; Restore current program high
+    sta current_program_hi                                            ; fa6b: 85 ef       ..             ; Set current program high
+    sta memory_top_hi                                                 ; fa6d: 85 f3       ..             ; Also restore memory top high
+    pla                                                               ; fa6f: 68          h              ; Restore saved A
+    rts                                                               ; fa70: 60          `              ; Return to caller
 
-; If zero, wait for OSCLI ack
 ; &fa71 referenced 1 time by &face
 .check_oscli_ack
-    beq oscli_wait_ack                                                ; fa71: f0 c2       ..
+.osbyte_check_ack
+    beq oscli_wait_ack                                                ; fa71: f0 c2       ..             ; If &8E matched, wait for OSCLI ack
 ; ***************************************************************************************
 ; Handle OSBYTE calls. Functions &82-&84 are handled
 ;     locally (memory high word, bottom/top of memory).
@@ -845,133 +739,111 @@ lf85f = sub_cf85d+2
 ;       A preserved
 ;       X, Y, Carry = returned values (for A >= &80)
 ; ***************************************************************************************
-; Function >= &80: jump to high handler
 .osbyte_impl
-    cmp #&80                                                          ; fa73: c9 80       ..
-    bcs osbyte_high                                                   ; fa75: b0 25       .%
-; Send command &04 to host: OSBYTE low
-    pha                                                               ; fa77: 48          H
-    lda #4                                                            ; fa78: a9 04       ..
-; Wait for Tube R2 free, send command
+    cmp #&80                                                          ; fa73: c9 80       ..             ; Function >= &80?
+    bcs osbyte_high                                                   ; fa75: b0 25       .%             ; Yes: handle high OSBYTE
+    pha                                                               ; fa77: 48          H              ; Save function on stack
+    lda #4                                                            ; fa78: a9 04       ..             ; Command &04: OSBYTE low
 ; &fa7a referenced 1 time by &fa7d
-.loop_cfa7a
-    bit lfefa                                                         ; fa7a: 2c fa fe    ,..
-    bvc loop_cfa7a                                                    ; fa7d: 50 fb       P.
-    sta lfefb                                                         ; fa7f: 8d fb fe    ...
-; Send X parameter
+.osbyte_low_wait_r2_1
+    bit tube_r2_status_reg                                            ; fa7a: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osbyte_low_wait_r2_1                                          ; fa7d: 50 fb       P.             ; Wait until R2 ready
+    sta tube_r2_data_reg                                              ; fa7f: 8d fb fe    ...            ; Send command &04
 ; &fa82 referenced 1 time by &fa85
-.loop_cfa82
-    bit lfefa                                                         ; fa82: 2c fa fe    ,..
-    bvc loop_cfa82                                                    ; fa85: 50 fb       P.
-    stx lfefb                                                         ; fa87: 8e fb fe    ...
-    pla                                                               ; fa8a: 68          h
-; Send function code from A
+.osbyte_low_wait_r2_2
+    bit tube_r2_status_reg                                            ; fa82: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osbyte_low_wait_r2_2                                          ; fa85: 50 fb       P.             ; Wait until R2 ready
+    stx tube_r2_data_reg                                              ; fa87: 8e fb fe    ...            ; Send X parameter
+    pla                                                               ; fa8a: 68          h              ; Restore function code
 ; &fa8b referenced 1 time by &fa8e
-.loop_cfa8b
-    bit lfefa                                                         ; fa8b: 2c fa fe    ,..
-    bvc loop_cfa8b                                                    ; fa8e: 50 fb       P.
-    sta lfefb                                                         ; fa90: 8d fb fe    ...
-; Wait for return value in X
+.osbyte_low_wait_r2_3
+    bit tube_r2_status_reg                                            ; fa8b: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osbyte_low_wait_r2_3                                          ; fa8e: 50 fb       P.             ; Wait until R2 ready
+    sta tube_r2_data_reg                                              ; fa90: 8d fb fe    ...            ; Send function code
 ; &fa93 referenced 1 time by &fa96
-.loop_cfa93
-    bit lfefa                                                         ; fa93: 2c fa fe    ,..
-    bpl loop_cfa93                                                    ; fa96: 10 fb       ..
-    ldx lfefb                                                         ; fa98: ae fb fe    ...
-    rts                                                               ; fa9b: 60          `
+.osbyte_low_wait_result
+    bit tube_r2_status_reg                                            ; fa93: 2c fa fe    ,..            ; Poll Tube R2 for response
+    bpl osbyte_low_wait_result                                        ; fa96: 10 fb       ..             ; Wait until data available
+    ldx tube_r2_data_reg                                              ; fa98: ae fb fe    ...            ; Read return value into X
+    rts                                                               ; fa9b: 60          `              ; Return
 
-; OSBYTE &82: read memory high word
 ; &fa9c referenced 1 time by &fa75
 .osbyte_high
-    cmp #&82                                                          ; fa9c: c9 82       ..
-; OSBYTE &83: read bottom of memory
-    beq cfafa                                                         ; fa9e: f0 5a       .Z
-; OSBYTE &84: read top of memory
-    cmp #&83                                                          ; faa0: c9 83       ..
-    beq cfaf5                                                         ; faa2: f0 51       .Q
-; Send command &06 to host: OSBYTE high
-    cmp #&84                                                          ; faa4: c9 84       ..
-    beq osbyte_read_himem                                             ; faa6: f0 48       .H
-    pha                                                               ; faa8: 48          H
-    lda #6                                                            ; faa9: a9 06       ..
-; Wait for R2 free, send command
+    cmp #&82                                                          ; fa9c: c9 82       ..             ; Is it OSBYTE &82 (read high word)?
+    beq osbyte_read_high_word_impl                                    ; fa9e: f0 5a       .Z             ; Yes: return &0000
+    cmp #&83                                                          ; faa0: c9 83       ..             ; Is it OSBYTE &83 (read LOMEM)?
+    beq osbyte_read_lomem_impl                                        ; faa2: f0 51       .Q             ; Yes: return &0800
+    cmp #&84                                                          ; faa4: c9 84       ..             ; Is it OSBYTE &84 (read HIMEM)?
+    beq osbyte_read_himem                                             ; faa6: f0 48       .H             ; Yes: return memory_top
+    pha                                                               ; faa8: 48          H              ; Save function on stack
+    lda #6                                                            ; faa9: a9 06       ..             ; Command &06: OSBYTE high
 ; &faab referenced 1 time by &faae
-.loop_cfaab
-    bit lfefa                                                         ; faab: 2c fa fe    ,..
-    bvc loop_cfaab                                                    ; faae: 50 fb       P.
-    sta lfefb                                                         ; fab0: 8d fb fe    ...
-; Send X parameter
+.osbyte_high_wait_r2_1
+    bit tube_r2_status_reg                                            ; faab: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osbyte_high_wait_r2_1                                         ; faae: 50 fb       P.             ; Wait until R2 ready
+    sta tube_r2_data_reg                                              ; fab0: 8d fb fe    ...            ; Send command &06
 ; &fab3 referenced 1 time by &fab6
-.loop_cfab3
-    bit lfefa                                                         ; fab3: 2c fa fe    ,..
-    bvc loop_cfab3                                                    ; fab6: 50 fb       P.
-    stx lfefb                                                         ; fab8: 8e fb fe    ...
-; Send Y parameter
+.osbyte_high_wait_r2_2
+    bit tube_r2_status_reg                                            ; fab3: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osbyte_high_wait_r2_2                                         ; fab6: 50 fb       P.             ; Wait until R2 ready
+    stx tube_r2_data_reg                                              ; fab8: 8e fb fe    ...            ; Send X parameter
 ; &fabb referenced 1 time by &fabe
-.loop_cfabb
-    bit lfefa                                                         ; fabb: 2c fa fe    ,..
-    bvc loop_cfabb                                                    ; fabe: 50 fb       P.
-    sty lfefb                                                         ; fac0: 8c fb fe    ...
-    pla                                                               ; fac3: 68          h
-; Send function code from A
+.osbyte_high_wait_r2_3
+    bit tube_r2_status_reg                                            ; fabb: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osbyte_high_wait_r2_3                                         ; fabe: 50 fb       P.             ; Wait until R2 ready
+    sty tube_r2_data_reg                                              ; fac0: 8c fb fe    ...            ; Send Y parameter
+    pla                                                               ; fac3: 68          h              ; Restore function code
 ; &fac4 referenced 1 time by &fac7
-.loop_cfac4
-    bit lfefa                                                         ; fac4: 2c fa fe    ,..
-    bvc loop_cfac4                                                    ; fac7: 50 fb       P.
-    sta lfefb                                                         ; fac9: 8d fb fe    ...
-; OSBYTE &8E: select language, check for code
-    cmp #&8e                                                          ; facc: c9 8e       ..
-    beq check_oscli_ack                                               ; face: f0 a1       ..
-; OSBYTE &9D: fast BPUT, no response expected
-    cmp #&9d                                                          ; fad0: c9 9d       ..
-    beq return_2                                                      ; fad2: f0 1b       ..
-    pha                                                               ; fad4: 48          H
-; Wait for carry byte from host
+.osbyte_high_wait_r2_4
+    bit tube_r2_status_reg                                            ; fac4: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osbyte_high_wait_r2_4                                         ; fac7: 50 fb       P.             ; Wait until R2 ready
+    sta tube_r2_data_reg                                              ; fac9: 8d fb fe    ...            ; Send function code
+    cmp #&8e                                                          ; facc: c9 8e       ..             ; Is it &8E (select language)?
+    beq check_oscli_ack                                               ; face: f0 a1       ..             ; Yes: check for code to enter
+    cmp #&9d                                                          ; fad0: c9 9d       ..             ; Is it &9D (fast BPUT)?
+    beq osbyte_high_return                                            ; fad2: f0 1b       ..             ; Yes: return without response
+    pha                                                               ; fad4: 48          H              ; Save function for later restore
 ; &fad5 referenced 1 time by &fad8
-.loop_cfad5
-    bit lfefa                                                         ; fad5: 2c fa fe    ,..
-    bpl loop_cfad5                                                    ; fad8: 10 fb       ..
-    lda lfefb                                                         ; fada: ad fb fe    ...
-    asl a                                                             ; fadd: 0a          .
-    pla                                                               ; fade: 68          h
-; Wait for Y return value
+.osbyte_high_wait_carry
+    bit tube_r2_status_reg                                            ; fad5: 2c fa fe    ,..            ; Poll Tube R2 for carry byte
+    bpl osbyte_high_wait_carry                                        ; fad8: 10 fb       ..             ; Wait until data available
+    lda tube_r2_data_reg                                              ; fada: ad fb fe    ...            ; Read carry byte
+    asl a                                                             ; fadd: 0a          .              ; Shift carry into C flag
+    pla                                                               ; fade: 68          h              ; Restore saved function
 ; &fadf referenced 1 time by &fae2
-.loop_cfadf
-    bit lfefa                                                         ; fadf: 2c fa fe    ,..
-    bpl loop_cfadf                                                    ; fae2: 10 fb       ..
-    ldy lfefb                                                         ; fae4: ac fb fe    ...
-; Wait for X return value
+.osbyte_high_wait_y
+    bit tube_r2_status_reg                                            ; fadf: 2c fa fe    ,..            ; Poll Tube R2 for Y return value
+    bpl osbyte_high_wait_y                                            ; fae2: 10 fb       ..             ; Wait until data available
+    ldy tube_r2_data_reg                                              ; fae4: ac fb fe    ...            ; Read Y return value
 ; &fae7 referenced 1 time by &faea
-.loop_cfae7
-    bit lfefa                                                         ; fae7: 2c fa fe    ,..
-    bpl loop_cfae7                                                    ; faea: 10 fb       ..
-    ldx lfefb                                                         ; faec: ae fb fe    ...
+.osbyte_high_wait_x
+    bit tube_r2_status_reg                                            ; fae7: 2c fa fe    ,..            ; Poll Tube R2 for X return value
+    bpl osbyte_high_wait_x                                            ; faea: 10 fb       ..             ; Wait until data available
+    ldx tube_r2_data_reg                                              ; faec: ae fb fe    ...            ; Read X return value
 ; &faef referenced 1 time by &fad2
-.return_2
-    rts                                                               ; faef: 60          `
+.osbyte_high_return
+    rts                                                               ; faef: 60          `              ; Return
 
-; Return memory top from &F2/F3
 ; &faf0 referenced 1 time by &faa6
 .osbyte_read_himem
-    ldx memory_top                                                    ; faf0: a6 f2       ..
-    ldy memory_top_hi                                                 ; faf2: a4 f3       ..
-; Bottom of memory is always &0800
+    ldx memory_top                                                    ; faf0: a6 f2       ..             ; X = memory top low byte
+    ldy memory_top_hi                                                 ; faf2: a4 f3       ..             ; Y = memory top high byte
 .osbyte_read_lomem
-    rts                                                               ; faf4: 60          `
+    rts                                                               ; faf4: 60          `              ; Return (OSBYTE &84)
 
 ; &faf5 referenced 1 time by &faa2
-.cfaf5
-    ldx #0                                                            ; faf5: a2 00       ..
-.sub_cfaf7
-osbyte_read_high_word = sub_cfaf7+1
-    ldy #8                                                            ; faf7: a0 08       ..
-; Memory high word is &0000 (16-bit address space)
-    rts                                                               ; faf9: 60          `
+.osbyte_read_lomem_impl
+    ldx #0                                                            ; faf5: a2 00       ..             ; X = &00 (bottom of user memory)
+.osbyte_lomem_y_value
+osbyte_read_high_word = osbyte_lomem_y_value+1
+    ldy #8                                                            ; faf7: a0 08       ..             ; Y = &08 (bottom of memory = &0800)
+    rts                                                               ; faf9: 60          `              ; Return (OSBYTE &83)
 
 ; &fafa referenced 1 time by &fa9e
-.cfafa
-    ldx #0                                                            ; fafa: a2 00       ..
-    ldy #0                                                            ; fafc: a0 00       ..
-    rts                                                               ; fafe: 60          `
+.osbyte_read_high_word_impl
+    ldx #0                                                            ; fafa: a2 00       ..             ; X = &00 (high word low)
+    ldy #0                                                            ; fafc: a0 00       ..             ; Y = &00 (high word high)
+    rts                                                               ; fafe: 60          `              ; Return (OSBYTE &82)
 
 ; ***************************************************************************************
 ; Handle OSWORD calls. OSWORD 0 (read line) is handled
@@ -982,13 +854,11 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     On entry:
 ;       A = function, XY => control block
 ; ***************************************************************************************
-; Store control block address, check for OSWORD 0
 .osword_impl
-    stx string_ptr                                                    ; faff: 86 f8       ..
-    sty string_ptr_hi                                                 ; fb01: 84 f9       ..
-; OSWORD 0: jump to read line handler
-    tay                                                               ; fb03: a8          .
-    beq rdline                                                        ; fb04: f0 71       .q             ; Read a line of text from the host.
+    stx string_ptr                                                    ; faff: 86 f8       ..             ; Store control block address low
+    sty string_ptr_hi                                                 ; fb01: 84 f9       ..             ; Store control block address high
+    tay                                                               ; fb03: a8          .              ; A=0: OSWORD 0?
+    beq rdline                                                        ; fb04: f0 71       .q             ; Yes: handle read line specially; Read a line of text from the host.
 ; 
 ;     Sends command &0A with the control block parameters,
 ;     then receives the input string character by character.
@@ -998,95 +868,82 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     On exit:
 ;       Y = length of string (excluding CR)
 ;       C = 0 if OK, 1 if Escape
-; Send command &08 to host: OSWORD
-    pha                                                               ; fb06: 48          H
-    ldy #8                                                            ; fb07: a0 08       ..
+    pha                                                               ; fb06: 48          H              ; Save function on stack
+    ldy #8                                                            ; fb07: a0 08       ..             ; Command &08: OSWORD
 ; &fb09 referenced 1 time by &fb0c
-.loop_cfb09
-    bit lfefa                                                         ; fb09: 2c fa fe    ,..
-    bvc loop_cfb09                                                    ; fb0c: 50 fb       P.
-    sty lfefb                                                         ; fb0e: 8c fb fe    ...
-; Send function number
+.osword_wait_r2_cmd
+    bit tube_r2_status_reg                                            ; fb09: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osword_wait_r2_cmd                                            ; fb0c: 50 fb       P.             ; Wait until R2 ready
+    sty tube_r2_data_reg                                              ; fb0e: 8c fb fe    ...            ; Send command &08
 ; &fb11 referenced 1 time by &fb14
-.loop_cfb11
-    bit lfefa                                                         ; fb11: 2c fa fe    ,..
-    bvc loop_cfb11                                                    ; fb14: 50 fb       P.
-; Functions >= &80: length in control block
-    sta lfefb                                                         ; fb16: 8d fb fe    ...
-    tax                                                               ; fb19: aa          .
-    bpl cfb24                                                         ; fb1a: 10 08       ..
-    ldy #0                                                            ; fb1c: a0 00       ..
-    lda (string_ptr),y                                                ; fb1e: b1 f8       ..
-; Functions < &80: length from lookup table
-    tay                                                               ; fb20: a8          .
-    jmp cfb2d                                                         ; fb21: 4c 2d fb    L-.
+.osword_wait_r2_func
+    bit tube_r2_status_reg                                            ; fb11: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osword_wait_r2_func                                           ; fb14: 50 fb       P.             ; Wait until R2 ready
+    sta tube_r2_data_reg                                              ; fb16: 8d fb fe    ...            ; Send function number
+    tax                                                               ; fb19: aa          .              ; Copy function to X
+    bpl osword_send_low_lookup                                        ; fb1a: 10 08       ..             ; Function >= &80?
+    ldy #0                                                            ; fb1c: a0 00       ..             ; Y=0 for control block read
+    lda (string_ptr),y                                                ; fb1e: b1 f8       ..             ; Get send length from control block
+    tay                                                               ; fb20: a8          .              ; Transfer to Y
+    jmp osword_send_block                                             ; fb21: 4c 2d fb    L-.            ; Jump to send block
 
 ; &fb24 referenced 1 time by &fb1a
-.cfb24
-    ldy osword_send_lengths,x                                         ; fb24: bc bc fc    ...
-; Functions &15-&7F: send 16 bytes
-    cpx #&15                                                          ; fb27: e0 15       ..
-; Send block length byte
-    bcc cfb2d                                                         ; fb29: 90 02       ..
-    ldy #&10                                                          ; fb2b: a0 10       ..
-; Send control block bytes in reverse order
+.osword_send_low_lookup
+    ldy osword_send_lengths,x                                         ; fb24: bc bc fc    ...            ; Get send length from table
+    cpx #&15                                                          ; fb27: e0 15       ..             ; Function < &15?
+    bcc osword_send_block                                             ; fb29: 90 02       ..             ; Yes: use table length
+    ldy #&10                                                          ; fb2b: a0 10       ..             ; Default: send 16 bytes
 ; &fb2d referenced 3 times by &fb21, &fb29, &fb30
-.cfb2d
-    bit lfefa                                                         ; fb2d: 2c fa fe    ,..
-    bvc cfb2d                                                         ; fb30: 50 fb       P.
-    sty lfefb                                                         ; fb32: 8c fb fe    ...
-    dey                                                               ; fb35: 88          .
-    bmi cfb45                                                         ; fb36: 30 0d       0.
+.osword_send_block
+    bit tube_r2_status_reg                                            ; fb2d: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osword_send_block                                             ; fb30: 50 fb       P.             ; Wait until R2 ready
+    sty tube_r2_data_reg                                              ; fb32: 8c fb fe    ...            ; Send block length to host
+    dey                                                               ; fb35: 88          .              ; Decrement index
+    bmi osword_recv_get_length                                        ; fb36: 30 0d       0.             ; Negative: nothing to send
 ; &fb38 referenced 2 times by &fb3b, &fb43
-.cfb38
-    bit lfefa                                                         ; fb38: 2c fa fe    ,..
-    bvc cfb38                                                         ; fb3b: 50 fb       P.
-    lda (string_ptr),y                                                ; fb3d: b1 f8       ..
-    sta lfefb                                                         ; fb3f: 8d fb fe    ...
-    dey                                                               ; fb42: 88          .
-    bpl cfb38                                                         ; fb43: 10 f3       ..
-; Functions >= &80: receive length from control block
+.osword_send_bytes_loop
+    bit tube_r2_status_reg                                            ; fb38: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osword_send_bytes_loop                                        ; fb3b: 50 fb       P.             ; Wait until R2 ready
+    lda (string_ptr),y                                                ; fb3d: b1 f8       ..             ; Read byte from control block
+    sta tube_r2_data_reg                                              ; fb3f: 8d fb fe    ...            ; Send to Tube R2
+    dey                                                               ; fb42: 88          .              ; Next byte (reverse order)
+    bpl osword_send_bytes_loop                                        ; fb43: 10 f3       ..             ; Loop until all bytes sent
 ; &fb45 referenced 1 time by &fb36
-.cfb45
-    txa                                                               ; fb45: 8a          .
-    bpl cfb50                                                         ; fb46: 10 08       ..
-    ldy #1                                                            ; fb48: a0 01       ..
-    lda (string_ptr),y                                                ; fb4a: b1 f8       ..
-    tay                                                               ; fb4c: a8          .
-    jmp cfb59                                                         ; fb4d: 4c 59 fb    LY.
+.osword_recv_get_length
+    txa                                                               ; fb45: 8a          .              ; Get function back in A
+    bpl osword_recv_low_lookup                                        ; fb46: 10 08       ..             ; Function >= &80?
+    ldy #1                                                            ; fb48: a0 01       ..             ; Y=1 for control block read
+    lda (string_ptr),y                                                ; fb4a: b1 f8       ..             ; Get receive length from block
+    tay                                                               ; fb4c: a8          .              ; Transfer to Y
+    jmp osword_recv_block                                             ; fb4d: 4c 59 fb    LY.            ; Jump to receive block
 
-; Functions < &80: receive length from lookup table
 ; &fb50 referenced 1 time by &fb46
-.cfb50
-    ldy osword_recv_lengths,x                                         ; fb50: bc d0 fc    ...
-    cpx #&15                                                          ; fb53: e0 15       ..
-; Functions &15-&7F: receive 16 bytes
-    bcc cfb59                                                         ; fb55: 90 02       ..
-    ldy #&10                                                          ; fb57: a0 10       ..
-; Send receive block length
+.osword_recv_low_lookup
+    ldy osword_recv_lengths,x                                         ; fb50: bc d0 fc    ...            ; Get receive length from table
+    cpx #&15                                                          ; fb53: e0 15       ..             ; Function < &15?
+    bcc osword_recv_block                                             ; fb55: 90 02       ..             ; Yes: use table length
+    ldy #&10                                                          ; fb57: a0 10       ..             ; Default: receive 16 bytes
 ; &fb59 referenced 3 times by &fb4d, &fb55, &fb5c
-.cfb59
-    bit lfefa                                                         ; fb59: 2c fa fe    ,..
-    bvc cfb59                                                         ; fb5c: 50 fb       P.
-; Receive response bytes into control block
-    sty lfefb                                                         ; fb5e: 8c fb fe    ...
-    dey                                                               ; fb61: 88          .
-    bmi cfb71                                                         ; fb62: 30 0d       0.
+.osword_recv_block
+    bit tube_r2_status_reg                                            ; fb59: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osword_recv_block                                             ; fb5c: 50 fb       P.             ; Wait until R2 ready
+    sty tube_r2_data_reg                                              ; fb5e: 8c fb fe    ...            ; Send receive length to host
+    dey                                                               ; fb61: 88          .              ; Decrement index
+    bmi osword_restore_regs                                           ; fb62: 30 0d       0.             ; Negative: nothing to receive
 ; &fb64 referenced 2 times by &fb67, &fb6f
-.cfb64
-    bit lfefa                                                         ; fb64: 2c fa fe    ,..
-    bpl cfb64                                                         ; fb67: 10 fb       ..
-    lda lfefb                                                         ; fb69: ad fb fe    ...
-    sta (string_ptr),y                                                ; fb6c: 91 f8       ..
-    dey                                                               ; fb6e: 88          .
-    bpl cfb64                                                         ; fb6f: 10 f3       ..
-; Restore registers and return
+.osword_recv_bytes_loop
+    bit tube_r2_status_reg                                            ; fb64: 2c fa fe    ,..            ; Poll Tube R2 for data
+    bpl osword_recv_bytes_loop                                        ; fb67: 10 fb       ..             ; Wait until data available
+    lda tube_r2_data_reg                                              ; fb69: ad fb fe    ...            ; Read response byte
+    sta (string_ptr),y                                                ; fb6c: 91 f8       ..             ; Store in control block
+    dey                                                               ; fb6e: 88          .              ; Next byte (reverse order)
+    bpl osword_recv_bytes_loop                                        ; fb6f: 10 f3       ..             ; Loop until all received
 ; &fb71 referenced 1 time by &fb62
-.cfb71
-    ldy string_ptr_hi                                                 ; fb71: a4 f9       ..
-    ldx string_ptr                                                    ; fb73: a6 f8       ..
-    pla                                                               ; fb75: 68          h
-    rts                                                               ; fb76: 60          `
+.osword_restore_regs
+    ldy string_ptr_hi                                                 ; fb71: a4 f9       ..             ; Restore Y from string_ptr_hi
+    ldx string_ptr                                                    ; fb73: a6 f8       ..             ; Restore X from string_ptr
+    pla                                                               ; fb75: 68          h              ; Restore function code
+    rts                                                               ; fb76: 60          `              ; Return
 
 ; ***************************************************************************************
 ; Read a line of text from the host.
@@ -1100,83 +957,72 @@ osbyte_read_high_word = sub_cfaf7+1
 ;       Y = length of string (excluding CR)
 ;       C = 0 if OK, 1 if Escape
 ; ***************************************************************************************
-; Send command &0A to host: RDLINE
 ; &fb77 referenced 1 time by &fb04
 .rdline
-    lda #&0a                                                          ; fb77: a9 0a       ..
-    jsr send_command                                                  ; fb79: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    lda #&0a                                                          ; fb77: a9 0a       ..             ; Command &0A: read line
+    jsr send_command                                                  ; fb79: 20 4a fc     J.            ; Send command to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Send control block bytes 4..2
-    ldy #4                                                            ; fb7c: a0 04       ..
+    ldy #4                                                            ; fb7c: a0 04       ..             ; Start at control block byte 4
 ; &fb7e referenced 2 times by &fb81, &fb8b
-.cfb7e
-    bit lfefa                                                         ; fb7e: 2c fa fe    ,..
-    bvc cfb7e                                                         ; fb81: 50 fb       P.
-    lda (string_ptr),y                                                ; fb83: b1 f8       ..
-    sta lfefb                                                         ; fb85: 8d fb fe    ...
-    dey                                                               ; fb88: 88          .
-    cpy #1                                                            ; fb89: c0 01       ..
-    bne cfb7e                                                         ; fb8b: d0 f1       ..
-; Send &07 as high byte of buffer address
-    lda #7                                                            ; fb8d: a9 07       ..
-    jsr send_command                                                  ; fb8f: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+.rdline_send_block_loop
+    bit tube_r2_status_reg                                            ; fb7e: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc rdline_send_block_loop                                        ; fb81: 50 fb       P.             ; Wait until R2 ready
+    lda (string_ptr),y                                                ; fb83: b1 f8       ..             ; Get control block byte
+    sta tube_r2_data_reg                                              ; fb85: 8d fb fe    ...            ; Send to host
+    dey                                                               ; fb88: 88          .              ; Decrement index
+    cpy #1                                                            ; fb89: c0 01       ..             ; Reached byte 1?
+    bne rdline_send_block_loop                                        ; fb8b: d0 f1       ..             ; No: send next (bytes 4, 3, 2)
+    lda #7                                                            ; fb8d: a9 07       ..             ; &07 as high byte of buffer address
+    jsr send_command                                                  ; fb8f: 20 4a fc     J.            ; Send buffer address high byte; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Save buffer high byte from control block
-    lda (string_ptr),y                                                ; fb92: b1 f8       ..
-    pha                                                               ; fb94: 48          H
-    dey                                                               ; fb95: 88          .
-; Send &00 as low byte of buffer address
+    lda (string_ptr),y                                                ; fb92: b1 f8       ..             ; Get actual buffer high byte
+    pha                                                               ; fb94: 48          H              ; Save on stack for later
+    dey                                                               ; fb95: 88          .              ; Decrement to byte 0
 ; &fb96 referenced 1 time by &fb99
-.loop_cfb96
-    bit lfefa                                                         ; fb96: 2c fa fe    ,..
-    bvc loop_cfb96                                                    ; fb99: 50 fb       P.
-; Save buffer low byte from control block
-    sty lfefb                                                         ; fb9b: 8c fb fe    ...
-; Wait for response; &80+ means Escape
-    lda (string_ptr),y                                                ; fb9e: b1 f8       ..
-    pha                                                               ; fba0: 48          H
-    ldx #&ff                                                          ; fba1: a2 ff       ..
-    jsr wait_for_tube_r2_byte                                         ; fba3: 20 75 f9     u.
-    cmp #&80                                                          ; fba6: c9 80       ..
-; Set string_ptr to buffer address from stack
-    bcs cfbc7                                                         ; fba8: b0 1d       ..
-    pla                                                               ; fbaa: 68          h
-    sta string_ptr                                                    ; fbab: 85 f8       ..
-    pla                                                               ; fbad: 68          h
-    sta string_ptr_hi                                                 ; fbae: 85 f9       ..
-; Receive characters into buffer until CR
-    ldy #0                                                            ; fbb0: a0 00       ..
+.rdline_send_addr_low
+    bit tube_r2_status_reg                                            ; fb96: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc rdline_send_addr_low                                          ; fb99: 50 fb       P.             ; Wait until R2 ready
+    sty tube_r2_data_reg                                              ; fb9b: 8c fb fe    ...            ; Send &00 as buffer address low byte
+    lda (string_ptr),y                                                ; fb9e: b1 f8       ..             ; Get actual buffer low byte
+    pha                                                               ; fba0: 48          H              ; Save on stack for later
+    ldx #&ff                                                          ; fba1: a2 ff       ..             ; X=&FF as Escape indicator
+    jsr wait_for_tube_r2_byte                                         ; fba3: 20 75 f9     u.            ; Wait for host response
+    cmp #&80                                                          ; fba6: c9 80       ..             ; Is response >= &80 (Escape)?
+    bcs rdline_escape                                                 ; fba8: b0 1d       ..             ; Yes: handle Escape
+    pla                                                               ; fbaa: 68          h              ; Recover buffer low byte
+    sta string_ptr                                                    ; fbab: 85 f8       ..             ; Set string_ptr low
+    pla                                                               ; fbad: 68          h              ; Recover buffer high byte
+    sta string_ptr_hi                                                 ; fbae: 85 f9       ..             ; Set string_ptr high
+    ldy #0                                                            ; fbb0: a0 00       ..             ; Start at offset 0
 ; &fbb2 referenced 2 times by &fbb5, &fbbf
-.cfbb2
-    bit lfefa                                                         ; fbb2: 2c fa fe    ,..
-    bpl cfbb2                                                         ; fbb5: 10 fb       ..
-    lda lfefb                                                         ; fbb7: ad fb fe    ...
-    sta (string_ptr),y                                                ; fbba: 91 f8       ..
-    iny                                                               ; fbbc: c8          .
-    cmp #&0d                                                          ; fbbd: c9 0d       ..
-; Return A=0, Y=length, C=0 (OK)
-    bne cfbb2                                                         ; fbbf: d0 f1       ..
-    lda #0                                                            ; fbc1: a9 00       ..
-    dey                                                               ; fbc3: 88          .
-    clc                                                               ; fbc4: 18          .
-    inx                                                               ; fbc5: e8          .
-; Escape: return A=0, C=1
-    rts                                                               ; fbc6: 60          `
+.rdline_recv_loop
+    bit tube_r2_status_reg                                            ; fbb2: 2c fa fe    ,..            ; Poll Tube R2 for data
+    bpl rdline_recv_loop                                              ; fbb5: 10 fb       ..             ; Wait until data available
+    lda tube_r2_data_reg                                              ; fbb7: ad fb fe    ...            ; Read character from host
+    sta (string_ptr),y                                                ; fbba: 91 f8       ..             ; Store in buffer
+    iny                                                               ; fbbc: c8          .              ; Advance buffer position
+    cmp #&0d                                                          ; fbbd: c9 0d       ..             ; Is it carriage return?
+    bne rdline_recv_loop                                              ; fbbf: d0 f1       ..             ; No: receive next character
+    lda #0                                                            ; fbc1: a9 00       ..             ; A=0 on success
+    dey                                                               ; fbc3: 88          .              ; Y=length (exclude CR)
+    clc                                                               ; fbc4: 18          .              ; Clear carry: no Escape
+    inx                                                               ; fbc5: e8          .              ; X=0 on success
+    rts                                                               ; fbc6: 60          `              ; Return: A=0, Y=len, C=0
 
 ; &fbc7 referenced 1 time by &fba8
-.cfbc7
-    pla                                                               ; fbc7: 68          h
-    pla                                                               ; fbc8: 68          h
-    lda #0                                                            ; fbc9: a9 00       ..
-    rts                                                               ; fbcb: 60          `
+.rdline_escape
+    pla                                                               ; fbc7: 68          h              ; Discard saved buffer low byte
+    pla                                                               ; fbc8: 68          h              ; Discard saved buffer high byte
+    lda #0                                                            ; fbc9: a9 00       ..             ; A=0, carry set from CMP &80
+    rts                                                               ; fbcb: 60          `              ; Return: Escape, A=0, C=1
 
 ; ***************************************************************************************
 ; Read or write information about an open file.
@@ -1189,73 +1035,67 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     On exit:
 ;       A = result, data word at X updated
 ; ***************************************************************************************
-; Send command &0C: OSARGS
 .osargs_impl
-    pha                                                               ; fbcc: 48          H
-    lda #&0c                                                          ; fbcd: a9 0c       ..
-    jsr send_command                                                  ; fbcf: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    pha                                                               ; fbcc: 48          H              ; Save function on stack
+    lda #&0c                                                          ; fbcd: a9 0c       ..             ; Command &0C: OSARGS
+    jsr send_command                                                  ; fbcf: 20 4a fc     J.            ; Send command to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Send handle
 ; &fbd2 referenced 1 time by &fbd5
-.loop_cfbd2
-    bit lfefa                                                         ; fbd2: 2c fa fe    ,..
-    bvc loop_cfbd2                                                    ; fbd5: 50 fb       P.
-; Send 4-byte data word (high to low)
-    sty lfefb                                                         ; fbd7: 8c fb fe    ...
-    lda l0003,x                                                       ; fbda: b5 03       ..
-    jsr send_command                                                  ; fbdc: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+.osargs_wait_r2_handle
+    bit tube_r2_status_reg                                            ; fbd2: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc osargs_wait_r2_handle                                         ; fbd5: 50 fb       P.             ; Wait until R2 ready
+    sty tube_r2_data_reg                                              ; fbd7: 8c fb fe    ...            ; Send file handle
+    lda zp_data_base_3,x                                              ; fbda: b5 03       ..             ; Get data word byte 3
+    jsr send_command                                                  ; fbdc: 20 4a fc     J.            ; Send data byte 3; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    lda l0002,x                                                       ; fbdf: b5 02       ..
-    jsr send_command                                                  ; fbe1: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    lda zp_data_base_2,x                                              ; fbdf: b5 02       ..             ; Get data word byte 2
+    jsr send_command                                                  ; fbe1: 20 4a fc     J.            ; Send data byte 2; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    lda l0001,x                                                       ; fbe4: b5 01       ..
-    jsr send_command                                                  ; fbe6: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    lda zp_data_base_1,x                                              ; fbe4: b5 01       ..             ; Get data word byte 1
+    jsr send_command                                                  ; fbe6: 20 4a fc     J.            ; Send data byte 1; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    lda l0000,x                                                       ; fbe9: b5 00       ..
-    jsr send_command                                                  ; fbeb: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    lda zp_data_base,x                                                ; fbe9: b5 00       ..             ; Get data word byte 0
+    jsr send_command                                                  ; fbeb: 20 4a fc     J.            ; Send data byte 0; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Send function code
-    pla                                                               ; fbee: 68          h
-    jsr send_command                                                  ; fbef: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    pla                                                               ; fbee: 68          h              ; Restore function code
+    jsr send_command                                                  ; fbef: 20 4a fc     J.            ; Send function code; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Receive result byte
-    jsr wait_for_tube_r2_byte                                         ; fbf2: 20 75 f9     u.
-; Receive updated 4-byte data word
-    pha                                                               ; fbf5: 48          H
-    jsr wait_for_tube_r2_byte                                         ; fbf6: 20 75 f9     u.
-    sta l0003,x                                                       ; fbf9: 95 03       ..
-    jsr wait_for_tube_r2_byte                                         ; fbfb: 20 75 f9     u.
-    sta l0002,x                                                       ; fbfe: 95 02       ..
-    jsr wait_for_tube_r2_byte                                         ; fc00: 20 75 f9     u.
-    sta l0001,x                                                       ; fc03: 95 01       ..
-    jsr wait_for_tube_r2_byte                                         ; fc05: 20 75 f9     u.
-    sta l0000,x                                                       ; fc08: 95 00       ..
-    pla                                                               ; fc0a: 68          h
-    rts                                                               ; fc0b: 60          `
+    jsr wait_for_tube_r2_byte                                         ; fbf2: 20 75 f9     u.            ; Wait for result byte
+    pha                                                               ; fbf5: 48          H              ; Save result on stack
+    jsr wait_for_tube_r2_byte                                         ; fbf6: 20 75 f9     u.            ; Wait for data byte 3
+    sta zp_data_base_3,x                                              ; fbf9: 95 03       ..             ; Store in data word
+    jsr wait_for_tube_r2_byte                                         ; fbfb: 20 75 f9     u.            ; Wait for data byte 2
+    sta zp_data_base_2,x                                              ; fbfe: 95 02       ..             ; Store in data word
+    jsr wait_for_tube_r2_byte                                         ; fc00: 20 75 f9     u.            ; Wait for data byte 1
+    sta zp_data_base_1,x                                              ; fc03: 95 01       ..             ; Store in data word
+    jsr wait_for_tube_r2_byte                                         ; fc05: 20 75 f9     u.            ; Wait for data byte 0
+    sta zp_data_base,x                                                ; fc08: 95 00       ..             ; Store in data word
+    pla                                                               ; fc0a: 68          h              ; Restore result to A
+    rts                                                               ; fc0b: 60          `              ; Return with result in A
 
 ; ***************************************************************************************
 ; Open or close a file.
@@ -1268,52 +1108,46 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     On exit:
 ;       A = handle (open) or preserved (close)
 ; ***************************************************************************************
-; Send command &12: OSFIND
 .osfind_impl
-    pha                                                               ; fc0c: 48          H
-    lda #&12                                                          ; fc0d: a9 12       ..
-    jsr send_command                                                  ; fc0f: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    pha                                                               ; fc0c: 48          H              ; Save function on stack
+    lda #&12                                                          ; fc0d: a9 12       ..             ; Command &12: OSFIND
+    jsr send_command                                                  ; fc0f: 20 4a fc     J.            ; Send command to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Send function code
-    pla                                                               ; fc12: 68          h
-    jsr send_command                                                  ; fc13: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    pla                                                               ; fc12: 68          h              ; Restore function code
+    jsr send_command                                                  ; fc13: 20 4a fc     J.            ; Send function code; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; A=0 means close: send handle and wait for ack
-    cmp #0                                                            ; fc16: c9 00       ..
-    bne cfc24                                                         ; fc18: d0 0a       ..
-    pha                                                               ; fc1a: 48          H
-    tya                                                               ; fc1b: 98          .
-    jsr send_command                                                  ; fc1c: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    cmp #0                                                            ; fc16: c9 00       ..             ; Is it close (A=0)?
+    bne osfind_open                                                   ; fc18: d0 0a       ..             ; No: handle open
+    pha                                                               ; fc1a: 48          H              ; Save A=0
+    tya                                                               ; fc1b: 98          .              ; Transfer handle from Y to A
+    jsr send_command                                                  ; fc1c: 20 4a fc     J.            ; Send handle; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Wait for acknowledge, restore A and return
-    jsr wait_for_tube_r2_byte                                         ; fc1f: 20 75 f9     u.
-    pla                                                               ; fc22: 68          h
-    rts                                                               ; fc23: 60          `
+    jsr wait_for_tube_r2_byte                                         ; fc1f: 20 75 f9     u.            ; Wait for acknowledge
+    pla                                                               ; fc22: 68          h              ; Restore A=0
+    rts                                                               ; fc23: 60          `              ; Return
 
-; Open: send filename string
 ; &fc24 referenced 1 time by &fc18
-.cfc24
-    jsr send_string                                                   ; fc24: 20 b2 f9     ..            ; Send a CR-terminated string to the host via Tube R2.
+.osfind_open
+    jsr send_string                                                   ; fc24: 20 b2 f9     ..            ; Send filename string; Send a CR-terminated string to the host via Tube R2.
 ; 
 ;     On entry:
 ;       X = string address low byte
 ;       Y = string address high byte
 ;     On exit:
 ;       Y restored from string_ptr_hi
-; Wait for and return handle
-    jmp wait_for_tube_r2_byte                                         ; fc27: 4c 75 f9    Lu.
+    jmp wait_for_tube_r2_byte                                         ; fc27: 4c 75 f9    Lu.            ; Wait for and return file handle
 
 ; ***************************************************************************************
 ; Read a byte from an open file.
@@ -1325,25 +1159,22 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     On exit:
 ;       A = byte read, C = set if EOF
 ; ***************************************************************************************
-; Send command &0E: OSBGET
 .osbget_impl
-    lda #&0e                                                          ; fc2a: a9 0e       ..
-    jsr send_command                                                  ; fc2c: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    lda #&0e                                                          ; fc2a: a9 0e       ..             ; Command &0E: OSBGET
+    jsr send_command                                                  ; fc2c: 20 4a fc     J.            ; Send command to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Send handle
-    tya                                                               ; fc2f: 98          .
-; Wait for carry and data byte
-    jsr send_command                                                  ; fc30: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    tya                                                               ; fc2f: 98          .              ; Transfer handle from Y to A
+    jsr send_command                                                  ; fc30: 20 4a fc     J.            ; Send handle; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    jmp wait_carry_and_byte                                           ; fc33: 4c 71 f9    Lq.
+    jmp wait_carry_and_byte                                           ; fc33: 4c 71 f9    Lq.            ; Wait for carry and data byte
 
 ; ***************************************************************************************
 ; Write a byte to an open file.
@@ -1355,37 +1186,33 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     On exit:
 ;       A preserved
 ; ***************************************************************************************
-; Save A, send command &10: OSBPUT
 .osbput_impl
-    pha                                                               ; fc36: 48          H
-    lda #&10                                                          ; fc37: a9 10       ..
-    jsr send_command                                                  ; fc39: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    pha                                                               ; fc36: 48          H              ; Save byte to write
+    lda #&10                                                          ; fc37: a9 10       ..             ; Command &10: OSBPUT
+    jsr send_command                                                  ; fc39: 20 4a fc     J.            ; Send command to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Send handle
-    tya                                                               ; fc3c: 98          .
-    jsr send_command                                                  ; fc3d: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    tya                                                               ; fc3c: 98          .              ; Transfer handle from Y to A
+    jsr send_command                                                  ; fc3d: 20 4a fc     J.            ; Send handle; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Send byte to write
-; Wait for acknowledge, restore A and return
-    pla                                                               ; fc40: 68          h
-    jsr send_command                                                  ; fc41: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    pla                                                               ; fc40: 68          h              ; Restore byte to write
+    jsr send_command                                                  ; fc41: 20 4a fc     J.            ; Send data byte; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    pha                                                               ; fc44: 48          H
-    jsr wait_for_tube_r2_byte                                         ; fc45: 20 75 f9     u.
-    pla                                                               ; fc48: 68          h
-    rts                                                               ; fc49: 60          `
+    pha                                                               ; fc44: 48          H              ; Save A for restore after ack
+    jsr wait_for_tube_r2_byte                                         ; fc45: 20 75 f9     u.            ; Wait for acknowledge
+    pla                                                               ; fc48: 68          h              ; Restore A (preserved)
+    rts                                                               ; fc49: 60          `              ; Return
 
 ; ***************************************************************************************
 ; Wait for Tube R2 to be free, then send byte.
@@ -1395,20 +1222,18 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     On exit:
 ;       A preserved
 ; ***************************************************************************************
-; Wait for Tube R2 free
 ; &fc4a referenced 25 times by &f96e, &fa2f, &fb79, &fb8f, &fbcf, &fbdc, &fbe1, &fbe6, &fbeb, &fbef, &fc0f, &fc13, &fc1c, &fc2c, &fc30, &fc39, &fc3d, &fc41, &fc4d, &fc5a, &fc61, &fc75, &fc95, &fc9c, &fca3
 .send_command
 .send_byte_to_tube_r2
-    bit lfefa                                                         ; fc4a: 2c fa fe    ,..
-    bvc send_command                                                  ; fc4d: 50 fb       P.             ; Wait for Tube R2 to be free, then send byte.
+    bit tube_r2_status_reg                                            ; fc4a: 2c fa fe    ,..            ; Poll Tube R2 status
+    bvc send_command                                                  ; fc4d: 50 fb       P.             ; Wait until R2 ready; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Send byte to Tube R2 data register
-    sta lfefb                                                         ; fc4f: 8d fb fe    ...
-    rts                                                               ; fc52: 60          `
+    sta tube_r2_data_reg                                              ; fc4f: 8d fb fe    ...            ; Write byte to Tube R2 data
+    rts                                                               ; fc52: 60          `              ; Return with A preserved
 
 ; ***************************************************************************************
 ; Operate on whole files (load, save, read/write attributes).
@@ -1419,74 +1244,64 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     On entry:
 ;       A = function, XY => control block
 ; ***************************************************************************************
-; Store control block pointer in &FA/FB
 .osfile_impl
-    sty control_block_ptr_hi                                          ; fc53: 84 fb       ..
-    stx control_block_ptr                                             ; fc55: 86 fa       ..
-; Send command &14: OSFILE
-    pha                                                               ; fc57: 48          H
-    lda #&14                                                          ; fc58: a9 14       ..
-    jsr send_command                                                  ; fc5a: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    sty control_block_ptr_hi                                          ; fc53: 84 fb       ..             ; Store control block high byte
+    stx control_block_ptr                                             ; fc55: 86 fa       ..             ; Store control block low byte
+    pha                                                               ; fc57: 48          H              ; Save function on stack
+    lda #&14                                                          ; fc58: a9 14       ..             ; Command &14: OSFILE
+    jsr send_command                                                  ; fc5a: 20 4a fc     J.            ; Send command to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    ldy #&11                                                          ; fc5d: a0 11       ..
-; Send control block bytes &11..&02
+    ldy #&11                                                          ; fc5d: a0 11       ..             ; Start at control block byte &11
 ; &fc5f referenced 1 time by &fc67
-.loop_cfc5f
-    lda (control_block_ptr),y                                         ; fc5f: b1 fa       ..
-    jsr send_command                                                  ; fc61: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+.osfile_send_block_loop
+    lda (control_block_ptr),y                                         ; fc5f: b1 fa       ..             ; Get control block byte
+    jsr send_command                                                  ; fc61: 20 4a fc     J.            ; Send to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    dey                                                               ; fc64: 88          .
-    cpy #1                                                            ; fc65: c0 01       ..
-    bne loop_cfc5f                                                    ; fc67: d0 f6       ..
-; Get filename pointer from control block
-    dey                                                               ; fc69: 88          .
-    lda (control_block_ptr),y                                         ; fc6a: b1 fa       ..
-    tax                                                               ; fc6c: aa          .
-    iny                                                               ; fc6d: c8          .
-    lda (control_block_ptr),y                                         ; fc6e: b1 fa       ..
-    tay                                                               ; fc70: a8          .
-; Send filename string
-    jsr send_string                                                   ; fc71: 20 b2 f9     ..            ; Send a CR-terminated string to the host via Tube R2.
+    dey                                                               ; fc64: 88          .              ; Decrement index
+    cpy #1                                                            ; fc65: c0 01       ..             ; Reached byte 1?
+    bne osfile_send_block_loop                                        ; fc67: d0 f6       ..             ; No: send next byte
+    dey                                                               ; fc69: 88          .              ; Decrement to byte 0
+    lda (control_block_ptr),y                                         ; fc6a: b1 fa       ..             ; Get filename pointer low
+    tax                                                               ; fc6c: aa          .              ; Transfer to X
+    iny                                                               ; fc6d: c8          .              ; Move to byte 1
+    lda (control_block_ptr),y                                         ; fc6e: b1 fa       ..             ; Get filename pointer high
+    tay                                                               ; fc70: a8          .              ; Transfer to Y
+    jsr send_string                                                   ; fc71: 20 b2 f9     ..            ; Send filename string; Send a CR-terminated string to the host via Tube R2.
 ; 
 ;     On entry:
 ;       X = string address low byte
 ;       Y = string address high byte
 ;     On exit:
 ;       Y restored from string_ptr_hi
-; Send function code
-    pla                                                               ; fc74: 68          h
-    jsr send_command                                                  ; fc75: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    pla                                                               ; fc74: 68          h              ; Restore function code
+    jsr send_command                                                  ; fc75: 20 4a fc     J.            ; Send function code; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-; Wait for result byte
-    jsr wait_for_tube_r2_byte                                         ; fc78: 20 75 f9     u.
-    pha                                                               ; fc7b: 48          H
-    ldy #&11                                                          ; fc7c: a0 11       ..
-; Receive updated control block bytes &11..&02
+    jsr wait_for_tube_r2_byte                                         ; fc78: 20 75 f9     u.            ; Wait for result byte
+    pha                                                               ; fc7b: 48          H              ; Save result on stack
+    ldy #&11                                                          ; fc7c: a0 11       ..             ; Start at control block byte &11
 ; &fc7e referenced 1 time by &fc86
-.loop_cfc7e
-    jsr wait_for_tube_r2_byte                                         ; fc7e: 20 75 f9     u.
-    sta (control_block_ptr),y                                         ; fc81: 91 fa       ..
-    dey                                                               ; fc83: 88          .
-    cpy #1                                                            ; fc84: c0 01       ..
-    bne loop_cfc7e                                                    ; fc86: d0 f6       ..
-; Restore XY registers
-    ldy control_block_ptr_hi                                          ; fc88: a4 fb       ..
-    ldx control_block_ptr                                             ; fc8a: a6 fa       ..
-; Return result in A
-    pla                                                               ; fc8c: 68          h
-    rts                                                               ; fc8d: 60          `
+.osfile_recv_block_loop
+    jsr wait_for_tube_r2_byte                                         ; fc7e: 20 75 f9     u.            ; Wait for response byte
+    sta (control_block_ptr),y                                         ; fc81: 91 fa       ..             ; Store in control block
+    dey                                                               ; fc83: 88          .              ; Decrement index
+    cpy #1                                                            ; fc84: c0 01       ..             ; Reached byte 1?
+    bne osfile_recv_block_loop                                        ; fc86: d0 f6       ..             ; No: receive next byte
+    ldy control_block_ptr_hi                                          ; fc88: a4 fb       ..             ; Restore Y from control block ptr
+    ldx control_block_ptr                                             ; fc8a: a6 fa       ..             ; Restore X from control block ptr
+    pla                                                               ; fc8c: 68          h              ; Restore result to A
+    rts                                                               ; fc8d: 60          `              ; Return with result in A
 
 ; ***************************************************************************************
 ; Multiple byte read and write.
@@ -1497,68 +1312,59 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     On entry:
 ;       A = function, XY => control block
 ; ***************************************************************************************
-; Store control block pointer in &FA/FB
 .osgbpb_impl
-    sty control_block_ptr_hi                                          ; fc8e: 84 fb       ..
-    stx control_block_ptr                                             ; fc90: 86 fa       ..
-    pha                                                               ; fc92: 48          H
-    lda #&16                                                          ; fc93: a9 16       ..
-; Send command &16: OSGBPB
-    jsr send_command                                                  ; fc95: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    sty control_block_ptr_hi                                          ; fc8e: 84 fb       ..             ; Store control block high byte
+    stx control_block_ptr                                             ; fc90: 86 fa       ..             ; Store control block low byte
+    pha                                                               ; fc92: 48          H              ; Save function on stack
+    lda #&16                                                          ; fc93: a9 16       ..             ; Command &16: OSGBPB
+    jsr send_command                                                  ; fc95: 20 4a fc     J.            ; Send command to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    ldy #&0c                                                          ; fc98: a0 0c       ..
-; Send control block bytes &0C..&00
+    ldy #&0c                                                          ; fc98: a0 0c       ..             ; Start at control block byte &0C
 ; &fc9a referenced 1 time by &fca0
-.loop_cfc9a
-    lda (control_block_ptr),y                                         ; fc9a: b1 fa       ..
-    jsr send_command                                                  ; fc9c: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+.osgbpb_send_block_loop
+    lda (control_block_ptr),y                                         ; fc9a: b1 fa       ..             ; Get control block byte
+    jsr send_command                                                  ; fc9c: 20 4a fc     J.            ; Send to host; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    dey                                                               ; fc9f: 88          .
-    bpl loop_cfc9a                                                    ; fca0: 10 f8       ..
-; Send function code
-    pla                                                               ; fca2: 68          h
-    jsr send_command                                                  ; fca3: 20 4a fc     J.            ; Wait for Tube R2 to be free, then send byte.
+    dey                                                               ; fc9f: 88          .              ; Decrement index
+    bpl osgbpb_send_block_loop                                        ; fca0: 10 f8       ..             ; Loop for bytes &0C..&00
+    pla                                                               ; fca2: 68          h              ; Restore function code
+    jsr send_command                                                  ; fca3: 20 4a fc     J.            ; Send function code; Wait for Tube R2 to be free, then send byte.
 ; 
 ;     On entry:
 ;       A = byte to send
 ;     On exit:
 ;       A preserved
-    ldy #&0c                                                          ; fca6: a0 0c       ..
-; Receive updated control block
+    ldy #&0c                                                          ; fca6: a0 0c       ..             ; Start at control block byte &0C
 ; &fca8 referenced 1 time by &fcae
-.loop_cfca8
-    jsr wait_for_tube_r2_byte                                         ; fca8: 20 75 f9     u.
-    sta (control_block_ptr),y                                         ; fcab: 91 fa       ..
-    dey                                                               ; fcad: 88          .
-    bpl loop_cfca8                                                    ; fcae: 10 f8       ..
-    ldy control_block_ptr_hi                                          ; fcb0: a4 fb       ..
-; Restore XY registers
-    ldx control_block_ptr                                             ; fcb2: a6 fa       ..
-; Get carry and result
-    jmp wait_carry_and_byte                                           ; fcb4: 4c 71 f9    Lq.
+.osgbpb_recv_block_loop
+    jsr wait_for_tube_r2_byte                                         ; fca8: 20 75 f9     u.            ; Wait for response byte
+    sta (control_block_ptr),y                                         ; fcab: 91 fa       ..             ; Store in control block
+    dey                                                               ; fcad: 88          .              ; Decrement index
+    bpl osgbpb_recv_block_loop                                        ; fcae: 10 f8       ..             ; Loop for bytes &0C..&00
+    ldy control_block_ptr_hi                                          ; fcb0: a4 fb       ..             ; Restore Y from control block ptr
+    ldx control_block_ptr                                             ; fcb2: a6 fa       ..             ; Restore X from control block ptr
+    jmp wait_carry_and_byte                                           ; fcb4: 4c 71 f9    Lq.            ; Get carry and result byte
 
 ; ***************************************************************************************
 ; Generate a 'Bad' error for unsupported MOS calls.
 ; ***************************************************************************************
-; BRK with error 255: 'Bad'
 ; &fcb7 referenced 1 time by &ffb9
 .unsupported
-    brk                                                               ; fcb7: 00          .
+    brk                                                               ; fcb7: 00          .              ; Generate error 255: 'Bad'
 
     equb &ff                                                          ; fcb8: ff          .
     equs "Bad"                                                        ; fcb9: 42 61 64    Bad
-; OSWORD 1-20 send block lengths
 ; &fcbc referenced 1 time by &fb24
 .osword_send_lengths
-    equb 0                                                            ; fcbc: 00          .
+    equb 0                                                            ; fcbc: 00          .              ; OSWORD 1-20 send block lengths
     equb 0                                                            ; fcbd: 00          .
     equb 5                                                            ; fcbe: 05          .
     equb 0                                                            ; fcbf: 00          .
@@ -1578,10 +1384,9 @@ osbyte_read_high_word = sub_cfaf7+1
     equb &0d                                                          ; fccd: 0d          .
     equb 0                                                            ; fcce: 00          .
     equb 4                                                            ; fccf: 04          .
-; OSWORD 1-20 receive block lengths
 ; &fcd0 referenced 1 time by &fb50
 .osword_recv_lengths
-    equb &80                                                          ; fcd0: 80          .
+    equb &80                                                          ; fcd0: 80          .              ; OSWORD 1-20 receive block lengths
     equb 5                                                            ; fcd1: 05          .
     equb 0                                                            ; fcd2: 00          .
     equb 5                                                            ; fcd3: 05          .
@@ -1608,28 +1413,22 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     break flag in the stacked processor status to distinguish
 ;     BRK from IRQ, and dispatches accordingly.
 ; ***************************************************************************************
-; Save A in irq_a_store
 .interrupt_handler
-    sta irq_a_store                                                   ; fce5: 85 fc       ..
-; Pull stacked flags to check BRK bit
-    pla                                                               ; fce7: 68          h
-    pha                                                               ; fce8: 48          H
-    and #&10                                                          ; fce9: 29 10       ).
-; B flag set: BRK instruction
-    bne cfcfd                                                         ; fceb: d0 10       ..
-; Not BRK: dispatch via IRQ1V
-    jmp (irq1v)                                                       ; fced: 6c 04 02    l..
+    sta irq_a_store                                                   ; fce5: 85 fc       ..             ; Save A in irq_a_store
+    pla                                                               ; fce7: 68          h              ; Pull stacked processor status
+    pha                                                               ; fce8: 48          H              ; Push it back (non-destructive read)
+    and #&10                                                          ; fce9: 29 10       ).             ; Isolate BRK flag (bit 4)
+    bne brk_handler_entry                                             ; fceb: d0 10       ..             ; BRK flag set: handle BRK
+    jmp (irq1v)                                                       ; fced: 6c 04 02    l..            ; Dispatch via IRQ1V
 
 ; ***************************************************************************************
 ; First-level IRQ handler. Checks Tube R4 for data
 ;     transfer requests, then Tube R1 for escape/event
 ;     notifications. Falls through to IRQ2V if neither.
 ; ***************************************************************************************
-; Data in Tube R4: process transfers/errors
 .irq1_handler
-    bit lfefe                                                         ; fcf0: 2c fe fe    ,..
-; Data in Tube R1: process escape/events
-    bmi tube_r4_interrupt                                             ; fcf3: 30 4a       0J             ; Process data received via Tube R4. If bit 7 is set,
+    bit tube_r4_status_reg                                            ; fcf0: 2c fe fe    ,..            ; Check Tube R4 for data
+    bmi tube_r4_interrupt                                             ; fcf3: 30 4a       0J             ; Data present: handle transfer/error; Process data received via Tube R4. If bit 7 is set,
 ;     it is an error from the host: reads the error number
 ;     and message via R2 into the error buffer, then
 ;     executes the error via a JMP to the buffer (which
@@ -1637,45 +1436,39 @@ osbyte_read_high_word = sub_cfaf7+1
 ; 
 ;     If bit 7 is clear, it is a data transfer request:
 ;     falls through to data_transfer_setup.
-    bit lfef8                                                         ; fcf5: 2c f8 fe    ,..
-; Neither: pass on via IRQ2V
-    bmi tube_r1_interrupt                                             ; fcf8: 30 1e       0.             ; Process data received via Tube R1. If bit 7 is set,
+    bit tube_r1_status_reg                                            ; fcf5: 2c f8 fe    ,..            ; Check Tube R1 for data
+    bmi tube_r1_interrupt                                             ; fcf8: 30 1e       0.             ; Data present: handle escape/event; Process data received via Tube R1. If bit 7 is set,
 ;     it is an Escape state change (stored in escape_flag).
 ;     Otherwise, it is an event notification: reads the
 ;     event parameters (Y, X, event number) from R1 and
 ;     dispatches via EVNTV.
-    equb &6c                                                          ; fcfa: 6c          l
+    equb &6c                                                          ; fcfa: 6c          l              ; Neither: dispatch via IRQ2V
 
 ; ***************************************************************************************
 ; Extract the return address from the stack, subtract 1
 ;     to point to the byte after the BRK opcode, store in
 ;     last_error, then dispatch via BRKV.
 ; ***************************************************************************************
-; Save X
 .brk_handler
-    asl l0002                                                         ; fcfb: 06 02       ..
+    asl zp_data_base_2                                                ; fcfb: 06 02       ..             ; Merge with BRK entry (ASL is TXA;PHA)
 ; &fcfd referenced 1 time by &fceb
-.cfcfd
-    txa                                                               ; fcfd: 8a          .
-; Get return address from stack
-    pha                                                               ; fcfe: 48          H
-    tsx                                                               ; fcff: ba          .
-; Subtract 1 to point at the BRK error block
-    lda irq_return_addr_lo,x                                          ; fd00: bd 03 01    ...
-    cld                                                               ; fd03: d8          .
-    sec                                                               ; fd04: 38          8
-    sbc #1                                                            ; fd05: e9 01       ..
-    sta last_error                                                    ; fd07: 85 fd       ..
-    lda irq_return_addr_hi,x                                          ; fd09: bd 04 01    ...
-    sbc #0                                                            ; fd0c: e9 00       ..
-; Restore registers
-    sta last_error_hi                                                 ; fd0e: 85 fe       ..
-    pla                                                               ; fd10: 68          h
-    tax                                                               ; fd11: aa          .
-; Re-enable interrupts, dispatch via BRKV
-    lda irq_a_store                                                   ; fd12: a5 fc       ..
-    cli                                                               ; fd14: 58          X
-    jmp (brkv)                                                        ; fd15: 6c 02 02    l..
+.brk_handler_entry
+    txa                                                               ; fcfd: 8a          .              ; Save X on stack
+    pha                                                               ; fcfe: 48          H              ; Push X
+    tsx                                                               ; fcff: ba          .              ; Get stack pointer
+    lda irq_return_addr_lo,x                                          ; fd00: bd 03 01    ...            ; Get return address low from stack
+    cld                                                               ; fd03: d8          .              ; Clear decimal mode
+    sec                                                               ; fd04: 38          8              ; Set carry for subtract
+    sbc #1                                                            ; fd05: e9 01       ..             ; Subtract 1 to point at error block
+    sta last_error                                                    ; fd07: 85 fd       ..             ; Store as last_error low
+    lda irq_return_addr_hi,x                                          ; fd09: bd 04 01    ...            ; Get return address high from stack
+    sbc #0                                                            ; fd0c: e9 00       ..             ; Subtract borrow
+    sta last_error_hi                                                 ; fd0e: 85 fe       ..             ; Store as last_error high
+    pla                                                               ; fd10: 68          h              ; Restore X from stack
+    tax                                                               ; fd11: aa          .              ; Transfer back to X
+    lda irq_a_store                                                   ; fd12: a5 fc       ..             ; Get saved A from irq_a_store
+    cli                                                               ; fd14: 58          X              ; Re-enable interrupts
+    jmp (brkv)                                                        ; fd15: 6c 02 02    l..            ; Dispatch via BRKV
 
 ; ***************************************************************************************
 ; Process data received via Tube R1. If bit 7 is set,
@@ -1684,18 +1477,15 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     event parameters (Y, X, event number) from R1 and
 ;     dispatches via EVNTV.
 ; ***************************************************************************************
-; Read Tube R1 data
 ; &fd18 referenced 1 time by &fcf8
 .tube_r1_interrupt
-    lda lfef9                                                         ; fd18: ad f9 fe    ...
-; Bit 7 set: Escape state change
-    bmi set_escape_flag                                               ; fd1b: 30 1c       0.
-; Save registers for event dispatch
-    tya                                                               ; fd1d: 98          .
-    pha                                                               ; fd1e: 48          H
-    txa                                                               ; fd1f: 8a          .
-    pha                                                               ; fd20: 48          H
-    jsr wait_for_tube_r1_byte                                         ; fd21: 20 80 fe     ..            ; Wait for data in Tube R1, allowing Tube R4 transfer
+    lda tube_r1_data_reg                                              ; fd18: ad f9 fe    ...            ; Read data from Tube R1
+    bmi set_escape_flag                                               ; fd1b: 30 1c       0.             ; Bit 7 set: Escape state change
+    tya                                                               ; fd1d: 98          .              ; Save Y
+    pha                                                               ; fd1e: 48          H              ; Push Y
+    txa                                                               ; fd1f: 8a          .              ; Save X
+    pha                                                               ; fd20: 48          H              ; Push X
+    jsr wait_for_tube_r1_byte                                         ; fd21: 20 80 fe     ..            ; Read event Y parameter via R1; Wait for data in Tube R1, allowing Tube R4 transfer
 ;     requests to be serviced via IRQ while waiting.
 ; 
 ;     Polls R1 status; if R4 has data instead, briefly
@@ -1704,10 +1494,8 @@ osbyte_read_high_word = sub_cfaf7+1
 ; 
 ;     On exit:
 ;       A = byte from Tube R1
-; Read event Y parameter from R1
-    tay                                                               ; fd24: a8          .
-; Read event X parameter from R1
-    jsr wait_for_tube_r1_byte                                         ; fd25: 20 80 fe     ..            ; Wait for data in Tube R1, allowing Tube R4 transfer
+    tay                                                               ; fd24: a8          .              ; Store in Y
+    jsr wait_for_tube_r1_byte                                         ; fd25: 20 80 fe     ..            ; Read event X parameter via R1; Wait for data in Tube R1, allowing Tube R4 transfer
 ;     requests to be serviced via IRQ while waiting.
 ; 
 ;     Polls R1 status; if R4 has data instead, briefly
@@ -1716,9 +1504,8 @@ osbyte_read_high_word = sub_cfaf7+1
 ; 
 ;     On exit:
 ;       A = byte from Tube R1
-; Read event number from R1
-    tax                                                               ; fd28: aa          .
-    jsr wait_for_tube_r1_byte                                         ; fd29: 20 80 fe     ..            ; Wait for data in Tube R1, allowing Tube R4 transfer
+    tax                                                               ; fd28: aa          .              ; Store in X
+    jsr wait_for_tube_r1_byte                                         ; fd29: 20 80 fe     ..            ; Read event number via R1; Wait for data in Tube R1, allowing Tube R4 transfer
 ;     requests to be serviced via IRQ while waiting.
 ; 
 ;     Polls R1 status; if R4 has data instead, briefly
@@ -1727,28 +1514,24 @@ osbyte_read_high_word = sub_cfaf7+1
 ; 
 ;     On exit:
 ;       A = byte from Tube R1
-; Dispatch event, restore registers and RTI
-    jsr sub_cfd36                                                     ; fd2c: 20 36 fd     6.
-    pla                                                               ; fd2f: 68          h
-    tax                                                               ; fd30: aa          .
-    pla                                                               ; fd31: 68          h
-    tay                                                               ; fd32: a8          .
-    lda irq_a_store                                                   ; fd33: a5 fc       ..
-    rti                                                               ; fd35: 40          @
+    jsr dispatch_event                                                ; fd2c: 20 36 fd     6.            ; Dispatch event via EVNTV
+    pla                                                               ; fd2f: 68          h              ; Restore X from stack
+    tax                                                               ; fd30: aa          .              ; Transfer to X
+    pla                                                               ; fd31: 68          h              ; Restore Y from stack
+    tay                                                               ; fd32: a8          .              ; Transfer to Y
+    lda irq_a_store                                                   ; fd33: a5 fc       ..             ; Get saved A from irq_a_store
+    rti                                                               ; fd35: 40          @              ; Return from interrupt
 
-; Dispatch via EVNTV
 ; &fd36 referenced 1 time by &fd2c
-.sub_cfd36
-    jmp (evntv)                                                       ; fd36: 6c 20 02    l .
+.dispatch_event
+    jmp (evntv)                                                       ; fd36: 6c 20 02    l .            ; Dispatch event via EVNTV
 
-; Shift bit 6 of Tube data into bit 7 of escape_flag
 ; &fd39 referenced 1 time by &fd1b
 .set_escape_flag
-    asl a                                                             ; fd39: 0a          .
-    sta escape_flag                                                   ; fd3a: 85 ff       ..
-; Restore A from irq_a_store and return
-    lda irq_a_store                                                   ; fd3c: a5 fc       ..
-    rti                                                               ; fd3e: 40          @
+    asl a                                                             ; fd39: 0a          .              ; Shift bit 6 into bit 7 for Escape
+    sta escape_flag                                                   ; fd3a: 85 ff       ..             ; Store as Escape flag
+    lda irq_a_store                                                   ; fd3c: a5 fc       ..             ; Get saved A from irq_a_store
+    rti                                                               ; fd3e: 40          @              ; Return from interrupt
 
 ; ***************************************************************************************
 ; Process data received via Tube R4. If bit 7 is set,
@@ -1760,12 +1543,10 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     If bit 7 is clear, it is a data transfer request:
 ;     falls through to data_transfer_setup.
 ; ***************************************************************************************
-; Read Tube R4 data
 ; &fd3f referenced 1 time by &fcf3
 .tube_r4_interrupt
-    lda lfeff                                                         ; fd3f: ad ff fe    ...
-; Bit 7 clear: data transfer request
-    bpl data_transfer_setup                                           ; fd42: 10 21       .!             ; Configure the NMI handler for a data transfer.
+    lda tube_r4_data_reg                                              ; fd3f: ad ff fe    ...            ; Read data from Tube R4
+    bpl data_transfer_setup                                           ; fd42: 10 21       .!             ; Bit 7 clear: data transfer request; Configure the NMI handler for a data transfer.
 ; 
 ;     The transfer type (0-7) from R4 selects the NMI
 ;     routine and the address pointer. Types 0-3 are
@@ -1775,30 +1556,24 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     Reads the 4-byte transfer address from R4 (only the
 ;     low 2 bytes are used), configures the NMI vector and
 ;     transfer address, then reads the sync byte from R4.
-; Re-enable interrupts during error reception
-    cli                                                               ; fd44: 58          X
-; Wait for error data via Tube R2
+    cli                                                               ; fd44: 58          X              ; Re-enable IRQs for error reception
 ; &fd45 referenced 1 time by &fd48
-.loop_cfd45
-    bit lfefa                                                         ; fd45: 2c fa fe    ,..
-    bpl loop_cfd45                                                    ; fd48: 10 fb       ..
-    lda lfefb                                                         ; fd4a: ad fb fe    ...
-; Store BRK opcode at start of error buffer
-    lda #0                                                            ; fd4d: a9 00       ..
-    sta error_buffer                                                  ; fd4f: 8d 36 02    .6.
-    tay                                                               ; fd52: a8          .              ; Y=&00
-; Read error number into buffer
-    jsr wait_for_tube_r2_byte                                         ; fd53: 20 75 f9     u.
-    sta error_buffer_errnum                                           ; fd56: 8d 37 02    .7.
-; Read error string bytes until NUL terminator
+.tube_r4_wait_error
+    bit tube_r2_status_reg                                            ; fd45: 2c fa fe    ,..            ; Poll Tube R2 for error data
+    bpl tube_r4_wait_error                                            ; fd48: 10 fb       ..             ; Wait until data available
+    lda tube_r2_data_reg                                              ; fd4a: ad fb fe    ...            ; Read and discard R2 sync byte
+    lda #0                                                            ; fd4d: a9 00       ..             ; A=0 (BRK opcode)
+    sta error_buffer                                                  ; fd4f: 8d 36 02    .6.            ; Store BRK at start of error buffer
+    tay                                                               ; fd52: a8          .              ; Y=0 for buffer index; Y=&00
+    jsr wait_for_tube_r2_byte                                         ; fd53: 20 75 f9     u.            ; Wait for error number byte
+    sta error_buffer_errnum                                           ; fd56: 8d 37 02    .7.            ; Store error number in buffer
 ; &fd59 referenced 1 time by &fd60
-.loop_cfd59
-    iny                                                               ; fd59: c8          .
-    jsr wait_for_tube_r2_byte                                         ; fd5a: 20 75 f9     u.
-    sta error_buffer_errnum,y                                         ; fd5d: 99 37 02    .7.
-    bne loop_cfd59                                                    ; fd60: d0 f7       ..
-; Execute the BRK in the error buffer
-    jmp error_buffer                                                  ; fd62: 4c 36 02    L6.
+.tube_r4_read_error_loop
+    iny                                                               ; fd59: c8          .              ; Advance buffer index
+    jsr wait_for_tube_r2_byte                                         ; fd5a: 20 75 f9     u.            ; Wait for next error string byte
+    sta error_buffer_errnum,y                                         ; fd5d: 99 37 02    .7.            ; Store in error buffer
+    bne tube_r4_read_error_loop                                       ; fd60: d0 f7       ..             ; Loop until NUL terminator
+    jmp error_buffer                                                  ; fd62: 4c 36 02    L6.            ; Execute BRK in error buffer
 
 ; ***************************************************************************************
 ; Configure the NMI handler for a data transfer.
@@ -1812,151 +1587,126 @@ osbyte_read_high_word = sub_cfaf7+1
 ;     low 2 bytes are used), configures the NMI vector and
 ;     transfer address, then reads the sync byte from R4.
 ; ***************************************************************************************
-; Save transfer type, preserve Y
 ; &fd65 referenced 1 time by &fd42
 .data_transfer_setup
-    sta nmi_vector                                                    ; fd65: 8d fa ff    ...
-    tya                                                               ; fd68: 98          .
-; Look up NMI routine address from table
-    pha                                                               ; fd69: 48          H
-    ldy nmi_vector                                                    ; fd6a: ac fa ff    ...
-    lda nmi_routine_addr_table,y                                      ; fd6d: b9 70 fe    .p.
-    sta nmi_vector                                                    ; fd70: 8d fa ff    ...
-; Look up transfer address pointer from table
-    lda nmi_routine_addr_hi_table,y                                   ; fd73: b9 78 fe    .x.
-    sta lfffb                                                         ; fd76: 8d fb ff    ...
-    lda transfer_addr_ptr_table,y                                     ; fd79: b9 60 fe    .`.
-    sta transfer_addr_ptr                                             ; fd7c: 85 f4       ..
-    lda transfer_addr_ptr_hi_table,y                                  ; fd7e: b9 68 fe    .h.
-    sta transfer_addr_ptr_hi                                          ; fd81: 85 f5       ..
-; Wait for called ID byte from Tube R4
+    sta nmi_vector                                                    ; fd65: 8d fa ff    ...            ; Save transfer type in NMI vector
+    tya                                                               ; fd68: 98          .              ; Save Y on stack
+    pha                                                               ; fd69: 48          H              ; Push Y
+    ldy nmi_vector                                                    ; fd6a: ac fa ff    ...            ; Get transfer type back
+    lda nmi_routine_addr_table,y                                      ; fd6d: b9 70 fe    .p.            ; Look up NMI routine address low
+    sta nmi_vector                                                    ; fd70: 8d fa ff    ...            ; Set NMI vector low byte
+    lda nmi_routine_addr_hi_table,y                                   ; fd73: b9 78 fe    .x.            ; Look up NMI routine address high
+    sta nmi_vector_hi                                                 ; fd76: 8d fb ff    ...            ; Set NMI vector high byte
+    lda transfer_addr_ptr_table,y                                     ; fd79: b9 60 fe    .`.            ; Look up address pointer low
+    sta transfer_addr_ptr                                             ; fd7c: 85 f4       ..             ; Set transfer_addr_ptr low
+    lda transfer_addr_ptr_hi_table,y                                  ; fd7e: b9 68 fe    .h.            ; Look up address pointer high
+    sta transfer_addr_ptr_hi                                          ; fd81: 85 f5       ..             ; Set transfer_addr_ptr high
 ; &fd83 referenced 1 time by &fd86
-.loop_cfd83
-    bit lfefe                                                         ; fd83: 2c fe fe    ,..
-    bpl loop_cfd83                                                    ; fd86: 10 fb       ..
-    lda lfeff                                                         ; fd88: ad ff fe    ...
-; Type 5 = TubeRelease: exit immediately
-    cpy #5                                                            ; fd8b: c0 05       ..
-    beq restore_regs_and_rti                                          ; fd8d: f0 58       .X
-; Save transfer type, read 4-byte address
-    tya                                                               ; fd8f: 98          .
-    pha                                                               ; fd90: 48          H
-    ldy #1                                                            ; fd91: a0 01       ..
-; Read and discard address byte 4 (bits 31-24)
+.transfer_wait_id
+    bit tube_r4_status_reg                                            ; fd83: 2c fe fe    ,..            ; Poll Tube R4 for called ID byte
+    bpl transfer_wait_id                                              ; fd86: 10 fb       ..             ; Wait until data available
+    lda tube_r4_data_reg                                              ; fd88: ad ff fe    ...            ; Read called ID byte
+    cpy #5                                                            ; fd8b: c0 05       ..             ; Type 5: release, no transfer needed
+    beq restore_regs_and_rti                                          ; fd8d: f0 58       .X             ; Yes: exit immediately
+    tya                                                               ; fd8f: 98          .              ; Save transfer type
+    pha                                                               ; fd90: 48          H              ; Push transfer type
+    ldy #1                                                            ; fd91: a0 01       ..             ; Y=1 for address byte index
 ; &fd93 referenced 1 time by &fd96
-.loop_cfd93
-    bit lfefe                                                         ; fd93: 2c fe fe    ,..
-    bpl loop_cfd93                                                    ; fd96: 10 fb       ..
-    lda lfeff                                                         ; fd98: ad ff fe    ...
-; Read and discard address byte 3 (bits 23-16)
+.transfer_read_addr4
+    bit tube_r4_status_reg                                            ; fd93: 2c fe fe    ,..            ; Poll Tube R4 for address byte 4
+    bpl transfer_read_addr4                                           ; fd96: 10 fb       ..             ; Wait until data available
+    lda tube_r4_data_reg                                              ; fd98: ad ff fe    ...            ; Read and discard byte 4 (bits 31-24)
 ; &fd9b referenced 1 time by &fd9e
-.loop_cfd9b
-    bit lfefe                                                         ; fd9b: 2c fe fe    ,..
-    bpl loop_cfd9b                                                    ; fd9e: 10 fb       ..
-    lda lfeff                                                         ; fda0: ad ff fe    ...
-; Read address byte 2 (high), store via pointer
+.transfer_read_addr3
+    bit tube_r4_status_reg                                            ; fd9b: 2c fe fe    ,..            ; Poll Tube R4 for address byte 3
+    bpl transfer_read_addr3                                           ; fd9e: 10 fb       ..             ; Wait until data available
+    lda tube_r4_data_reg                                              ; fda0: ad ff fe    ...            ; Read and discard byte 3 (bits 23-16)
 ; &fda3 referenced 1 time by &fda6
-.loop_cfda3
-    bit lfefe                                                         ; fda3: 2c fe fe    ,..
-    bpl loop_cfda3                                                    ; fda6: 10 fb       ..
-    lda lfeff                                                         ; fda8: ad ff fe    ...
-    sta (transfer_addr_ptr),y                                         ; fdab: 91 f4       ..
-    dey                                                               ; fdad: 88          .
-; Read address byte 1 (low), store via pointer
+.transfer_read_addr2
+    bit tube_r4_status_reg                                            ; fda3: 2c fe fe    ,..            ; Poll Tube R4 for address byte 2
+    bpl transfer_read_addr2                                           ; fda6: 10 fb       ..             ; Wait until data available
+    lda tube_r4_data_reg                                              ; fda8: ad ff fe    ...            ; Read address byte 2 (high)
+    sta (transfer_addr_ptr),y                                         ; fdab: 91 f4       ..             ; Store via transfer address pointer
+    dey                                                               ; fdad: 88          .              ; Decrement to byte 0
 ; &fdae referenced 1 time by &fdb1
-.loop_cfdae
-    bit lfefe                                                         ; fdae: 2c fe fe    ,..
-    bpl loop_cfdae                                                    ; fdb1: 10 fb       ..
-    lda lfeff                                                         ; fdb3: ad ff fe    ...
-; Dummy reads of Tube R3 to synchronise
-    sta (transfer_addr_ptr),y                                         ; fdb6: 91 f4       ..
-    bit lfefd                                                         ; fdb8: 2c fd fe    ,..
-    bit lfefd                                                         ; fdbb: 2c fd fe    ,..
-; Wait for sync byte from Tube R4
+.transfer_read_addr1
+    bit tube_r4_status_reg                                            ; fdae: 2c fe fe    ,..            ; Poll Tube R4 for address byte 1
+    bpl transfer_read_addr1                                           ; fdb1: 10 fb       ..             ; Wait until data available
+    lda tube_r4_data_reg                                              ; fdb3: ad ff fe    ...            ; Read address byte 1 (low)
+    sta (transfer_addr_ptr),y                                         ; fdb6: 91 f4       ..             ; Store via transfer address pointer
+    bit tube_r3_data_reg                                              ; fdb8: 2c fd fe    ,..            ; Dummy read of Tube R3 to sync
+    bit tube_r3_data_reg                                              ; fdbb: 2c fd fe    ,..            ; Second dummy read of Tube R3
 ; &fdbe referenced 1 time by &fdc1
-.loop_cfdbe
-    bit lfefe                                                         ; fdbe: 2c fe fe    ,..
-    bpl loop_cfdbe                                                    ; fdc1: 10 fb       ..
-    lda lfeff                                                         ; fdc3: ad ff fe    ...
-; Type < 6: not 256-byte transfer, exit
-    pla                                                               ; fdc6: 68          h
-    cmp #6                                                            ; fdc7: c9 06       ..
-; Type != 6: must be type 7 (read from Tube)
-    bcc restore_regs_and_rti                                          ; fdc9: 90 1c       ..
-; Send 256 bytes from transfer address to Tube R3
-    bne transfer_256_bytes_from_tube                                  ; fdcb: d0 1f       ..
-    ldy #0                                                            ; fdcd: a0 00       ..
-; Wait for Tube R3 free
+.transfer_wait_sync
+    bit tube_r4_status_reg                                            ; fdbe: 2c fe fe    ,..            ; Poll Tube R4 for sync byte
+    bpl transfer_wait_sync                                            ; fdc1: 10 fb       ..             ; Wait until data available
+    lda tube_r4_data_reg                                              ; fdc3: ad ff fe    ...            ; Read sync byte
+    pla                                                               ; fdc6: 68          h              ; Restore transfer type
+    cmp #6                                                            ; fdc7: c9 06       ..             ; Is it type 6 or above?
+    bcc restore_regs_and_rti                                          ; fdc9: 90 1c       ..             ; Below 6: exit (single/double/release)
+    bne transfer_256_bytes_from_tube                                  ; fdcb: d0 1f       ..             ; Not 6: must be type 7 (read block)
+    ldy #0                                                            ; fdcd: a0 00       ..             ; Y=0 for 256-byte counter
 ; &fdcf referenced 2 times by &fdd4, &fddd
-.cfdcf
-    lda lfefc                                                         ; fdcf: ad fc fe    ...
-    and #&80                                                          ; fdd2: 29 80       ).
-    bpl cfdcf                                                         ; fdd4: 10 f9       ..
-; Self-modifying: address patched during setup
-.sub_cfdd6
-nmi6_transfer_addr = sub_cfdd6+1
-    lda lffff,y                                                       ; fdd6: b9 ff ff    ...
-    sta lfefd                                                         ; fdd9: 8d fd fe    ...
-    iny                                                               ; fddc: c8          .
-    bne cfdcf                                                         ; fddd: d0 f0       ..
-; Send final sync byte to Tube R3
+.transfer_write_loop
+    lda tube_r3_status_reg                                            ; fdcf: ad fc fe    ...            ; Read Tube R3 status
+    and #&80                                                          ; fdd2: 29 80       ).             ; Isolate ready bit
+    bpl transfer_write_loop                                           ; fdd4: 10 f9       ..             ; Wait until R3 ready
+.transfer_write_read_byte
+nmi6_transfer_addr = transfer_write_read_byte+1
+    lda irq_vector_hi,y                                               ; fdd6: b9 ff ff    ...            ; Read byte (address patched)
+    sta tube_r3_data_reg                                              ; fdd9: 8d fd fe    ...            ; Send to Tube R3
+    iny                                                               ; fddc: c8          .              ; Next byte
+    bne transfer_write_loop                                           ; fddd: d0 f0       ..             ; Loop for 256 bytes
 ; &fddf referenced 1 time by &fde2
-.loop_cfddf
-    bit lfefc                                                         ; fddf: 2c fc fe    ,..
-    bpl loop_cfddf                                                    ; fde2: 10 fb       ..
-    sta lfefd                                                         ; fde4: 8d fd fe    ...
+.transfer_write_sync
+    bit tube_r3_status_reg                                            ; fddf: 2c fc fe    ,..            ; Poll Tube R3 status
+    bpl transfer_write_sync                                           ; fde2: 10 fb       ..             ; Wait until R3 ready
+    sta tube_r3_data_reg                                              ; fde4: 8d fd fe    ...            ; Send final sync byte to R3
 ; &fde7 referenced 3 times by &fd8d, &fdc9, &fdfe
 .restore_regs_and_rti
-    pla                                                               ; fde7: 68          h
-    tay                                                               ; fde8: a8          .
-    lda irq_a_store                                                   ; fde9: a5 fc       ..
-    rti                                                               ; fdeb: 40          @
+    pla                                                               ; fde7: 68          h              ; Restore Y from stack
+    tay                                                               ; fde8: a8          .              ; Transfer to Y
+    lda irq_a_store                                                   ; fde9: a5 fc       ..             ; Get saved A from irq_a_store
+    rti                                                               ; fdeb: 40          @              ; Return from interrupt
 
 ; &fdec referenced 1 time by &fdcb
 .transfer_256_bytes_from_tube
-    ldy #0                                                            ; fdec: a0 00       ..
-; Wait for Tube R3 data available
+    ldy #0                                                            ; fdec: a0 00       ..             ; Y=0 for 256-byte counter
 ; &fdee referenced 2 times by &fdf3, &fdfc
-.cfdee
-    lda lfefc                                                         ; fdee: ad fc fe    ...
-    and #&80                                                          ; fdf1: 29 80       ).
-    bpl cfdee                                                         ; fdf3: 10 f9       ..
-; Read byte from Tube R3
-    lda lfefd                                                         ; fdf5: ad fd fe    ...
-; Self-modifying: address patched during setup
-.sub_cfdf8
-nmi7_transfer_addr = sub_cfdf8+1
-    sta lffff,y                                                       ; fdf8: 99 ff ff    ...
-    iny                                                               ; fdfb: c8          .
-    bne cfdee                                                         ; fdfc: d0 f0       ..
-.sub_cfdfe
-lfdff = sub_cfdfe+1
-    beq restore_regs_and_rti                                          ; fdfe: f0 e7       ..             ; ALWAYS branch
-
+.transfer_read_loop
+    lda tube_r3_status_reg                                            ; fdee: ad fc fe    ...            ; Read Tube R3 status
+    and #&80                                                          ; fdf1: 29 80       ).             ; Isolate data ready bit
+    bpl transfer_read_loop                                            ; fdf3: 10 f9       ..             ; Wait until R3 has data
+    lda tube_r3_data_reg                                              ; fdf5: ad fd fe    ...            ; Read byte from Tube R3
+.transfer_read_store_byte
+nmi7_transfer_addr = transfer_read_store_byte+1
+    sta irq_vector_hi,y                                               ; fdf8: 99 ff ff    ...            ; Store byte (address patched)
+    iny                                                               ; fdfb: c8          .              ; Next byte
+    bne transfer_read_loop                                            ; fdfc: d0 f0       ..             ; Loop for 256 bytes
+.transfer_read_done
+io_page_base = transfer_read_done+1
+    beq restore_regs_and_rti                                          ; fdfe: f0 e7       ..             ; Always branch to exit
 ; &fdff referenced 2 times by &f819, &f81c
 ; ***************************************************************************************
 ; Transfer type 0. Sends one byte from the transfer
 ;     address to Tube R3, then increments the address.
 ; ***************************************************************************************
 .nmi_single_byte_to_tube
-    pha                                                               ; fe00: 48          H
-; Self-modifying: address patched during setup
-.sub_cfe01
-lfe02 = sub_cfe01+1
-nmi0_transfer_addr = sub_cfe01+2
-    lda lffff                                                         ; fe01: ad ff ff    ...
+    pha                                                               ; fe00: 48          H              ; Save A
+.nmi0_read_byte
+nmi0_transfer_addr_lo = nmi0_read_byte+1
+nmi0_transfer_addr = nmi0_read_byte+2
+    lda irq_vector_hi                                                 ; fe01: ad ff ff    ...            ; Read byte (address patched by setup)
 ; &fe02 referenced 1 time by &fe07
 ; &fe03 referenced 1 time by &fe0c
-    sta lfefd                                                         ; fe04: 8d fd fe    ...
-; Send byte to Tube R3
-    inc lfe02                                                         ; fe07: ee 02 fe    ...
-; Increment transfer address (16-bit)
-    bne cfe0f                                                         ; fe0a: d0 03       ..
-    inc nmi0_transfer_addr                                            ; fe0c: ee 03 fe    ...
+    sta tube_r3_data_reg                                              ; fe04: 8d fd fe    ...            ; Send byte to Tube R3
+    inc nmi0_transfer_addr_lo                                         ; fe07: ee 02 fe    ...            ; Increment address low byte
+    bne nmi0_done                                                     ; fe0a: d0 03       ..             ; No carry: skip high byte increment
+    inc nmi0_transfer_addr                                            ; fe0c: ee 03 fe    ...            ; Increment address high byte
 ; &fe0f referenced 1 time by &fe0a
-.cfe0f
-    pla                                                               ; fe0f: 68          h
-    rti                                                               ; fe10: 40          @
+.nmi0_done
+    pla                                                               ; fe0f: 68          h              ; Restore A
+    rti                                                               ; fe10: 40          @              ; Return from NMI
 
 ; ***************************************************************************************
 ; Transfer type 1. Reads one byte from Tube R3 and
@@ -1964,24 +1714,21 @@ nmi0_transfer_addr = sub_cfe01+2
 ;     the address.
 ; ***************************************************************************************
 .nmi_single_byte_from_tube
-    pha                                                               ; fe11: 48          H
-    lda lfefd                                                         ; fe12: ad fd fe    ...
-; Read byte from Tube R3
-; Self-modifying: store address patched during setup
+    pha                                                               ; fe11: 48          H              ; Save A
+    lda tube_r3_data_reg                                              ; fe12: ad fd fe    ...            ; Read byte from Tube R3
 .nmi1_transfer_addr
-lfe16 = nmi1_transfer_addr+1
-lfe17 = nmi1_transfer_addr+2
-    sta lffff                                                         ; fe15: 8d ff ff    ...
+nmi1_transfer_addr_lo = nmi1_transfer_addr+1
+nmi1_transfer_addr_hi = nmi1_transfer_addr+2
+    sta irq_vector_hi                                                 ; fe15: 8d ff ff    ...            ; Store byte (address patched by setup)
 ; &fe16 referenced 1 time by &fe18
 ; &fe17 referenced 1 time by &fe1d
-; Increment transfer address (16-bit)
-    inc lfe16                                                         ; fe18: ee 16 fe    ...
-    bne cfe20                                                         ; fe1b: d0 03       ..
-    inc lfe17                                                         ; fe1d: ee 17 fe    ...
+    inc nmi1_transfer_addr_lo                                         ; fe18: ee 16 fe    ...            ; Increment address low byte
+    bne nmi1_done                                                     ; fe1b: d0 03       ..             ; No carry: skip high byte increment
+    inc nmi1_transfer_addr_hi                                         ; fe1d: ee 17 fe    ...            ; Increment address high byte
 ; &fe20 referenced 1 time by &fe1b
-.cfe20
-    pla                                                               ; fe20: 68          h
-    rti                                                               ; fe21: 40          @
+.nmi1_done
+    pla                                                               ; fe20: 68          h              ; Restore A
+    rti                                                               ; fe21: 40          @              ; Return from NMI
 
 ; ***************************************************************************************
 ; Transfer type 2. Sends two consecutive bytes from
@@ -1989,32 +1736,28 @@ lfe17 = nmi1_transfer_addr+2
 ;     pointer after each byte.
 ; ***************************************************************************************
 .nmi_two_bytes_to_tube
-    pha                                                               ; fe22: 48          H
-    tya                                                               ; fe23: 98          .
-    pha                                                               ; fe24: 48          H
-    ldy #0                                                            ; fe25: a0 00       ..
-; Send first byte from (data_transfer_addr)
-    lda (data_transfer_addr),y                                        ; fe27: b1 f6       ..
-    sta lfefd                                                         ; fe29: 8d fd fe    ...
-; Increment transfer address
-    inc data_transfer_addr                                            ; fe2c: e6 f6       ..
-    bne cfe32                                                         ; fe2e: d0 02       ..
-    inc data_transfer_addr_hi                                         ; fe30: e6 f7       ..
-; Send second byte
+    pha                                                               ; fe22: 48          H              ; Save A
+    tya                                                               ; fe23: 98          .              ; Save Y
+    pha                                                               ; fe24: 48          H              ; Push Y
+    ldy #0                                                            ; fe25: a0 00       ..             ; Y=0 for indirect indexed access
+    lda (data_transfer_addr),y                                        ; fe27: b1 f6       ..             ; Read first byte via pointer
+    sta tube_r3_data_reg                                              ; fe29: 8d fd fe    ...            ; Send to Tube R3
+    inc data_transfer_addr                                            ; fe2c: e6 f6       ..             ; Increment transfer address low
+    bne nmi2_second_byte                                              ; fe2e: d0 02       ..             ; No carry: skip high increment
+    inc data_transfer_addr_hi                                         ; fe30: e6 f7       ..             ; Increment transfer address high
 ; &fe32 referenced 1 time by &fe2e
-.cfe32
-    lda (data_transfer_addr),y                                        ; fe32: b1 f6       ..
-    sta lfefd                                                         ; fe34: 8d fd fe    ...
-    inc data_transfer_addr                                            ; fe37: e6 f6       ..
-; Increment transfer address
-    bne cfe3d                                                         ; fe39: d0 02       ..
-    inc data_transfer_addr_hi                                         ; fe3b: e6 f7       ..
+.nmi2_second_byte
+    lda (data_transfer_addr),y                                        ; fe32: b1 f6       ..             ; Read second byte via pointer
+    sta tube_r3_data_reg                                              ; fe34: 8d fd fe    ...            ; Send to Tube R3
+    inc data_transfer_addr                                            ; fe37: e6 f6       ..             ; Increment transfer address low
+    bne nmi2_done                                                     ; fe39: d0 02       ..             ; No carry: skip high increment
+    inc data_transfer_addr_hi                                         ; fe3b: e6 f7       ..             ; Increment transfer address high
 ; &fe3d referenced 1 time by &fe39
-.cfe3d
-    pla                                                               ; fe3d: 68          h
-    tay                                                               ; fe3e: a8          .
-    pla                                                               ; fe3f: 68          h
-    rti                                                               ; fe40: 40          @
+.nmi2_done
+    pla                                                               ; fe3d: 68          h              ; Restore Y from stack
+    tay                                                               ; fe3e: a8          .              ; Transfer to Y
+    pla                                                               ; fe3f: 68          h              ; Restore A
+    rti                                                               ; fe40: 40          @              ; Return from NMI
 
 ; ***************************************************************************************
 ; Transfer type 3. Reads two bytes from Tube R3 and
@@ -2022,37 +1765,32 @@ lfe17 = nmi1_transfer_addr+2
 ;     the pointer after each byte.
 ; ***************************************************************************************
 .nmi_two_bytes_from_tube
-    pha                                                               ; fe41: 48          H
-    tya                                                               ; fe42: 98          .
-    pha                                                               ; fe43: 48          H
-    ldy #0                                                            ; fe44: a0 00       ..
-; Read first byte from Tube R3
-    lda lfefd                                                         ; fe46: ad fd fe    ...
-    sta (data_transfer_addr),y                                        ; fe49: 91 f6       ..
-    inc data_transfer_addr                                            ; fe4b: e6 f6       ..
-; Increment transfer address
-    bne cfe51                                                         ; fe4d: d0 02       ..
-    inc data_transfer_addr_hi                                         ; fe4f: e6 f7       ..
-; Read second byte from Tube R3
+    pha                                                               ; fe41: 48          H              ; Save A
+    tya                                                               ; fe42: 98          .              ; Save Y
+    pha                                                               ; fe43: 48          H              ; Push Y
+    ldy #0                                                            ; fe44: a0 00       ..             ; Y=0 for indirect indexed access
+    lda tube_r3_data_reg                                              ; fe46: ad fd fe    ...            ; Read first byte from Tube R3
+    sta (data_transfer_addr),y                                        ; fe49: 91 f6       ..             ; Store via transfer address pointer
+    inc data_transfer_addr                                            ; fe4b: e6 f6       ..             ; Increment transfer address low
+    bne nmi3_second_byte                                              ; fe4d: d0 02       ..             ; No carry: skip high increment
+    inc data_transfer_addr_hi                                         ; fe4f: e6 f7       ..             ; Increment transfer address high
 ; &fe51 referenced 1 time by &fe4d
-.cfe51
-    lda lfefd                                                         ; fe51: ad fd fe    ...
-    sta (data_transfer_addr),y                                        ; fe54: 91 f6       ..
-    inc data_transfer_addr                                            ; fe56: e6 f6       ..
-; Increment transfer address
-    bne cfe5c                                                         ; fe58: d0 02       ..
-    inc data_transfer_addr_hi                                         ; fe5a: e6 f7       ..
+.nmi3_second_byte
+    lda tube_r3_data_reg                                              ; fe51: ad fd fe    ...            ; Read second byte from Tube R3
+    sta (data_transfer_addr),y                                        ; fe54: 91 f6       ..             ; Store via transfer address pointer
+    inc data_transfer_addr                                            ; fe56: e6 f6       ..             ; Increment transfer address low
+    bne nmi3_done                                                     ; fe58: d0 02       ..             ; No carry: skip high increment
+    inc data_transfer_addr_hi                                         ; fe5a: e6 f7       ..             ; Increment transfer address high
 ; &fe5c referenced 1 time by &fe58
-.cfe5c
-    pla                                                               ; fe5c: 68          h
-    tay                                                               ; fe5d: a8          .
-    pla                                                               ; fe5e: 68          h
-    rti                                                               ; fe5f: 40          @
+.nmi3_done
+    pla                                                               ; fe5c: 68          h              ; Restore Y from stack
+    tay                                                               ; fe5d: a8          .              ; Transfer to Y
+    pla                                                               ; fe5e: 68          h              ; Restore A
+    rti                                                               ; fe5f: 40          @              ; Return from NMI
 
-; Low bytes of transfer address pointers
 ; &fe60 referenced 1 time by &fd79
 .transfer_addr_ptr_table
-    equb 2                                                            ; fe60: 02          .
+    equb 2                                                            ; fe60: 02          .              ; Low bytes of transfer addr pointers
     equb &16                                                          ; fe61: 16          .
     equb &f6                                                          ; fe62: f6          .
     equb &f6                                                          ; fe63: f6          .
@@ -2060,10 +1798,9 @@ lfe17 = nmi1_transfer_addr+2
     equb &f6                                                          ; fe65: f6          .
     equb &d7                                                          ; fe66: d7          .
     equb &f9                                                          ; fe67: f9          .
-; High bytes of transfer address pointers
 ; &fe68 referenced 1 time by &fd7e
 .transfer_addr_ptr_hi_table
-    equb &fe                                                          ; fe68: fe          .
+    equb &fe                                                          ; fe68: fe          .              ; High bytes of transfer addr pointers
     equb &fe                                                          ; fe69: fe          .
     equb 0                                                            ; fe6a: 00          .
     equb 0                                                            ; fe6b: 00          .
@@ -2071,10 +1808,9 @@ lfe17 = nmi1_transfer_addr+2
     equb 0                                                            ; fe6d: 00          .
     equb &fd                                                          ; fe6e: fd          .
     equb &fd                                                          ; fe6f: fd          .
-; Low bytes of NMI handler addresses
 ; &fe70 referenced 1 time by &fd6d
 .nmi_routine_addr_table
-    equb 0                                                            ; fe70: 00          .
+    equb 0                                                            ; fe70: 00          .              ; Low bytes of NMI handler addresses
     equb &11                                                          ; fe71: 11          .
     equb &22                                                          ; fe72: 22          "
     equb &41                                                          ; fe73: 41          A
@@ -2082,10 +1818,9 @@ lfe17 = nmi1_transfer_addr+2
     equb &b3                                                          ; fe75: b3          .
     equb &b3                                                          ; fe76: b3          .
     equb &b3                                                          ; fe77: b3          .
-; High bytes of NMI handler addresses
 ; &fe78 referenced 1 time by &fd73
 .nmi_routine_addr_hi_table
-    equb &fe                                                          ; fe78: fe          .
+    equb &fe                                                          ; fe78: fe          .              ; High bytes of NMI handler addresses
     equb &fe                                                          ; fe79: fe          .
     equb &fe                                                          ; fe7a: fe          .
     equb &fe                                                          ; fe7b: fe          .
@@ -2105,16 +1840,12 @@ lfe17 = nmi1_transfer_addr+2
 ;     On exit:
 ;       A = byte from Tube R1
 ; ***************************************************************************************
-; Data available in Tube R1?
 ; &fe80 referenced 5 times by &fd21, &fd25, &fd29, &fe88, &fe91
 .wait_for_tube_r1_byte
-    bit lfef8                                                         ; fe80: 2c f8 fe    ,..
-; Yes: go read it
-    bmi cfe94                                                         ; fe83: 30 0f       0.
-; Check Tube R4 for pending transfer requests
-    bit lfefe                                                         ; fe85: 2c fe fe    ,..
-; Nothing pending: keep polling R1
-    bpl wait_for_tube_r1_byte                                         ; fe88: 10 f6       ..             ; Wait for data in Tube R1, allowing Tube R4 transfer
+    bit tube_r1_status_reg                                            ; fe80: 2c f8 fe    ,..            ; Check Tube R1 for data
+    bmi tube_r1_read_byte                                             ; fe83: 30 0f       0.             ; Data available: go read it
+    bit tube_r4_status_reg                                            ; fe85: 2c fe fe    ,..            ; Check Tube R4 for pending transfers
+    bpl wait_for_tube_r1_byte                                         ; fe88: 10 f6       ..             ; Nothing pending: keep polling R1; Wait for data in Tube R1, allowing Tube R4 transfer
 ;     requests to be serviced via IRQ while waiting.
 ; 
 ;     Polls R1 status; if R4 has data instead, briefly
@@ -2123,15 +1854,12 @@ lfe17 = nmi1_transfer_addr+2
 ; 
 ;     On exit:
 ;       A = byte from Tube R1
-; Save irq_a_store before enabling interrupts
-    lda irq_a_store                                                   ; fe8a: a5 fc       ..
-    php                                                               ; fe8c: 08          .
-; Allow one IRQ through to service R4
-    cli                                                               ; fe8d: 58          X
-    plp                                                               ; fe8e: 28          (
-; Restore irq_a_store and continue polling
-    sta irq_a_store                                                   ; fe8f: 85 fc       ..
-    jmp wait_for_tube_r1_byte                                         ; fe91: 4c 80 fe    L..            ; Wait for data in Tube R1, allowing Tube R4 transfer
+    lda irq_a_store                                                   ; fe8a: a5 fc       ..             ; Save irq_a_store before IRQ
+    php                                                               ; fe8c: 08          .              ; Save processor status
+    cli                                                               ; fe8d: 58          X              ; Allow one IRQ to service R4
+    plp                                                               ; fe8e: 28          (              ; Restore processor status
+    sta irq_a_store                                                   ; fe8f: 85 fc       ..             ; Restore irq_a_store after IRQ
+    jmp wait_for_tube_r1_byte                                         ; fe91: 4c 80 fe    L..            ; Continue polling R1; Wait for data in Tube R1, allowing Tube R4 transfer
 ;     requests to be serviced via IRQ while waiting.
 ; 
 ;     Polls R1 status; if R4 has data instead, briefly
@@ -2141,11 +1869,10 @@ lfe17 = nmi1_transfer_addr+2
 ;     On exit:
 ;       A = byte from Tube R1
 
-; Read byte from Tube R1
 ; &fe94 referenced 1 time by &fe83
-.cfe94
-    lda lfef9                                                         ; fe94: ad f9 fe    ...
-    rts                                                               ; fe97: 60          `
+.tube_r1_read_byte
+    lda tube_r1_data_reg                                              ; fe94: ad f9 fe    ...            ; Read byte from Tube R1
+    rts                                                               ; fe97: 60          `              ; Return with byte in A
 
 ; ***************************************************************************************
 ; Print the text string embedded immediately after the
@@ -2157,45 +1884,38 @@ lfe17 = nmi1_transfer_addr+2
 ;     On exit:
 ;       A = terminator byte (bit 7 set)
 ; ***************************************************************************************
-; Pull return address into control_block_ptr
-; &fe98 referenced 1 time by &f860
+; &fe98 referenced 2 times by &f860, &fa17
 .print_embedded_text
-    pla                                                               ; fe98: 68          h
-    sta control_block_ptr                                             ; fe99: 85 fa       ..
-    pla                                                               ; fe9b: 68          h
-    sta control_block_ptr_hi                                          ; fe9c: 85 fb       ..
-; Increment past the JSR return address
-    ldy #0                                                            ; fe9e: a0 00       ..
+    pla                                                               ; fe98: 68          h              ; Pull return address low
+    sta control_block_ptr                                             ; fe99: 85 fa       ..             ; Store in control_block_ptr low
+    pla                                                               ; fe9b: 68          h              ; Pull return address high
+    sta control_block_ptr_hi                                          ; fe9c: 85 fb       ..             ; Store in control_block_ptr high
+    ldy #0                                                            ; fe9e: a0 00       ..             ; Y=0 for indirect access
 ; &fea0 referenced 1 time by &fead
-.loop_cfea0
-    inc control_block_ptr                                             ; fea0: e6 fa       ..
-    bne cfea6                                                         ; fea2: d0 02       ..
-; Read next character from inline string
-    inc control_block_ptr_hi                                          ; fea4: e6 fb       ..
-; Bit 7 set: end of string
+.print_text_loop
+    inc control_block_ptr                                             ; fea0: e6 fa       ..             ; Increment string pointer low
+    bne print_text_get_char                                           ; fea2: d0 02       ..             ; No carry: skip high byte
+.print_text_inc_high
+    inc control_block_ptr_hi                                          ; fea4: e6 fb       ..             ; Increment string pointer high
 ; &fea6 referenced 1 time by &fea2
-.cfea6
-    lda (control_block_ptr),y                                         ; fea6: b1 fa       ..
-; Print character via OSWRCH
-    bmi cfeb0                                                         ; fea8: 30 06       0.
-    jsr oswrch_entry                                                  ; feaa: 20 ee ff     ..
-    jmp loop_cfea0                                                    ; fead: 4c a0 fe    L..
+.print_text_get_char
+    lda (control_block_ptr),y                                         ; fea6: b1 fa       ..             ; Read character from inline string
+    bmi print_text_resume                                             ; fea8: 30 06       0.             ; Bit 7 set: end of string
+    jsr oswrch_entry                                                  ; feaa: 20 ee ff     ..            ; Print character via OSWRCH
+    jmp print_text_loop                                               ; fead: 4c a0 fe    L..            ; Loop for next character
 
-; Resume execution after the string
 ; &feb0 referenced 1 time by &fea8
-.cfeb0
-    jmp (control_block_ptr)                                           ; feb0: 6c fa 00    l..
+.print_text_resume
+    jmp (control_block_ptr)                                           ; feb0: 6c fa 00    l..            ; Resume execution after string
 
 ; ***************************************************************************************
 ; Acknowledge an NMI by writing A to Tube R3, then
 ;     return from interrupt. Used as the default NMI
 ;     handler for transfer types 4-7.
 ; ***************************************************************************************
-; Write to Tube R3 to acknowledge NMI
 .nmi_acknowledge
-    equb &8d, &fd                                                     ; feb3: 8d fd       ..
-; Unused ROM space, filled with &FF
-    equb &fe                                                          ; feb5: fe          .
+    equb &8d, &fd                                                     ; feb3: 8d fd       ..             ; Write to Tube R3 to acknowledge NMI
+    equb &fe                                                          ; feb5: fe          .              ; Unused ROM space, filled with &FF
     equb &40                                                          ; feb6: 40          @
     equb &ff                                                          ; feb7: ff          .
     equb &ff                                                          ; feb8: ff          .
@@ -2263,33 +1983,32 @@ lfe17 = nmi1_transfer_addr+2
     equb &ff                                                          ; fef6: ff          .
     equb &ff                                                          ; fef7: ff          .
 ; &fef8 referenced 4 times by &f859, &f962, &fcf5, &fe80
-.lfef8
+.tube_r1_status_reg
     equb &ff                                                          ; fef8: ff          .
 ; &fef9 referenced 3 times by &f968, &fd18, &fe94
-.lfef9
+.tube_r1_data_reg
     equb &ff                                                          ; fef9: ff          .
 ; &fefa referenced 25 times by &f975, &f9b8, &fa7a, &fa82, &fa8b, &fa93, &faab, &fab3, &fabb, &fac4, &fad5, &fadf, &fae7, &fb09, &fb11, &fb2d, &fb38, &fb59, &fb64, &fb7e, &fb96, &fbb2, &fbd2, &fc4a, &fd45
-.lfefa
+.tube_r2_status_reg
     equb &ff                                                          ; fefa: ff          .
 ; &fefb referenced 25 times by &f97a, &f9bf, &fa7f, &fa87, &fa90, &fa98, &fab0, &fab8, &fac0, &fac9, &fada, &fae4, &faec, &fb0e, &fb16, &fb32, &fb3f, &fb5e, &fb69, &fb85, &fb9b, &fbb7, &fbd7, &fc4f, &fd4a
-.lfefb
+.tube_r2_data_reg
     equb &ff                                                          ; fefb: ff          .
 ; &fefc referenced 3 times by &fdcf, &fddf, &fdee
-.lfefc
+.tube_r3_status_reg
     equb &ff                                                          ; fefc: ff          .
 ; &fefd referenced 11 times by &fdb8, &fdbb, &fdd9, &fde4, &fdf5, &fe04, &fe12, &fe29, &fe34, &fe46, &fe51
-.lfefd
+.tube_r3_data_reg
     equb &ff                                                          ; fefd: ff          .
 ; &fefe referenced 8 times by &fcf0, &fd83, &fd93, &fd9b, &fda3, &fdae, &fdbe, &fe85
-.lfefe
+.tube_r4_status_reg
     equb &ff                                                          ; fefe: ff          .
 ; &feff referenced 7 times by &fd3f, &fd88, &fd98, &fda0, &fda8, &fdb3, &fdc3
-.lfeff
+.tube_r4_data_reg
     equb &ff                                                          ; feff: ff          .
-; Unused ROM space, filled with &FF
 ; &ff00 referenced 2 times by &f802, &f805
-.lff00
-    equb &ff                                                          ; ff00: ff          .
+.spare_rom_space
+    equb &ff                                                          ; ff00: ff          .              ; Unused ROM space, filled with &FF
     equb &ff                                                          ; ff01: ff          .
     equb &ff                                                          ; ff02: ff          .
     equb &ff                                                          ; ff03: ff          .
@@ -2417,10 +2136,9 @@ lfe17 = nmi1_transfer_addr+2
     equb &ff                                                          ; ff7d: ff          .
     equb &ff                                                          ; ff7e: ff          .
     equb &ff                                                          ; ff7f: ff          .
-; Default MOS vector table (27 entries)
 ; &ff80 referenced 1 time by &f80d
 .default_vector_table
-    equw &fcb7                                                        ; ff80: b7 fc       ..
+    equw &fcb7                                                        ; ff80: b7 fc       ..             ; Default MOS vector table (27 entries)
     equw &f945                                                        ; ff82: 45 f9       E.
     equw &fcf0                                                        ; ff84: f0 fc       ..
     equw &fcb7                                                        ; ff86: b7 fc       ..
@@ -2447,13 +2165,12 @@ lfe17 = nmi1_transfer_addr+2
     equw &f97d                                                        ; ffb0: 7d f9       }.
     equw &f97d                                                        ; ffb2: 7d f9       }.
     equw &f97d                                                        ; ffb4: 7d f9       }.
-; Vector table info: length &36, table at &FF80
 .vector_table_info
-    equb &36                                                          ; ffb6: 36          6
+    equb &36                                                          ; ffb6: 36          6              ; Vector table: length &36 at &FF80
     equw &ff80                                                        ; ffb7: 80 ff       ..
 
 .mos_stub_unsupported_1
-    jmp unsupported                                                   ; ffb9: 4c b7 fc    L..            ; Generate a 'Bad' error for unsupported MOS calls.
+    jmp unsupported                                                   ; ffb9: 4c b7 fc    L..            ; Unsupported: generates 'Bad' error; Generate a 'Bad' error for unsupported MOS calls.
 
 .mos_stub_unsupported_2
     equb &4c, &b7, &fc                                                ; ffbc: 4c b7 fc    L..
@@ -2465,7 +2182,7 @@ lfe17 = nmi1_transfer_addr+2
     equb &4c, &b7, &fc                                                ; ffc5: 4c b7 fc    L..
 
 .nvrdch
-    jmp osrdch_impl                                                   ; ffc8: 4c 6c f9    Ll.            ; Read a character from the host via the Tube.
+    jmp osrdch_impl                                                   ; ffc8: 4c 6c f9    Ll.            ; Non-vectored RDCH; Read a character from the host via the Tube.
 ; 
 ;     Sends command &00 to the host, then waits for
 ;     a carry byte and the character.
@@ -2475,7 +2192,7 @@ lfe17 = nmi1_transfer_addr+2
 ;       C = Escape flag
 
 .nvwrch
-    jmp oswrch_impl                                                   ; ffcb: 4c 62 f9    Lb.            ; Send character in A to the host via Tube R1.
+    jmp oswrch_impl                                                   ; ffcb: 4c 62 f9    Lb.            ; Non-vectored WRCH; Send character in A to the host via Tube R1.
 ; 
 ;     On entry:
 ;       A = character to send
@@ -2483,64 +2200,61 @@ lfe17 = nmi1_transfer_addr+2
 ;       A preserved
 
 .osfind_entry
-    jmp (findv)                                                       ; ffce: 6c 1c 02    l..
+    jmp (findv)                                                       ; ffce: 6c 1c 02    l..            ; Dispatch via FINDV
 
 .osgbpb_entry
-    jmp (gbpbv)                                                       ; ffd1: 6c 1a 02    l..
+    jmp (gbpbv)                                                       ; ffd1: 6c 1a 02    l..            ; Dispatch via GBPBV
 
 .osbput_entry
-    jmp (bputv)                                                       ; ffd4: 6c 18 02    l..
+    jmp (bputv)                                                       ; ffd4: 6c 18 02    l..            ; Dispatch via BPUTV
 
 .osbget_entry
-    jmp (bgetv)                                                       ; ffd7: 6c 16 02    l..
+    jmp (bgetv)                                                       ; ffd7: 6c 16 02    l..            ; Dispatch via BGETV
 
 .osargs_entry
-    jmp (argsv)                                                       ; ffda: 6c 14 02    l..
+    jmp (argsv)                                                       ; ffda: 6c 14 02    l..            ; Dispatch via ARGSV
 
 .osfile_entry
-    jmp (filev)                                                       ; ffdd: 6c 12 02    l..
+    jmp (filev)                                                       ; ffdd: 6c 12 02    l..            ; Dispatch via FILEV
 
 .osrdch_entry
-    jmp (rdchv)                                                       ; ffe0: 6c 10 02    l..
+    jmp (rdchv)                                                       ; ffe0: 6c 10 02    l..            ; Dispatch via RDCHV
 
 .osasci_entry
-    cmp #&0d                                                          ; ffe3: c9 0d       ..
-    bne oswrch_entry                                                  ; ffe5: d0 07       ..
+    cmp #&0d                                                          ; ffe3: c9 0d       ..             ; Is it carriage return?
+    bne oswrch_entry                                                  ; ffe5: d0 07       ..             ; No: skip newline, go to OSWRCH
 ; &ffe7 referenced 2 times by &f948, &f957
 .osnewl_entry
-    lda #&0a                                                          ; ffe7: a9 0a       ..
-    jsr oswrch_entry                                                  ; ffe9: 20 ee ff     ..
+    lda #&0a                                                          ; ffe7: a9 0a       ..             ; Send linefeed first
+    jsr oswrch_entry                                                  ; ffe9: 20 ee ff     ..            ; Send linefeed via OSWRCH
 .oswrcr_entry
-    lda #&0d                                                          ; ffec: a9 0d       ..
+    lda #&0d                                                          ; ffec: a9 0d       ..             ; Load carriage return
 ; &ffee referenced 5 times by &f88f, &f951, &feaa, &ffe5, &ffe9
 .oswrch_entry
-    jmp (wrchv)                                                       ; ffee: 6c 0e 02    l..
+    jmp (wrchv)                                                       ; ffee: 6c 0e 02    l..            ; Dispatch via WRCHV
 
 ; &fff1 referenced 1 time by &f898
 .osword_entry
-    jmp (wordv)                                                       ; fff1: 6c 0c 02    l..
+    jmp (wordv)                                                       ; fff1: 6c 0c 02    l..            ; Dispatch via WORDV
 
 ; &fff4 referenced 1 time by &f8a9
 .osbyte_entry
-    jmp (bytev)                                                       ; fff4: 6c 0a 02    l..
+    jmp (bytev)                                                       ; fff4: 6c 0a 02    l..            ; Dispatch via BYTEV
 
 ; &fff7 referenced 1 time by &f8a1
 .oscli_entry
-    jmp (cliv)                                                        ; fff7: 6c 08 02    l..
+    jmp (cliv)                                                        ; fff7: 6c 08 02    l..            ; Dispatch via CLIV
 
-; NMI vector
 ; &fffa referenced 3 times by &fd65, &fd6a, &fd70
 .nmi_vector
-lfffb = nmi_vector+1
-    equw &feb3                                                        ; fffa: b3 fe       ..
+nmi_vector_hi = nmi_vector+1
+    equw &feb3                                                        ; fffa: b3 fe       ..             ; NMI vector
 ; &fffb referenced 1 time by &fd76
-; RESET vector
 .reset_vector
-    equw &f800                                                        ; fffc: 00 f8       ..
-; IRQ/BRK vector
+    equw &f800                                                        ; fffc: 00 f8       ..             ; RESET vector
 .irq_vector
-lffff = irq_vector+1
-    equw &fce5                                                        ; fffe: e5 fc       ..
+irq_vector_hi = irq_vector+1
+    equw &fce5                                                        ; fffe: e5 fc       ..             ; IRQ/BRK vector
 ; &ffff referenced 4 times by &fdd6, &fdf8, &fe01, &fe15
 .pydis_end
 
@@ -2549,24 +2263,24 @@ save pydis_start, pydis_end
 
 ; Label references by decreasing frequency:
 ;     Send byte to Tube R2:                   25
-;     lfefa:                                  25
-;     lfefb:                                  25
 ;     send_byte_to_tube_r2:                   25
 ;     send_command:                           25
+;     tube_r2_data_reg:                       25
+;     tube_r2_status_reg:                     25
 ;     string_ptr:                             23
 ;     wait_for_tube_r2_byte:                  18
 ;     control_block_ptr:                      14
 ;     data_transfer_addr:                     11
-;     lfefd:                                  11
+;     tube_r3_data_reg:                       11
 ;     string_ptr_hi:                           9
-;     lfefe:                                   8
+;     tube_r4_status_reg:                      8
 ;     Send OSCLI command to host:              7
 ;     current_program:                         7
 ;     data_transfer_addr_hi:                   7
 ;     irq_a_store:                             7
 ;     last_error:                              7
-;     lfeff:                                   7
 ;     oscli_send_to_host:                      7
+;     tube_r4_data_reg:                        7
 ;     control_block_ptr_hi:                    6
 ;     Wait for byte in Tube R1:                5
 ;     current_program_hi:                      5
@@ -2576,55 +2290,57 @@ save pydis_start, pydis_end
 ;     Handle *HELP command:                    4
 ;     command_help:                            4
 ;     enter_raw_code:                          4
-;     lfef8:                                   4
-;     lffff:                                   4
+;     irq_vector_hi:                           4
 ;     memory_top_hi:                           4
+;     tube_r1_status_reg:                      4
 ;     brkv:                                    3
-;     cfb2d:                                   3
-;     cfb59:                                   3
 ;     hex_accumulator:                         3
 ;     hex_accumulator_hi:                      3
-;     l0002:                                   3
-;     lfef9:                                   3
-;     lfefc:                                   3
 ;     nmi_vector:                              3
+;     osword_recv_block:                       3
+;     osword_send_block:                       3
 ;     restore_regs_and_rti:                    3
-;     return_1:                                3
+;     scan_hex_return:                         3
 ;     transfer_addr_ptr:                       3
+;     tube_r1_data_reg:                        3
+;     tube_r3_status_reg:                      3
+;     zp_data_base_2:                          3
 ;     Command prompt loop:                     2
 ;     Enter code at transfer address:          2
 ;     Execute code and restore state:          2
 ;     OSWRCH implementation:                   2
+;     Print inline text:                       2
 ;     Send string to Tube R2:                  2
 ;     Skip spaces in command string:           2
 ;     brkv_hi:                                 2
-;     cf82a:                                   2
-;     cf9b8:                                   2
-;     cfb38:                                   2
-;     cfb64:                                   2
-;     cfb7e:                                   2
-;     cfbb2:                                   2
-;     cfdcf:                                   2
-;     cfdee:                                   2
 ;     command_prompt:                          2
+;     copy_rom_page:                           2
 ;     enter_code:                              2
 ;     error_buffer:                            2
 ;     error_buffer_errnum:                     2
 ;     escape_flag:                             2
 ;     execute_code:                            2
-;     l0000:                                   2
-;     l0001:                                   2
-;     l0003:                                   2
+;     io_page_base:                            2
 ;     last_error_hi:                           2
-;     lfdff:                                   2
-;     lff00:                                   2
 ;     low_memory_code:                         2
 ;     osnewl_entry:                            2
+;     osword_recv_bytes_loop:                  2
+;     osword_send_bytes_loop:                  2
 ;     oswrch_impl:                             2
+;     print_embedded_text:                     2
+;     rdline_recv_loop:                        2
+;     rdline_send_block_loop:                  2
 ;     send_string:                             2
+;     send_string_loop:                        2
 ;     skip_spaces:                             2
 ;     skip_spaces_step:                        2
+;     spare_rom_space:                         2
+;     transfer_read_loop:                      2
+;     transfer_write_loop:                     2
 ;     wait_carry_and_byte:                     2
+;     zp_data_base:                            2
+;     zp_data_base_1:                          2
+;     zp_data_base_3:                          2
 ;     Display startup banner and initialise:   1
 ;     Handle *GO command:                      1
 ;     Handle Tube R1 interrupt:                1
@@ -2632,41 +2348,25 @@ save pydis_start, pydis_end
 ;     Low memory startup code:                 1
 ;     OSRDCH implementation:                   1
 ;     Parse hexadecimal number:                1
-;     Print inline text:                       1
 ;     Read line of input (OSWORD 0):           1
 ;     Set up data transfer via NMI:            1
 ;     Unsupported MOS call:                    1
 ;     argsv:                                   1
 ;     bgetv:                                   1
 ;     bputv:                                   1
+;     brk_handler_entry:                       1
 ;     bytev:                                   1
-;     cf957:                                   1
-;     cf98c:                                   1
-;     cf9a0:                                   1
-;     cfaf5:                                   1
-;     cfafa:                                   1
-;     cfb24:                                   1
-;     cfb45:                                   1
-;     cfb50:                                   1
-;     cfb71:                                   1
-;     cfbc7:                                   1
-;     cfc24:                                   1
-;     cfcfd:                                   1
-;     cfe0f:                                   1
-;     cfe20:                                   1
-;     cfe32:                                   1
-;     cfe3d:                                   1
-;     cfe51:                                   1
-;     cfe5c:                                   1
-;     cfe94:                                   1
-;     cfea6:                                   1
-;     cfeb0:                                   1
 ;     check_oscli_ack:                         1
 ;     cliv:                                    1
 ;     command_go:                              1
 ;     command_prompt_escape:                   1
+;     copy_io_page_loop:                       1
+;     copy_page_ff_loop:                       1
+;     copy_startup_code_loop:                  1
+;     copy_vectors_loop:                       1
 ;     data_transfer_setup:                     1
 ;     default_vector_table:                    1
+;     dispatch_event:                          1
 ;     error_not_6502_code:                     1
 ;     error_not_a_language:                    1
 ;     evntv:                                   1
@@ -2676,187 +2376,103 @@ save pydis_start, pydis_end
 ;     irq1v:                                   1
 ;     irq_return_addr_hi:                      1
 ;     irq_return_addr_lo:                      1
-;     lf85e:                                   1
-;     lf85f:                                   1
-;     lfe02:                                   1
-;     lfe16:                                   1
-;     lfe17:                                   1
-;     lfffb:                                   1
-;     loop_cf802:                              1
-;     loop_cf80d:                              1
-;     loop_cf819:                              1
-;     loop_cf83b:                              1
-;     loop_cf94d:                              1
-;     loop_cf9a6:                              1
-;     loop_cf9d1:                              1
-;     loop_cfa7a:                              1
-;     loop_cfa82:                              1
-;     loop_cfa8b:                              1
-;     loop_cfa93:                              1
-;     loop_cfaab:                              1
-;     loop_cfab3:                              1
-;     loop_cfabb:                              1
-;     loop_cfac4:                              1
-;     loop_cfad5:                              1
-;     loop_cfadf:                              1
-;     loop_cfae7:                              1
-;     loop_cfb09:                              1
-;     loop_cfb11:                              1
-;     loop_cfb96:                              1
-;     loop_cfbd2:                              1
-;     loop_cfc5f:                              1
-;     loop_cfc7e:                              1
-;     loop_cfc9a:                              1
-;     loop_cfca8:                              1
-;     loop_cfd45:                              1
-;     loop_cfd59:                              1
-;     loop_cfd83:                              1
-;     loop_cfd93:                              1
-;     loop_cfd9b:                              1
-;     loop_cfda3:                              1
-;     loop_cfdae:                              1
-;     loop_cfdbe:                              1
-;     loop_cfddf:                              1
-;     loop_cfea0:                              1
 ;     low_memory_startup_code:                 1
+;     nmi0_done:                               1
 ;     nmi0_transfer_addr:                      1
+;     nmi0_transfer_addr_lo:                   1
+;     nmi1_done:                               1
+;     nmi1_transfer_addr_hi:                   1
+;     nmi1_transfer_addr_lo:                   1
+;     nmi2_done:                               1
+;     nmi2_second_byte:                        1
+;     nmi3_done:                               1
+;     nmi3_second_byte:                        1
 ;     nmi_routine_addr_hi_table:               1
 ;     nmi_routine_addr_table:                  1
+;     nmi_vector_hi:                           1
+;     osargs_wait_r2_handle:                   1
+;     osbyte_check_ack:                        1
 ;     osbyte_entry:                            1
 ;     osbyte_high:                             1
+;     osbyte_high_return:                      1
+;     osbyte_high_wait_carry:                  1
+;     osbyte_high_wait_r2_1:                   1
+;     osbyte_high_wait_r2_2:                   1
+;     osbyte_high_wait_r2_3:                   1
+;     osbyte_high_wait_r2_4:                   1
+;     osbyte_high_wait_x:                      1
+;     osbyte_high_wait_y:                      1
+;     osbyte_low_wait_r2_1:                    1
+;     osbyte_low_wait_r2_2:                    1
+;     osbyte_low_wait_r2_3:                    1
+;     osbyte_low_wait_result:                  1
+;     osbyte_read_high_word_impl:              1
 ;     osbyte_read_himem:                       1
+;     osbyte_read_lomem_impl:                  1
 ;     oscli_entry:                             1
+;     oscli_skip_stars_loop:                   1
 ;     oscli_wait_ack:                          1
+;     osfile_recv_block_loop:                  1
+;     osfile_send_block_loop:                  1
+;     osfind_open:                             1
+;     osgbpb_recv_block_loop:                  1
+;     osgbpb_send_block_loop:                  1
 ;     osrdch_impl:                             1
 ;     osword_entry:                            1
+;     osword_recv_get_length:                  1
 ;     osword_recv_lengths:                     1
+;     osword_recv_low_lookup:                  1
+;     osword_restore_regs:                     1
 ;     osword_send_lengths:                     1
-;     print_embedded_text:                     1
+;     osword_send_low_lookup:                  1
+;     osword_wait_r2_cmd:                      1
+;     osword_wait_r2_func:                     1
+;     print_error_done:                        1
+;     print_error_loop:                        1
+;     print_text_get_char:                     1
+;     print_text_loop:                         1
+;     print_text_resume:                       1
 ;     rdchv:                                   1
 ;     rdline:                                  1
-;     return_2:                                1
+;     rdline_escape:                           1
+;     rdline_send_addr_low:                    1
 ;     scan_hex:                                1
+;     scan_hex_got_digit:                      1
+;     scan_hex_next_char:                      1
+;     scan_hex_shift_loop:                     1
 ;     send_string_via_ptr:                     1
 ;     set_escape_flag:                         1
+;     soft_reset_jmp_hi:                       1
+;     soft_reset_jmp_lo:                       1
 ;     startup_banner:                          1
-;     sub_cfd36:                               1
 ;     transfer_256_bytes_from_tube:            1
 ;     transfer_addr_ptr_hi:                    1
 ;     transfer_addr_ptr_hi_table:              1
 ;     transfer_addr_ptr_table:                 1
+;     transfer_read_addr1:                     1
+;     transfer_read_addr2:                     1
+;     transfer_read_addr3:                     1
+;     transfer_read_addr4:                     1
+;     transfer_wait_id:                        1
+;     transfer_wait_sync:                      1
+;     transfer_write_sync:                     1
 ;     tube_r1_interrupt:                       1
+;     tube_r1_read_byte:                       1
 ;     tube_r4_interrupt:                       1
+;     tube_r4_read_error_loop:                 1
+;     tube_r4_wait_error:                      1
 ;     unsupported:                             1
 ;     userv:                                   1
 ;     wordv:                                   1
 ;     wrchv:                                   1
 
-; Automatically generated labels:
-;     cf82a
-;     cf957
-;     cf98c
-;     cf9a0
-;     cf9b8
-;     cfaf5
-;     cfafa
-;     cfb24
-;     cfb2d
-;     cfb38
-;     cfb45
-;     cfb50
-;     cfb59
-;     cfb64
-;     cfb71
-;     cfb7e
-;     cfbb2
-;     cfbc7
-;     cfc24
-;     cfcfd
-;     cfdcf
-;     cfdee
-;     cfe0f
-;     cfe20
-;     cfe32
-;     cfe3d
-;     cfe51
-;     cfe5c
-;     cfe94
-;     cfea6
-;     cfeb0
-;     l0000
-;     l0001
-;     l0002
-;     l0003
-;     lf85e
-;     lf85f
-;     lfdff
-;     lfe02
-;     lfe16
-;     lfe17
-;     lfef8
-;     lfef9
-;     lfefa
-;     lfefb
-;     lfefc
-;     lfefd
-;     lfefe
-;     lfeff
-;     lff00
-;     lfffb
-;     lffff
-;     loop_cf802
-;     loop_cf80d
-;     loop_cf819
-;     loop_cf83b
-;     loop_cf94d
-;     loop_cf9a6
-;     loop_cf9d1
-;     loop_cfa7a
-;     loop_cfa82
-;     loop_cfa8b
-;     loop_cfa93
-;     loop_cfaab
-;     loop_cfab3
-;     loop_cfabb
-;     loop_cfac4
-;     loop_cfad5
-;     loop_cfadf
-;     loop_cfae7
-;     loop_cfb09
-;     loop_cfb11
-;     loop_cfb96
-;     loop_cfbd2
-;     loop_cfc5f
-;     loop_cfc7e
-;     loop_cfc9a
-;     loop_cfca8
-;     loop_cfd45
-;     loop_cfd59
-;     loop_cfd83
-;     loop_cfd93
-;     loop_cfd9b
-;     loop_cfda3
-;     loop_cfdae
-;     loop_cfdbe
-;     loop_cfddf
-;     loop_cfea0
-;     return_1
-;     return_2
-;     sub_cf85d
-;     sub_cfaf7
-;     sub_cfd36
-;     sub_cfdd6
-;     sub_cfdf8
-;     sub_cfdfe
-;     sub_cfe01
-
 ; Stats:
 ;     Total size (Code + Data) = 2048 bytes
-;     Code                     = 1585 bytes (77%)
-;     Data                     = 463 bytes (23%)
+;     Code                     = 1587 bytes (77%)
+;     Data                     = 461 bytes (23%)
 ;
 ;     Number of instructions   = 778
-;     Number of data bytes     = 306 bytes
+;     Number of data bytes     = 304 bytes
 ;     Number of data words     = 62 bytes
 ;     Number of string bytes   = 95 bytes
 ;     Number of strings        = 6
