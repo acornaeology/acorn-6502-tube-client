@@ -38,18 +38,9 @@ _tmp.close()
 load(0xF800, _tmp.name, "65C02")
 os.unlink(_tmp.name)
 
-# =====================================================================
-# Tube I/O register constants
-# =====================================================================
-
-constant(0xFEF8, "tube_r1_status")
-constant(0xFEF9, "tube_r1_data")
-constant(0xFEFA, "tube_r2_status")
-constant(0xFEFB, "tube_r2_data")
-constant(0xFEFC, "tube_r3_status")
-constant(0xFEFD, "tube_r3_data")
-constant(0xFEFE, "tube_r4_status")
-constant(0xFEFF, "tube_r4_data")
+# Tube I/O registers are labelled rather than constant() because the
+# addresses fall within the loaded ROM range. The actual hardware
+# registers overlay these ROM addresses when the Tube ULA is active.
 
 # =====================================================================
 # Zero page workspace labels
@@ -347,6 +338,7 @@ label(0xFE94, "tube_r1_read_byte")
 label(0xFEA0, "print_text_loop")
 label(0xFEA6, "print_text_get_char")
 label(0xFEB0, "print_text_resume")
+label(0xFEB7, "unused_rom_fill")
 label(0xFEA4, "print_text_inc_high")
 
 # Zero page data references used with indexed addressing
@@ -359,18 +351,18 @@ label(0x0003, "zp_data_base_3")
 label(0xF85E, "soft_reset_jmp_lo")
 label(0xF85F, "soft_reset_jmp_hi")
 label(0xFDFF, "io_page_base")
-label(0xFF00, "spare_rom_space")
+label(0xFF00, "page_ff")
 label(0xFFFB, "nmi_vector_hi")
 
-# Tube I/O register address labels (for data byte declarations)
-label(0xFEF8, "tube_r1_status_reg")
-label(0xFEF9, "tube_r1_data_reg")
-label(0xFEFA, "tube_r2_status_reg")
-label(0xFEFB, "tube_r2_data_reg")
-label(0xFEFC, "tube_r3_status_reg")
-label(0xFEFD, "tube_r3_data_reg")
-label(0xFEFE, "tube_r4_status_reg")
-label(0xFEFF, "tube_r4_data_reg")
+# Tube I/O register labels (within the ROM address space but mapped to hardware)
+label(0xFEF8, "tube_r1_status")
+label(0xFEF9, "tube_r1_data")
+label(0xFEFA, "tube_r2_status")
+label(0xFEFB, "tube_r2_data")
+label(0xFEFC, "tube_r3_status")
+label(0xFEFD, "tube_r3_data")
+label(0xFEFE, "tube_r4_status")
+label(0xFEFF, "tube_r4_data")
 
 # Self-modifying code sub labels
 label(0xFAF7, "osbyte_lomem_y_value")
@@ -1581,7 +1573,7 @@ comment(0xFEB0, "Resume execution after string", inline=True)
 comment(0xFEB3, "Write to Tube R3 to acknowledge NMI", inline=True)
 
 # --- Spare/unused regions ---
-comment(0xFEB5, "Unused ROM space, filled with &FF", inline=True)
+comment(0xFEB7, "Unused ROM space, filled with &FF", inline=True)
 comment(0xFF00, "Unused ROM space, filled with &FF", inline=True)
 
 # --- Default vector table ---
@@ -1623,10 +1615,10 @@ for addr in [0xF95D, 0xF95E, 0xF95F, 0xF960, 0xF961]:
     byte(addr)
 
 # Spare space filled with &FF
-for addr in range(0xFEB5, 0xFEF0):
+# &FEB7-&FEFF: unused ROM space (includes Tube I/O window at &FEF0-&FEFF)
+for addr in range(0xFEB7, 0xFF00):
     byte(addr)
-for addr in range(0xFEF0, 0xFF00):
-    byte(addr)
+# &FF00-&FF7F: unused ROM space before default vector table
 for addr in range(0xFF00, 0xFF80):
     byte(addr)
 
