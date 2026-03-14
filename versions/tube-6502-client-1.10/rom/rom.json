@@ -20,7 +20,7 @@
             "icon": "chip"
         },
         {
-            "label": "Dave Banks' working disassembly of the v1.10 Client ROM (beebasm)",
+            "label": "Dave Banks' working disassembly of the v1.10 Client ROM (beebasm, includes conditional assembly for the Acorn Turbo 256K variant)",
             "url": "https://github.com/hoglet67/6502ClientROM",
             "icon": "github"
         }
