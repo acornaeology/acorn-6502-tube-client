@@ -18,6 +18,11 @@
             "label": "J.G. Harston's reassembly of the v1.10 Tube Client (BBC BASIC)",
             "url": "https://web.archive.org/web/20200613192357/http://mdfs.net/Software/Tube/6502/Clnt65v1.src",
             "icon": "chip"
+        },
+        {
+            "label": "Dave Banks' working disassembly of the v1.10 Client ROM (beebasm)",
+            "url": "https://github.com/hoglet67/6502ClientROM",
+            "icon": "github"
         }
     ]
 }
