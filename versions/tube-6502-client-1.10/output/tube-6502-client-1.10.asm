@@ -2344,17 +2344,18 @@ lfe17 = sub_cfe15+2
 ; Tube ULA I/O window: hardware registers
 ; overlay these ROM addresses. The ROM
 ; bytes here are never read by the CPU.
-; Addresses &FEF0-&FEF7 are active but
-; unused by the Tube Client software.
+; The registers at &FEF0-&FEF7 mirror
+; &FEF8-&FEFF but are not used by the
+; Tube Client software.
 .tube_ula_io_window
-    equb &ff                                                          ; fef0: ff          .              ; Tube ULA address space (no register)
-    equb &ff                                                          ; fef1: ff          .              ; Tube ULA address space (no register)
-    equb &ff                                                          ; fef2: ff          .              ; Tube ULA address space (no register)
-    equb &ff                                                          ; fef3: ff          .              ; Tube ULA address space (no register)
-    equb &ff                                                          ; fef4: ff          .              ; Tube ULA address space (no register)
-    equb &ff                                                          ; fef5: ff          .              ; Tube ULA address space (no register)
-    equb &ff                                                          ; fef6: ff          .              ; Tube ULA address space (no register)
-    equb &ff                                                          ; fef7: ff          .              ; Tube ULA address space (no register)
+    equb &ff                                                          ; fef0: ff          .              ; Tube R1 status (mirror, not used)
+    equb &ff                                                          ; fef1: ff          .              ; Tube R1 data (mirror, not used)
+    equb &ff                                                          ; fef2: ff          .              ; Tube R2 status (mirror, not used)
+    equb &ff                                                          ; fef3: ff          .              ; Tube R2 data (mirror, not used)
+    equb &ff                                                          ; fef4: ff          .              ; Tube R3 status (mirror, not used)
+    equb &ff                                                          ; fef5: ff          .              ; Tube R3 data (mirror, not used)
+    equb &ff                                                          ; fef6: ff          .              ; Tube R4 status (mirror, not used)
+    equb &ff                                                          ; fef7: ff          .              ; Tube R4 data (mirror, not used)
 ; &fef8 referenced 4 times by &f859, &f962, &fcf5, &fe80
 .tube_r1_status
     equb &ff                                                          ; fef8: ff          .              ; Tube register 1 status
