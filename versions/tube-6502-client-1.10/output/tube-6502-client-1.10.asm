@@ -1969,39 +1969,41 @@ lfe17 = sub_cfe15+2
 ; Tube ULA I/O window: hardware registers
 ; overlay these ROM addresses. The ROM
 ; bytes here are never read by the CPU.
+; Addresses &FEF0-&FEF7 are active but
+; unused by the Tube Client software.
 .tube_ula_io_window
-    equb &ff                                                          ; fef0: ff          .
-    equb &ff                                                          ; fef1: ff          .
-    equb &ff                                                          ; fef2: ff          .
-    equb &ff                                                          ; fef3: ff          .
-    equb &ff                                                          ; fef4: ff          .
-    equb &ff                                                          ; fef5: ff          .
-    equb &ff                                                          ; fef6: ff          .
-    equb &ff                                                          ; fef7: ff          .
+    equb &ff                                                          ; fef0: ff          .              ; Tube ULA address space (no register)
+    equb &ff                                                          ; fef1: ff          .              ; Tube ULA address space (no register)
+    equb &ff                                                          ; fef2: ff          .              ; Tube ULA address space (no register)
+    equb &ff                                                          ; fef3: ff          .              ; Tube ULA address space (no register)
+    equb &ff                                                          ; fef4: ff          .              ; Tube ULA address space (no register)
+    equb &ff                                                          ; fef5: ff          .              ; Tube ULA address space (no register)
+    equb &ff                                                          ; fef6: ff          .              ; Tube ULA address space (no register)
+    equb &ff                                                          ; fef7: ff          .              ; Tube ULA address space (no register)
 ; &fef8 referenced 4 times by &f859, &f962, &fcf5, &fe80
 .tube_r1_status
-    equb &ff                                                          ; fef8: ff          .
+    equb &ff                                                          ; fef8: ff          .              ; Tube register 1 status
 ; &fef9 referenced 3 times by &f968, &fd18, &fe94
 .tube_r1_data
-    equb &ff                                                          ; fef9: ff          .
+    equb &ff                                                          ; fef9: ff          .              ; Tube register 1 data
 ; &fefa referenced 25 times by &f975, &f9b8, &fa7a, &fa82, &fa8b, &fa93, &faab, &fab3, &fabb, &fac4, &fad5, &fadf, &fae7, &fb09, &fb11, &fb2d, &fb38, &fb59, &fb64, &fb7e, &fb96, &fbb2, &fbd2, &fc4a, &fd45
 .tube_r2_status
-    equb &ff                                                          ; fefa: ff          .
+    equb &ff                                                          ; fefa: ff          .              ; Tube register 2 status
 ; &fefb referenced 25 times by &f97a, &f9bf, &fa7f, &fa87, &fa90, &fa98, &fab0, &fab8, &fac0, &fac9, &fada, &fae4, &faec, &fb0e, &fb16, &fb32, &fb3f, &fb5e, &fb69, &fb85, &fb9b, &fbb7, &fbd7, &fc4f, &fd4a
 .tube_r2_data
-    equb &ff                                                          ; fefb: ff          .
+    equb &ff                                                          ; fefb: ff          .              ; Tube register 2 data
 ; &fefc referenced 3 times by &fdcf, &fddf, &fdee
 .tube_r3_status
-    equb &ff                                                          ; fefc: ff          .
+    equb &ff                                                          ; fefc: ff          .              ; Tube register 3 status
 ; &fefd referenced 12 times by &fdb8, &fdbb, &fdd9, &fde4, &fdf5, &fe04, &fe12, &fe29, &fe34, &fe46, &fe51, &feb3
 .tube_r3_data
-    equb &ff                                                          ; fefd: ff          .
+    equb &ff                                                          ; fefd: ff          .              ; Tube register 3 data
 ; &fefe referenced 8 times by &fcf0, &fd83, &fd93, &fd9b, &fda3, &fdae, &fdbe, &fe85
 .tube_r4_status
-    equb &ff                                                          ; fefe: ff          .
+    equb &ff                                                          ; fefe: ff          .              ; Tube register 4 status
 ; &feff referenced 7 times by &fd3f, &fd88, &fd98, &fda0, &fda8, &fdb3, &fdc3
 .tube_r4_data
-    equb &ff                                                          ; feff: ff          .
+    equb &ff                                                          ; feff: ff          .              ; Tube register 4 data
 ; Unused fill in lower page &FF. The reset
 ; code copies all of page &FF to RAM with
 ; LDA/STA &FF00,X but only &FF80 onwards
