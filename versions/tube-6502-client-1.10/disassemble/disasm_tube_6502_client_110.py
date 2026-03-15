@@ -351,8 +351,6 @@ label(0xFE94, "tube_r1_read_byte")
 label(0xFEA0, "print_text_loop")
 label(0xFEA6, "print_text_get_char")
 label(0xFEB0, "print_text_resume")
-label(0xFEB7, "unused_fill_pre_io")
-label(0xFEF0, "tube_ula_io_window")
 label(0xFEA4, "print_text_inc_high")
 
 # Zero page data references used with indexed addressing
@@ -365,7 +363,6 @@ label(0x0003, "zp_data_base_3")
 label(0xF85E, "soft_reset_jmp_lo")
 label(0xF85F, "soft_reset_jmp_hi")
 label(0xFDFF, "io_page_base")
-label(0xFF00, "unused_fill_page_ff")
 label(0xFFFB, "nmi_vector_hi")
 
 # Tube I/O register labels (within the ROM address space but mapped to hardware)
@@ -967,6 +964,28 @@ transfer types 4-7 (release and 256-byte block
 transfers, which do not use NMI for individual
 bytes). Also the initial value of the NMI vector
 at reset.""")
+
+subroutine(0xFEB7, "unused_fill_pre_io", hook=None,
+    title="Unused fill between code and I/O window",
+    description="""\
+39 bytes of &FF fill between the end of the NMI
+acknowledge routine and the start of the Tube ULA
+I/O register window at &FEF0.""")
+
+subroutine(0xFEF0, "tube_ula_io_window", hook=None,
+    title="Tube ULA I/O window",
+    description="""\
+Hardware registers overlay these ROM addresses.
+The ROM bytes here are never read by the CPU.
+The registers at &FEF0-&FEF7 mirror &FEF8-&FEFF
+but are not used by the Tube Client software.""")
+
+subroutine(0xFF00, "unused_fill_page_ff", hook=None,
+    title="Unused fill in lower page &FF",
+    description="""\
+The reset code copies all of page &FF to RAM with
+LDA/STA &FF00,X but only &FF80 onwards contains the
+default vector table and MOS entry points.""")
 
 subroutine(0xFF80, "default_vector_table", hook=None,
     title="Default MOS vector table",
@@ -2006,13 +2025,6 @@ comment(0xFEB0, "Resume execution after string", inline=True)
 comment(0xFEB3, "Write to Tube R3 to acknowledge NMI", inline=True)
 
 # --- Spare/unused regions ---
-comment(0xFEB7, "Unused fill between code and I/O window")
-comment(0xFEF0, "Tube ULA I/O window: hardware registers")
-comment(0xFEF0, "overlay these ROM addresses. The ROM")
-comment(0xFEF0, "bytes here are never read by the CPU.")
-comment(0xFEF0, "The registers at &FEF0-&FEF7 mirror")
-comment(0xFEF0, "&FEF8-&FEFF but are not used by the")
-comment(0xFEF0, "Tube Client software.")
 comment(0xFEF0, "Tube R1 status (mirror, not used)", inline=True)
 comment(0xFEF1, "Tube R1 data (mirror, not used)", inline=True)
 comment(0xFEF2, "Tube R2 status (mirror, not used)", inline=True)
@@ -2029,11 +2041,6 @@ comment(0xFEFC, "Tube register 3 status", inline=True)
 comment(0xFEFD, "Tube register 3 data", inline=True)
 comment(0xFEFE, "Tube register 4 status", inline=True)
 comment(0xFEFF, "Tube register 4 data", inline=True)
-comment(0xFF00, "Unused fill in lower page &FF. The reset")
-comment(0xFF00, "code copies all of page &FF to RAM with")
-comment(0xFF00, "LDA/STA &FF00,X but only &FF80 onwards")
-comment(0xFF00, "contains the default vector table and")
-comment(0xFF00, "MOS entry points.")
 
 # --- MOS entry point stubs ---
 comment(0xFFB6, "Vector table: length &36 at &FF80", inline=True)
@@ -2072,7 +2079,8 @@ for addr in [0xF95D, 0xF95E, 0xF95F, 0xF960, 0xF961]:
 byte(0xFEB7, 0xFEF0 - 0xFEB7)
 # &FEF0-&FEF7: Tube ULA I/O window (hardware overlays these ROM addresses;
 # the 8 bytes here precede the Tube register pairs at &FEF8-&FEFF)
-byte(0xFEF0, 0xFEF8 - 0xFEF0)
+for addr in range(0xFEF0, 0xFEF8):
+    byte(addr)
 # &FEF8-&FEFF: Tube register addresses (labelled individually above)
 for addr in range(0xFEF8, 0xFF00):
     byte(addr)

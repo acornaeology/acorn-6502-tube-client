@@ -1922,21 +1922,36 @@ lfe17 = sub_cfe15+2
     sta tube_r3_data                                                  ; feb3: 8d fd fe    ...            ; Write to Tube R3 to acknowledge NMI
     rti                                                               ; feb6: 40          @
 
+; ***************************************************************************************
 ; Unused fill between code and I/O window
+; 
+; 39 bytes of &FF fill between the end of the NMI
+; acknowledge routine and the start of the Tube ULA
+; I/O register window at &FEF0.
+; ***************************************************************************************
 .unused_fill_pre_io
     equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; feb7: ff ff ff... ...
     equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; fec3: ff ff ff... ...
     equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; fecf: ff ff ff... ...
     equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; fedb: ff ff ff... ...
     equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff                  ; fee7: ff ff ff... ...
-; Tube ULA I/O window: hardware registers
-; overlay these ROM addresses. The ROM
-; bytes here are never read by the CPU.
-; The registers at &FEF0-&FEF7 mirror
-; &FEF8-&FEFF but are not used by the
-; Tube Client software.
+; ***************************************************************************************
+; Tube ULA I/O window
+; 
+; Hardware registers overlay these ROM addresses.
+; The ROM bytes here are never read by the CPU.
+; The registers at &FEF0-&FEF7 mirror &FEF8-&FEFF
+; but are not used by the Tube Client software.
+; ***************************************************************************************
 .tube_ula_io_window
-    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff                       ; fef0: ff ff ff... ...            ; Tube R1 status (mirror, not used); Tube R1 data (mirror, not used); Tube R2 status (mirror, not used); Tube R2 data (mirror, not used); Tube R3 status (mirror, not used); Tube R3 data (mirror, not used); Tube R4 status (mirror, not used); Tube R4 data (mirror, not used)
+    equb &ff                                                          ; fef0: ff          .              ; Tube R1 status (mirror, not used)
+    equb &ff                                                          ; fef1: ff          .              ; Tube R1 data (mirror, not used)
+    equb &ff                                                          ; fef2: ff          .              ; Tube R2 status (mirror, not used)
+    equb &ff                                                          ; fef3: ff          .              ; Tube R2 data (mirror, not used)
+    equb &ff                                                          ; fef4: ff          .              ; Tube R3 status (mirror, not used)
+    equb &ff                                                          ; fef5: ff          .              ; Tube R3 data (mirror, not used)
+    equb &ff                                                          ; fef6: ff          .              ; Tube R4 status (mirror, not used)
+    equb &ff                                                          ; fef7: ff          .              ; Tube R4 data (mirror, not used)
 ; &fef8 referenced 4 times by &0100[1], &f962, &fcf5, &fe80
 .tube_r1_status
     equb &ff                                                          ; fef8: ff          .              ; Tube register 1 status
@@ -1961,11 +1976,13 @@ lfe17 = sub_cfe15+2
 ; &feff referenced 7 times by &fd3f, &fd88, &fd98, &fda0, &fda8, &fdb3, &fdc3
 .tube_r4_data
     equb &ff                                                          ; feff: ff          .              ; Tube register 4 data
-; Unused fill in lower page &FF. The reset
-; code copies all of page &FF to RAM with
-; LDA/STA &FF00,X but only &FF80 onwards
-; contains the default vector table and
-; MOS entry points.
+; ***************************************************************************************
+; Unused fill in lower page &FF
+; 
+; The reset code copies all of page &FF to RAM with
+; LDA/STA &FF00,X but only &FF80 onwards contains the
+; default vector table and MOS entry points.
+; ***************************************************************************************
 ; &ff00 referenced 2 times by &f802, &f805
 .unused_fill_page_ff
     equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff00: ff ff ff... ...
