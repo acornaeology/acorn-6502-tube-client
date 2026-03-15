@@ -374,10 +374,11 @@ soft_reset_jmp_hi       = &f85f
 ; 
 ; Send character in A to the host via Tube R1.
 ; 
-; On entry:
-;   A = character to send
-; On exit:
-;   A preserved
+; On Entry:
+;     A: character to send
+; 
+; On Exit:
+;     A: preserved
 ; ***************************************************************************************
 ; &f962 referenced 2 times by &f966, &ffcb
 .oswrch_impl
@@ -395,9 +396,9 @@ soft_reset_jmp_hi       = &f85f
 ; Sends command &00 to the host, then waits for
 ; a carry byte and the character.
 ; 
-; On exit:
-;   A = character received
-;   C = Escape flag
+; On Exit:
+;     A: character received
+;     C: Escape flag
 ; ***************************************************************************************
 ; &f96c referenced 1 time by &ffc8
 .osrdch_impl
@@ -413,9 +414,9 @@ soft_reset_jmp_hi       = &f85f
 ; the carry flag, then falls through to read the
 ; actual data byte.
 ; 
-; On exit:
-;   A = data byte from Tube R2
-;   C = carry indicator from host
+; On Exit:
+;     A: data byte from Tube R2
+;     C: carry indicator from host
 ; ***************************************************************************************
 ; &f971 referenced 2 times by &fc33, &fcb4
 .wait_carry_and_byte
@@ -427,8 +428,8 @@ soft_reset_jmp_hi       = &f85f
 ; Poll Tube R2 status until data is available, then
 ; read and return the byte.
 ; 
-; On exit:
-;   A = byte read from Tube R2
+; On Exit:
+;     A: byte read from Tube R2
 ; ***************************************************************************************
 ; &f975 referenced 18 times by &f886, &f971, &f978, &fa35, &fba3, &fbf2, &fbf6, &fbfb, &fc00, &fc05, &fc1f, &fc27, &fc45, &fc78, &fc7e, &fca8, &fd53, &fd5a
 .wait_for_tube_r2_byte
@@ -451,11 +452,12 @@ soft_reset_jmp_hi       = &f85f
 ; when the current character has been consumed and any
 ; following spaces should be skipped.
 ; 
-; On entry:
-;   Y = offset of the character just consumed
-; On exit:
-;   A = first non-space character after skipped spaces
-;   Y = offset of that character
+; On Entry:
+;     Y: offset of the character just consumed
+; 
+; On Exit:
+;     A: first non-space character after skipped spaces
+;     Y: offset of that character
 ; ***************************************************************************************
 ; &f97e referenced 2 times by &f983, &fa44
 .skip_spaces_step
@@ -463,14 +465,14 @@ soft_reset_jmp_hi       = &f85f
 ; ***************************************************************************************
 ; Skip spaces in command string
 ; 
-; Advance past space characters in the string at
-; (string_ptr),Y.
+; Advance past space characters in the string at (string_ptr),Y.
 ; 
-; On entry:
-;   Y = current offset into string
-; On exit:
-;   A = first non-space character
-;   Y = offset of that character
+; On Entry:
+;     Y: current offset into string
+; 
+; On Exit:
+;     A: first non-space character
+;     Y: offset of that character
 ; ***************************************************************************************
 ; &f97f referenced 2 times by &f9d1, &fa4a
 .skip_spaces
@@ -485,13 +487,15 @@ soft_reset_jmp_hi       = &f85f
 ; Read a hexadecimal number from the string at
 ; (string_ptr),Y into the hex accumulator at &F0/F1.
 ; 
-; On entry:
-;   Y = offset into string
-; On exit:
-;   hex_accumulator/hex_accumulator_hi = parsed value
-;   X = non-zero if any digits were parsed
-;   Y = offset past last hex digit
-;   A = first non-hex character
+; On Entry:
+;     Y: offset into string
+; 
+; On Exit:
+;     HEX_ACCUMULATOR: parsed value (low byte)
+;     HEX_ACCUMULATOR_HI: parsed value (high byte)
+;     X: non-zero if any digits were parsed
+;     Y: offset past last hex digit
+;     A: first non-hex character
 ; ***************************************************************************************
 ; &f986 referenced 1 time by &fa47
 .scan_hex
@@ -535,11 +539,12 @@ soft_reset_jmp_hi       = &f85f
 ; 
 ; Send a CR-terminated string to the host via Tube R2.
 ; 
-; On entry:
-;   X = string address low byte
-;   Y = string address high byte
-; On exit:
-;   Y restored from string_ptr_hi
+; On Entry:
+;     X: string address low byte
+;     Y: string address high byte
+; 
+; On Exit:
+;     Y: restored from string_ptr_hi
 ; ***************************************************************************************
 ; &f9b2 referenced 2 times by &fc24, &fc71
 .send_string
@@ -567,9 +572,9 @@ soft_reset_jmp_hi       = &f85f
 ; *GO and *HELP which are handled locally; all other
 ; commands are forwarded to the host via the Tube.
 ; 
-; On entry:
-;   X = command string address low byte
-;   Y = command string address high byte
+; On Entry:
+;     X: command string address low byte
+;     Y: command string address high byte
 ; ***************************************************************************************
 .oscli_impl
     pha                                                               ; f9ca: 48          H              ; Save A on stack
@@ -744,11 +749,16 @@ soft_reset_jmp_hi       = &f85f
 ; checks for code to enter, and &9D (fast BPUT) which
 ; returns immediately without waiting for a response.
 ; 
-; On entry:
-;   A = function, X = parameter 1, Y = parameter 2
-; On exit:
-;   A preserved
-;   X, Y, Carry = returned values (for A >= &80)
+; On Entry:
+;     A: function
+;     X: parameter 1
+;     Y: parameter 2
+; 
+; On Exit:
+;     A: preserved
+;     X: returned value (for A >= &80)
+;     Y: returned value (for A >= &80)
+;     C: returned value (for A >= &80)
 ; ***************************************************************************************
 .osbyte_impl
     cmp #&80                                                          ; fa73: c9 80       ..             ; Function >= &80?
@@ -840,9 +850,9 @@ soft_reset_jmp_hi       = &f85f
 ; 
 ; Return the current top of user memory from &F2/F3.
 ; 
-; On exit:
-;   X = memory_top low byte
-;   Y = memory_top high byte
+; On Exit:
+;     X: memory_top low byte
+;     Y: memory_top high byte
 ; ***************************************************************************************
 ; &faf0 referenced 1 time by &faa6
 .osbyte_read_himem
@@ -853,9 +863,9 @@ soft_reset_jmp_hi       = &f85f
 ; 
 ; Return the bottom of user memory, fixed at &0800.
 ; 
-; On exit:
-;   X = &00
-;   Y = &08
+; On Exit:
+;     X: &00
+;     Y: &08
 ; ***************************************************************************************
 .osbyte_read_lomem
     rts                                                               ; faf4: 60          `              ; Return (OSBYTE &84)
@@ -873,9 +883,9 @@ soft_reset_jmp_hi       = &f85f
 ; This indicates the 6502 has a 16-bit address space
 ; with no bank switching.
 ; 
-; On exit:
-;   X = &00
-;   Y = &00
+; On Exit:
+;     X: &00
+;     Y: &00
 ; ***************************************************************************************
 .osbyte_read_high_word
     php                                                               ; faf8: 08          .
@@ -895,8 +905,9 @@ soft_reset_jmp_hi       = &f85f
 ; control block to the host and receive the response,
 ; with block sizes determined by lookup tables.
 ; 
-; On entry:
-;   A = function, XY => control block
+; On Entry:
+;     A: function
+;     XY: control block address
 ; ***************************************************************************************
 .osword_impl
     stx string_ptr                                                    ; faff: 86 f8       ..             ; Store control block address low
@@ -990,9 +1001,9 @@ soft_reset_jmp_hi       = &f85f
 ; 
 ; Tube protocol: &0A block -- &FF or &7F string &0D
 ; 
-; On exit:
-;   Y = length of string (excluding CR)
-;   C = 0 if OK, 1 if Escape
+; On Exit:
+;     Y: length of string (excluding CR)
+;     C: 0 if OK, 1 if Escape
 ; ***************************************************************************************
 ; &fb77 referenced 1 time by &fb04
 .rdline
@@ -1059,10 +1070,14 @@ soft_reset_jmp_hi       = &f85f
 ; Sends command &0C with handle, 4-byte data word,
 ; and function code. Receives result and updated data.
 ; 
-; On entry:
-;   A = function, X => data word in zero page, Y = handle
-; On exit:
-;   A = result, data word at X updated
+; On Entry:
+;     A: function
+;     X: zero-page data word address
+;     Y: handle
+; 
+; On Exit:
+;     A: result
+;     DATA WORD AT X: updated
 ; ***************************************************************************************
 .osargs_impl
     pha                                                               ; fbcc: 48          H              ; Save function on stack
@@ -1104,10 +1119,12 @@ soft_reset_jmp_hi       = &f85f
 ; For close (A=0): sends command &12, function, handle.
 ; For open (A<>0): sends command &12, function, filename.
 ; 
-; On entry:
-;   A = function, XY => filename (open) or Y = handle (close)
-; On exit:
-;   A = handle (open) or preserved (close)
+; On Entry:
+;     A: function
+;     XY: filename address (open) or Y = handle (close)
+; 
+; On Exit:
+;     A: handle (open) or preserved (close)
 ; ***************************************************************************************
 .osfind_impl
     pha                                                               ; fc0c: 48          H              ; Save function on stack
@@ -1136,10 +1153,12 @@ soft_reset_jmp_hi       = &f85f
 ; 
 ; Sends command &0E with handle, waits for carry and byte.
 ; 
-; On entry:
-;   Y = handle
-; On exit:
-;   A = byte read, C = set if EOF
+; On Entry:
+;     Y: handle
+; 
+; On Exit:
+;     A: byte read
+;     C: set if EOF
 ; ***************************************************************************************
 .osbget_impl
     lda #&0e                                                          ; fc2a: a9 0e       ..             ; Command &0E: OSBGET
@@ -1155,10 +1174,12 @@ soft_reset_jmp_hi       = &f85f
 ; 
 ; Sends command &10 with handle and byte.
 ; 
-; On entry:
-;   A = byte, Y = handle
-; On exit:
-;   A preserved
+; On Entry:
+;     A: byte
+;     Y: handle
+; 
+; On Exit:
+;     A: preserved
 ; ***************************************************************************************
 .osbput_impl
     pha                                                               ; fc36: 48          H              ; Save byte to write
@@ -1178,10 +1199,11 @@ soft_reset_jmp_hi       = &f85f
 ; 
 ; Wait for Tube R2 to be free, then send byte.
 ; 
-; On entry:
-;   A = byte to send
-; On exit:
-;   A preserved
+; On Entry:
+;     A: byte to send
+; 
+; On Exit:
+;     A: preserved
 ; ***************************************************************************************
 ; &fc4a referenced 25 times by &f96e, &fa2f, &fb79, &fb8f, &fbcf, &fbdc, &fbe1, &fbe6, &fbeb, &fbef, &fc0f, &fc13, &fc1c, &fc2c, &fc30, &fc39, &fc3d, &fc41, &fc4d, &fc5a, &fc61, &fc75, &fc95, &fc9c, &fca3
 .send_command
@@ -1199,8 +1221,9 @@ soft_reset_jmp_hi       = &f85f
 ; Sends command &14 with 16-byte control block, filename,
 ; and function code. Receives result and updated control block.
 ; 
-; On entry:
-;   A = function, XY => control block
+; On Entry:
+;     A: function
+;     XY: control block address
 ; ***************************************************************************************
 .osfile_impl
     sty control_block_ptr_hi                                          ; fc53: 84 fb       ..             ; Store control block high byte
@@ -1248,8 +1271,9 @@ soft_reset_jmp_hi       = &f85f
 ; Sends command &16 with 13-byte control block and function.
 ; Receives updated control block, carry, and result.
 ; 
-; On entry:
-;   A = function, XY => control block
+; On Entry:
+;     A: function
+;     XY: control block address
 ; ***************************************************************************************
 .osgbpb_impl
     sty control_block_ptr_hi                                          ; fc8e: 84 fb       ..             ; Store control block high byte
@@ -1828,8 +1852,8 @@ lfe17 = sub_cfe15+2
 ; enables interrupts to let the R4 handler run, then
 ; resumes polling R1.
 ; 
-; On exit:
-;   A = byte from Tube R1
+; On Exit:
+;     A: byte from Tube R1
 ; ***************************************************************************************
 ; &fe80 referenced 5 times by &fd21, &fd25, &fd29, &fe88, &fe91
 .wait_for_tube_r1_byte
@@ -1858,8 +1882,8 @@ lfe17 = sub_cfe15+2
 ; terminates the string. Execution resumes after the
 ; terminator byte.
 ; 
-; On exit:
-;   A = terminator byte (bit 7 set)
+; On Exit:
+;     A: terminator byte (bit 7 set)
 ; ***************************************************************************************
 ; &fe98 referenced 2 times by &f860, &fa17
 .print_embedded_text
@@ -2235,11 +2259,12 @@ lfe17 = sub_cfe15+2
 ; 
 ; Open or close a file. Dispatches via FINDV (&021C).
 ; 
-; On entry:
-;   A = 0 to close, non-zero to open
-;   Y = handle (close) or XY => filename (open)
-; On exit:
-;   A = file handle (open) or preserved (close)
+; On Entry:
+;     A: 0 to close, non-zero to open
+;     Y: handle (close) or XY => filename (open)
+; 
+; On Exit:
+;     A: file handle (open) or preserved (close)
 ; ***************************************************************************************
 .osfind_entry
     jmp (findv)                                                       ; ffce: 6c 1c 02    l..            ; Dispatch via FINDV
@@ -2249,8 +2274,9 @@ lfe17 = sub_cfe15+2
 ; 
 ; Multiple-byte get or put. Dispatches via GBPBV (&021A).
 ; 
-; On entry:
-;   A = function, XY => 13-byte control block
+; On Entry:
+;     A: function
+;     XY: 13-byte control block address
 ; ***************************************************************************************
 .osgbpb_entry
     jmp (gbpbv)                                                       ; ffd1: 6c 1a 02    l..            ; Dispatch via GBPBV
@@ -2260,8 +2286,9 @@ lfe17 = sub_cfe15+2
 ; 
 ; Write a byte to an open file. Dispatches via BPUTV (&0218).
 ; 
-; On entry:
-;   A = byte to write, Y = file handle
+; On Entry:
+;     A: byte to write
+;     Y: file handle
 ; ***************************************************************************************
 .osbput_entry
     jmp (bputv)                                                       ; ffd4: 6c 18 02    l..            ; Dispatch via BPUTV
@@ -2271,10 +2298,12 @@ lfe17 = sub_cfe15+2
 ; 
 ; Read a byte from an open file. Dispatches via BGETV (&0216).
 ; 
-; On entry:
-;   Y = file handle
-; On exit:
-;   A = byte read, C = set if EOF
+; On Entry:
+;     Y: file handle
+; 
+; On Exit:
+;     A: byte read
+;     C: set if EOF
 ; ***************************************************************************************
 .osbget_entry
     jmp (bgetv)                                                       ; ffd7: 6c 16 02    l..            ; Dispatch via BGETV
@@ -2284,8 +2313,10 @@ lfe17 = sub_cfe15+2
 ; 
 ; Read or write open file arguments. Dispatches via ARGSV (&0214).
 ; 
-; On entry:
-;   A = function, X => zero-page data word, Y = handle
+; On Entry:
+;     A: function
+;     X: zero-page data word address
+;     Y: handle
 ; ***************************************************************************************
 .osargs_entry
     jmp (argsv)                                                       ; ffda: 6c 14 02    l..            ; Dispatch via ARGSV
@@ -2295,8 +2326,9 @@ lfe17 = sub_cfe15+2
 ; 
 ; Whole-file operations. Dispatches via FILEV (&0212).
 ; 
-; On entry:
-;   A = function, XY => 18-byte control block
+; On Entry:
+;     A: function
+;     XY: 18-byte control block address
 ; ***************************************************************************************
 .osfile_entry
     jmp (filev)                                                       ; ffdd: 6c 12 02    l..            ; Dispatch via FILEV
@@ -2306,8 +2338,9 @@ lfe17 = sub_cfe15+2
 ; 
 ; Read a character from the input stream. Dispatches via RDCHV (&0210).
 ; 
-; On exit:
-;   A = character, C = set if Escape
+; On Exit:
+;     A: character
+;     C: set if Escape
 ; ***************************************************************************************
 .osrdch_entry
     jmp (rdchv)                                                       ; ffe0: 6c 10 02    l..            ; Dispatch via RDCHV
@@ -2319,8 +2352,8 @@ lfe17 = sub_cfe15+2
 ; character is &0D, falls through to OSNEWL to send
 ; LF then CR. Otherwise jumps directly to OSWRCH.
 ; 
-; On entry:
-;   A = character to write
+; On Entry:
+;     A: character to write
 ; ***************************************************************************************
 .osasci_entry
     cmp #&0d                                                          ; ffe3: c9 0d       ..             ; Is it carriage return?
@@ -2349,10 +2382,11 @@ lfe17 = sub_cfe15+2
 ; 
 ; Write a character to the output stream. Dispatches via WRCHV (&020E).
 ; 
-; On entry:
-;   A = character to write
-; On exit:
-;   A preserved
+; On Entry:
+;     A: character to write
+; 
+; On Exit:
+;     A: preserved
 ; ***************************************************************************************
 ; &ffee referenced 5 times by &f88f, &f951, &feaa, &ffe5, &ffe9
 .oswrch_entry
@@ -2363,8 +2397,9 @@ lfe17 = sub_cfe15+2
 ; 
 ; Perform a word-based MOS operation. Dispatches via WORDV (&020C).
 ; 
-; On entry:
-;   A = function, XY => control block
+; On Entry:
+;     A: function
+;     XY: control block address
 ; ***************************************************************************************
 ; &fff1 referenced 1 time by &f898
 .osword_entry
@@ -2375,8 +2410,10 @@ lfe17 = sub_cfe15+2
 ; 
 ; Perform a byte-based MOS operation. Dispatches via BYTEV (&020A).
 ; 
-; On entry:
-;   A = function, X = parameter 1, Y = parameter 2
+; On Entry:
+;     A: function
+;     X: parameter 1
+;     Y: parameter 2
 ; ***************************************************************************************
 ; &fff4 referenced 1 time by &f8a9
 .osbyte_entry
@@ -2387,8 +2424,8 @@ lfe17 = sub_cfe15+2
 ; 
 ; Execute a star command. Dispatches via CLIV (&0208).
 ; 
-; On entry:
-;   XY => command string (CR-terminated)
+; On Entry:
+;     XY: command string address (CR-terminated)
 ; ***************************************************************************************
 ; &fff7 referenced 1 time by &f8a1
 .oscli_entry

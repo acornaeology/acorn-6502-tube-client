@@ -495,13 +495,9 @@ acceptable character codes.""")
 
 subroutine(0xF962, "oswrch_impl", hook=None,
     title="OSWRCH implementation",
-    description="""\
-Send character in A to the host via Tube R1.
-
-On entry:
-  A = character to send
-On exit:
-  A preserved""")
+    description="Send character in A to the host via Tube R1.",
+    on_entry={"A": "character to send"},
+    on_exit={"A": "preserved"})
 
 subroutine(0xF96C, "osrdch_impl", hook=None,
     title="OSRDCH implementation",
@@ -509,11 +505,8 @@ subroutine(0xF96C, "osrdch_impl", hook=None,
 Read a character from the host via the Tube.
 
 Sends command &00 to the host, then waits for
-a carry byte and the character.
-
-On exit:
-  A = character received
-  C = Escape flag""")
+a carry byte and the character.""",
+    on_exit={"A": "character received", "C": "Escape flag"})
 
 subroutine(0xF971, "wait_carry_and_byte", hook=None,
     title="Wait for carry byte and data byte",
@@ -523,20 +516,15 @@ indicator, then the data byte.
 
 The carry byte is shifted left so bit 7 moves into
 the carry flag, then falls through to read the
-actual data byte.
-
-On exit:
-  A = data byte from Tube R2
-  C = carry indicator from host""")
+actual data byte.""",
+    on_exit={"A": "data byte from Tube R2", "C": "carry indicator from host"})
 
 subroutine(0xF975, "wait_for_tube_r2_byte", hook=None,
     title="Wait for byte from Tube R2",
     description="""\
 Poll Tube R2 status until data is available, then
-read and return the byte.
-
-On exit:
-  A = byte read from Tube R2""")
+read and return the byte.""",
+    on_exit={"A": "byte read from Tube R2"})
 
 subroutine(0xF97D, "null_return", hook=None,
     title="Null return",
@@ -549,61 +537,45 @@ subroutine(0xF97E, "skip_spaces_step", hook=None,
     description="""\
 Increment Y then fall through to skip_spaces. Called
 when the current character has been consumed and any
-following spaces should be skipped.
-
-On entry:
-  Y = offset of the character just consumed
-On exit:
-  A = first non-space character after skipped spaces
-  Y = offset of that character""")
+following spaces should be skipped.""",
+    on_entry={"Y": "offset of the character just consumed"},
+    on_exit={"A": "first non-space character after skipped spaces",
+             "Y": "offset of that character"})
 
 subroutine(0xF97F, "skip_spaces", hook=None,
     title="Skip spaces in command string",
-    description="""\
-Advance past space characters in the string at
-(string_ptr),Y.
-
-On entry:
-  Y = current offset into string
-On exit:
-  A = first non-space character
-  Y = offset of that character""")
+    description="Advance past space characters in the string at (string_ptr),Y.",
+    on_entry={"Y": "current offset into string"},
+    on_exit={"A": "first non-space character",
+             "Y": "offset of that character"})
 
 subroutine(0xF986, "scan_hex", hook=None,
     title="Parse hexadecimal number",
     description="""\
 Read a hexadecimal number from the string at
-(string_ptr),Y into the hex accumulator at &F0/F1.
-
-On entry:
-  Y = offset into string
-On exit:
-  hex_accumulator/hex_accumulator_hi = parsed value
-  X = non-zero if any digits were parsed
-  Y = offset past last hex digit
-  A = first non-hex character""")
+(string_ptr),Y into the hex accumulator at &F0/F1.""",
+    on_entry={"Y": "offset into string"},
+    on_exit={"hex_accumulator": "parsed value (low byte)",
+             "hex_accumulator_hi": "parsed value (high byte)",
+             "X": "non-zero if any digits were parsed",
+             "Y": "offset past last hex digit",
+             "A": "first non-hex character"})
 
 subroutine(0xF9B2, "send_string", hook=None,
     title="Send string to Tube R2",
-    description="""\
-Send a CR-terminated string to the host via Tube R2.
-
-On entry:
-  X = string address low byte
-  Y = string address high byte
-On exit:
-  Y restored from string_ptr_hi""")
+    description="Send a CR-terminated string to the host via Tube R2.",
+    on_entry={"X": "string address low byte",
+              "Y": "string address high byte"},
+    on_exit={"Y": "restored from string_ptr_hi"})
 
 subroutine(0xF9CA, "oscli_impl", hook=None,
     title="OSCLI implementation",
     description="""\
 Execute a * command. Parses the command to check for
 *GO and *HELP which are handled locally; all other
-commands are forwarded to the host via the Tube.
-
-On entry:
-  X = command string address low byte
-  Y = command string address high byte""")
+commands are forwarded to the host via the Tube.""",
+    on_entry={"X": "command string address low byte",
+              "Y": "command string address high byte"})
 
 subroutine(0xFA17, "command_help", hook=None,
     title="Handle *HELP command",
@@ -677,42 +649,31 @@ High functions send command &06 with X, Y, and A.
 
 Special handling for OSBYTE &8E (select language) which
 checks for code to enter, and &9D (fast BPUT) which
-returns immediately without waiting for a response.
-
-On entry:
-  A = function, X = parameter 1, Y = parameter 2
-On exit:
-  A preserved
-  X, Y, Carry = returned values (for A >= &80)""")
+returns immediately without waiting for a response.""",
+    on_entry={"A": "function", "X": "parameter 1", "Y": "parameter 2"},
+    on_exit={"A": "preserved",
+             "X": "returned value (for A >= &80)",
+             "Y": "returned value (for A >= &80)",
+             "C": "returned value (for A >= &80)"})
 
 subroutine(0xFAF0, "osbyte_read_himem", hook=None,
     title="OSBYTE &84: read top of memory",
-    description="""\
-Return the current top of user memory from &F2/F3.
-
-On exit:
-  X = memory_top low byte
-  Y = memory_top high byte""")
+    description="Return the current top of user memory from &F2/F3.",
+    on_exit={"X": "memory_top low byte",
+             "Y": "memory_top high byte"})
 
 subroutine(0xFAF4, "osbyte_read_lomem", hook=None,
     title="OSBYTE &83: read bottom of memory",
-    description="""\
-Return the bottom of user memory, fixed at &0800.
-
-On exit:
-  X = &00
-  Y = &08""")
+    description="Return the bottom of user memory, fixed at &0800.",
+    on_exit={"X": "&00", "Y": "&08"})
 
 subroutine(0xFAF8, "osbyte_read_high_word", hook=None,
     title="OSBYTE &82: read machine high order address",
     description="""\
 Return &0000 as the high word of the address space.
 This indicates the 6502 has a 16-bit address space
-with no bank switching.
-
-On exit:
-  X = &00
-  Y = &00""")
+with no bank switching.""",
+    on_exit={"X": "&00", "Y": "&00"})
 
 subroutine(0xFAFF, "osword_impl", hook=None,
     title="OSWORD implementation",
@@ -720,10 +681,8 @@ subroutine(0xFAFF, "osword_impl", hook=None,
 Handle OSWORD calls. OSWORD 0 (read line) is handled
 specially via rdline. All other functions send the
 control block to the host and receive the response,
-with block sizes determined by lookup tables.
-
-On entry:
-  A = function, XY => control block""")
+with block sizes determined by lookup tables.""",
+    on_entry={"A": "function", "XY": "control block address"})
 
 subroutine(0xFB77, "rdline", hook=None,
     title="Read line of input (OSWORD 0)",
@@ -733,11 +692,9 @@ Read a line of text from the host.
 Sends command &0A with the control block parameters,
 then receives the input string character by character.
 
-Tube protocol: &0A block -- &FF or &7F string &0D
-
-On exit:
-  Y = length of string (excluding CR)
-  C = 0 if OK, 1 if Escape""")
+Tube protocol: &0A block -- &FF or &7F string &0D""",
+    on_exit={"Y": "length of string (excluding CR)",
+             "C": "0 if OK, 1 if Escape"})
 
 subroutine(0xFBCC, "osargs_impl", hook=None,
     title="OSARGS implementation",
@@ -745,12 +702,9 @@ subroutine(0xFBCC, "osargs_impl", hook=None,
 Read or write information about an open file.
 
 Sends command &0C with handle, 4-byte data word,
-and function code. Receives result and updated data.
-
-On entry:
-  A = function, X => data word in zero page, Y = handle
-On exit:
-  A = result, data word at X updated""")
+and function code. Receives result and updated data.""",
+    on_entry={"A": "function", "X": "zero-page data word address", "Y": "handle"},
+    on_exit={"A": "result", "data word at X": "updated"})
 
 subroutine(0xFC0C, "osfind_impl", hook=None,
     title="OSFIND implementation",
@@ -758,46 +712,34 @@ subroutine(0xFC0C, "osfind_impl", hook=None,
 Open or close a file.
 
 For close (A=0): sends command &12, function, handle.
-For open (A<>0): sends command &12, function, filename.
-
-On entry:
-  A = function, XY => filename (open) or Y = handle (close)
-On exit:
-  A = handle (open) or preserved (close)""")
+For open (A<>0): sends command &12, function, filename.""",
+    on_entry={"A": "function",
+              "XY": "filename address (open) or Y = handle (close)"},
+    on_exit={"A": "handle (open) or preserved (close)"})
 
 subroutine(0xFC2A, "osbget_impl", hook=None,
     title="OSBGET implementation",
     description="""\
 Read a byte from an open file.
 
-Sends command &0E with handle, waits for carry and byte.
-
-On entry:
-  Y = handle
-On exit:
-  A = byte read, C = set if EOF""")
+Sends command &0E with handle, waits for carry and byte.""",
+    on_entry={"Y": "handle"},
+    on_exit={"A": "byte read", "C": "set if EOF"})
 
 subroutine(0xFC36, "osbput_impl", hook=None,
     title="OSBPUT implementation",
     description="""\
 Write a byte to an open file.
 
-Sends command &10 with handle and byte.
-
-On entry:
-  A = byte, Y = handle
-On exit:
-  A preserved""")
+Sends command &10 with handle and byte.""",
+    on_entry={"A": "byte", "Y": "handle"},
+    on_exit={"A": "preserved"})
 
 subroutine(0xFC4A, "send_command", hook=None,
     title="Send byte to Tube R2",
-    description="""\
-Wait for Tube R2 to be free, then send byte.
-
-On entry:
-  A = byte to send
-On exit:
-  A preserved""")
+    description="Wait for Tube R2 to be free, then send byte.",
+    on_entry={"A": "byte to send"},
+    on_exit={"A": "preserved"})
 
 subroutine(0xFC53, "osfile_impl", hook=None,
     title="OSFILE implementation",
@@ -805,10 +747,8 @@ subroutine(0xFC53, "osfile_impl", hook=None,
 Operate on whole files (load, save, read/write attributes).
 
 Sends command &14 with 16-byte control block, filename,
-and function code. Receives result and updated control block.
-
-On entry:
-  A = function, XY => control block""")
+and function code. Receives result and updated control block.""",
+    on_entry={"A": "function", "XY": "control block address"})
 
 subroutine(0xFC8E, "osgbpb_impl", hook=None,
     title="OSGBPB implementation",
@@ -816,10 +756,8 @@ subroutine(0xFC8E, "osgbpb_impl", hook=None,
 Multiple byte read and write.
 
 Sends command &16 with 13-byte control block and function.
-Receives updated control block, carry, and result.
-
-On entry:
-  A = function, XY => control block""")
+Receives updated control block, carry, and result.""",
+    on_entry={"A": "function", "XY": "control block address"})
 
 subroutine(0xFCB7, "unsupported", hook=None,
     title="Unsupported MOS call",
@@ -1006,10 +944,8 @@ requests to be serviced via IRQ while waiting.
 
 Polls R1 status; if R4 has data instead, briefly
 enables interrupts to let the R4 handler run, then
-resumes polling R1.
-
-On exit:
-  A = byte from Tube R1""")
+resumes polling R1.""",
+    on_exit={"A": "byte from Tube R1"})
 
 subroutine(0xFE98, "print_embedded_text", hook=None,
     title="Print inline text",
@@ -1018,10 +954,8 @@ Print the text string embedded immediately after the
 JSR to this routine. Characters are sent to OSWRCH
 until a byte with bit 7 set is encountered, which
 terminates the string. Execution resumes after the
-terminator byte.
-
-On exit:
-  A = terminator byte (bit 7 set)""")
+terminator byte.""",
+    on_exit={"A": "terminator byte (bit 7 set)"})
 
 subroutine(0xFEB3, "nmi_acknowledge", hook=None,
     title="NMI acknowledge",
@@ -1079,74 +1013,49 @@ any vector interception.""")
 
 subroutine(0xFFCE, "osfind_entry", hook=None,
     title="MOS entry: OSFIND",
-    description="""\
-Open or close a file. Dispatches via FINDV (&021C).
-
-On entry:
-  A = 0 to close, non-zero to open
-  Y = handle (close) or XY => filename (open)
-On exit:
-  A = file handle (open) or preserved (close)""")
+    description="Open or close a file. Dispatches via FINDV (&021C).",
+    on_entry={"A": "0 to close, non-zero to open",
+              "Y": "handle (close) or XY => filename (open)"},
+    on_exit={"A": "file handle (open) or preserved (close)"})
 
 subroutine(0xFFD1, "osgbpb_entry", hook=None,
     title="MOS entry: OSGBPB",
-    description="""\
-Multiple-byte get or put. Dispatches via GBPBV (&021A).
-
-On entry:
-  A = function, XY => 13-byte control block""")
+    description="Multiple-byte get or put. Dispatches via GBPBV (&021A).",
+    on_entry={"A": "function", "XY": "13-byte control block address"})
 
 subroutine(0xFFD4, "osbput_entry", hook=None,
     title="MOS entry: OSBPUT",
-    description="""\
-Write a byte to an open file. Dispatches via BPUTV (&0218).
-
-On entry:
-  A = byte to write, Y = file handle""")
+    description="Write a byte to an open file. Dispatches via BPUTV (&0218).",
+    on_entry={"A": "byte to write", "Y": "file handle"})
 
 subroutine(0xFFD7, "osbget_entry", hook=None,
     title="MOS entry: OSBGET",
-    description="""\
-Read a byte from an open file. Dispatches via BGETV (&0216).
-
-On entry:
-  Y = file handle
-On exit:
-  A = byte read, C = set if EOF""")
+    description="Read a byte from an open file. Dispatches via BGETV (&0216).",
+    on_entry={"Y": "file handle"},
+    on_exit={"A": "byte read", "C": "set if EOF"})
 
 subroutine(0xFFDA, "osargs_entry", hook=None,
     title="MOS entry: OSARGS",
-    description="""\
-Read or write open file arguments. Dispatches via ARGSV (&0214).
-
-On entry:
-  A = function, X => zero-page data word, Y = handle""")
+    description="Read or write open file arguments. Dispatches via ARGSV (&0214).",
+    on_entry={"A": "function", "X": "zero-page data word address", "Y": "handle"})
 
 subroutine(0xFFDD, "osfile_entry", hook=None,
     title="MOS entry: OSFILE",
-    description="""\
-Whole-file operations. Dispatches via FILEV (&0212).
-
-On entry:
-  A = function, XY => 18-byte control block""")
+    description="Whole-file operations. Dispatches via FILEV (&0212).",
+    on_entry={"A": "function", "XY": "18-byte control block address"})
 
 subroutine(0xFFE0, "osrdch_entry", hook=None,
     title="MOS entry: OSRDCH",
-    description="""\
-Read a character from the input stream. Dispatches via RDCHV (&0210).
-
-On exit:
-  A = character, C = set if Escape""")
+    description="Read a character from the input stream. Dispatches via RDCHV (&0210).",
+    on_exit={"A": "character", "C": "set if Escape"})
 
 subroutine(0xFFE3, "osasci_entry", hook=None,
     title="MOS entry: OSASCI",
     description="""\
 Write a character, converting CR to CR+LF. If the
 character is &0D, falls through to OSNEWL to send
-LF then CR. Otherwise jumps directly to OSWRCH.
-
-On entry:
-  A = character to write""")
+LF then CR. Otherwise jumps directly to OSWRCH.""",
+    on_entry={"A": "character to write"})
 
 subroutine(0xFFE7, "osnewl_entry", hook=None,
     title="MOS entry: OSNEWL",
@@ -1163,37 +1072,24 @@ falls through to OSWRCH.""")
 
 subroutine(0xFFEE, "oswrch_entry", hook=None,
     title="MOS entry: OSWRCH",
-    description="""\
-Write a character to the output stream. Dispatches via WRCHV (&020E).
-
-On entry:
-  A = character to write
-On exit:
-  A preserved""")
+    description="Write a character to the output stream. Dispatches via WRCHV (&020E).",
+    on_entry={"A": "character to write"},
+    on_exit={"A": "preserved"})
 
 subroutine(0xFFF1, "osword_entry", hook=None,
     title="MOS entry: OSWORD",
-    description="""\
-Perform a word-based MOS operation. Dispatches via WORDV (&020C).
-
-On entry:
-  A = function, XY => control block""")
+    description="Perform a word-based MOS operation. Dispatches via WORDV (&020C).",
+    on_entry={"A": "function", "XY": "control block address"})
 
 subroutine(0xFFF4, "osbyte_entry", hook=None,
     title="MOS entry: OSBYTE",
-    description="""\
-Perform a byte-based MOS operation. Dispatches via BYTEV (&020A).
-
-On entry:
-  A = function, X = parameter 1, Y = parameter 2""")
+    description="Perform a byte-based MOS operation. Dispatches via BYTEV (&020A).",
+    on_entry={"A": "function", "X": "parameter 1", "Y": "parameter 2"})
 
 subroutine(0xFFF7, "oscli_entry", hook=None,
     title="MOS entry: OSCLI",
-    description="""\
-Execute a star command. Dispatches via CLIV (&0208).
-
-On entry:
-  XY => command string (CR-terminated)""")
+    description="Execute a star command. Dispatches via CLIV (&0208).",
+    on_entry={"XY": "command string address (CR-terminated)"})
 
 # =====================================================================
 # Comments
