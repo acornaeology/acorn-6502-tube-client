@@ -1,14 +1,7 @@
 {
     "slug": "acorn-6502-tube-client",
     "name": "Acorn 6502 Tube Client",
-    "description": "Tube Host client ROM for the 65C02 second (parasite) processor used with the BBC Micro.",
+    "description": "Tube Host client ROM for the 65C02 second processor used with the BBC Micro. The Tube Client serves as the operating system for the second processor, providing the standard BBC Micro MOS API by forwarding calls over the Tube interface to the host machine. The entire OS fits in just 2 kB, stored in the upper half of a 4 kB ROM device.",
     "glossary": "GLOSSARY.md",
-    "versions": ["1.10"],
-    "references": [
-        {
-            "label": "Acorn 6502 Tube ROM original source code",
-            "url": "https://github.com/stardot/Acorn6502TubeROM",
-            "note": "Original source code for the v1.20 ROM in MASM format, plus the v1.10 source in UADE format. The v1.20 sources include a change history documenting the bug fixes applied between v1.10 and v1.20."
-        }
-    ]
+    "versions": ["1.10"]
 }

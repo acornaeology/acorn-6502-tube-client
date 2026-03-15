@@ -2,7 +2,7 @@
 
 [![Verify disassembly](https://github.com/acornaeology/acorn-6502-tube-client/actions/workflows/verify.yml/badge.svg)](https://github.com/acornaeology/acorn-6502-tube-client/actions/workflows/verify.yml)
 
-Tube Host client ROM for the 65C02 second (parasite) processor used with the BBC Micro.
+Tube Host client ROM for the 65C02 second processor used with the BBC Micro. The Tube Client serves as the operating system for the second processor, providing the standard BBC Micro MOS API by forwarding calls over the Tube interface to the host machine. The entire OS fits in just 2 kB, stored in the upper half of a 4 kB ROM device.
 
 This repository contains annotated disassemblies of the Acorn 6502 Tube Client ROM, produced by reverse-engineering the original 65C02 machine code. Each disassembly includes named labels, comments explaining the logic, and cross-references between subroutines.
 
@@ -22,9 +22,9 @@ The disassembly is produced by a Python script that drives a custom version of [
 
 The output is verified by reassembling with [beebasm](https://github.com/stardot/beebasm) and comparing the result byte-for-byte against the original ROM. This round-trip verification runs automatically in CI on every push.
 
-## Building locally
+## Disassembling locally
 
-Requires [uv](https://docs.astral.sh/uv/) and [beebasm](https://github.com/stardot/beebasm).
+Requires [uv](https://docs.astral.sh/uv/) and [beebasm](https://github.com/stardot/beebasm) (v1.10+).
 
 ```sh
 uv sync
@@ -32,10 +32,14 @@ uv run acorn-tube-client-disasm-tool disassemble 1.10
 uv run acorn-tube-client-disasm-tool verify 1.10
 ```
 
-## References
+## (Re-)Assembling locally
 
-- [Acorn 6502 Tube ROM original source code](https://github.com/stardot/Acorn6502TubeROM)
-  Original source code for the v1.20 ROM in MASM format, plus the v1.10 source in UADE format. The v1.20 sources include a change history documenting the bug fixes applied between v1.10 and v1.20.
+To assemble the `.asm` file back into a ROM image using [beebasm](https://github.com/stardot/beebasm):
+
+```sh
+beebasm -i versions/tube-6502-client-1.10/output/tube-6502-client-1.10.asm -o tube-6502-client-1.10.rom
+```
+
 
 ## Credits
 
