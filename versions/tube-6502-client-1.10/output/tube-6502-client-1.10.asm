@@ -791,9 +791,9 @@ soft_reset_jmp_hi       = &f85f
 ; &fa9c referenced 1 time by &fa75
 .osbyte_high
     cmp #&82                                                          ; fa9c: c9 82       ..             ; Is it OSBYTE &82 (read high word)?
-    beq osbyte_read_high_word_impl                                    ; fa9e: f0 5a       .Z             ; Yes: return &0000
+    beq osbyte_read_high_word                                         ; fa9e: f0 5a       .Z             ; Yes: return &0000
     cmp #&83                                                          ; faa0: c9 83       ..             ; Is it OSBYTE &83 (read LOMEM)?
-    beq osbyte_read_lomem_impl                                        ; faa2: f0 51       .Q             ; Yes: return &0800
+    beq osbyte_read_lomem                                             ; faa2: f0 51       .Q             ; Yes: return &0800
     cmp #&84                                                          ; faa4: c9 84       ..             ; Is it OSBYTE &84 (read HIMEM)?
     beq osbyte_read_himem                                             ; faa6: f0 48       .H             ; Yes: return memory_top
     pha                                                               ; faa8: 48          H              ; Save function on stack
@@ -849,6 +849,7 @@ soft_reset_jmp_hi       = &f85f
 ; OSBYTE &84: read top of memory
 ; 
 ; Return the current top of user memory from &F2/F3.
+; Falls through to the RTS at osbyte_himem_rts.
 ; 
 ; On Exit:
 ;     X: memory_top low byte
@@ -858,23 +859,25 @@ soft_reset_jmp_hi       = &f85f
 .osbyte_read_himem
     ldx memory_top                                                    ; faf0: a6 f2       ..             ; X = memory top low byte
     ldy memory_top_hi                                                 ; faf2: a4 f3       ..             ; Y = memory top high byte
+.osbyte_himem_rts
+    rts                                                               ; faf4: 60          `              ; Return (OSBYTE &84)
+
 ; ***************************************************************************************
 ; OSBYTE &83: read bottom of memory
 ; 
 ; Return the bottom of user memory, fixed at &0800.
+; Shares its RTS with osbyte_read_high_word.
 ; 
 ; On Exit:
 ;     X: &00
 ;     Y: &08
 ; ***************************************************************************************
-.osbyte_read_lomem
-    rts                                                               ; faf4: 60          `              ; Return (OSBYTE &84)
-
 ; &faf5 referenced 1 time by &faa2
-.osbyte_read_lomem_impl
+.osbyte_read_lomem
     ldx #0                                                            ; faf5: a2 00       ..             ; X = &00 (bottom of user memory)
-.osbyte_lomem_y_value
-    equb &a0                                                          ; faf7: a0          .              ; Y = &08 (bottom of memory = &0800)
+    ldy #8                                                            ; faf7: a0 08       ..             ; Y = &08 (bottom of memory high byte)
+.osbyte_lomem_rts
+    rts                                                               ; faf9: 60          `              ; Return (OSBYTE &83)
 
 ; ***************************************************************************************
 ; OSBYTE &82: read machine high order address
@@ -887,12 +890,8 @@ soft_reset_jmp_hi       = &f85f
 ;     X: &00
 ;     Y: &00
 ; ***************************************************************************************
-.osbyte_read_high_word
-    php                                                               ; faf8: 08          .
-    rts                                                               ; faf9: 60          `              ; Return (OSBYTE &83)
-
 ; &fafa referenced 1 time by &fa9e
-.osbyte_read_high_word_impl
+.osbyte_read_high_word
     ldx #0                                                            ; fafa: a2 00       ..             ; X = &00 (high word low)
     ldy #0                                                            ; fafc: a0 00       ..             ; Y = &00 (high word high)
     rts                                                               ; fafe: 60          `              ; Return (OSBYTE &82)
@@ -2612,9 +2611,9 @@ save pydis_start, pydis_end
 ;     osbyte_low_wait_r2_2:           1
 ;     osbyte_low_wait_r2_3:           1
 ;     osbyte_low_wait_result:         1
-;     osbyte_read_high_word_impl:     1
+;     osbyte_read_high_word:          1
 ;     osbyte_read_himem:              1
-;     osbyte_read_lomem_impl:         1
+;     osbyte_read_lomem:              1
 ;     oscli_entry:                    1
 ;     oscli_skip_stars_loop:          1
 ;     oscli_wait_ack:                 1
@@ -2679,11 +2678,11 @@ save pydis_start, pydis_end
 
 ; Stats:
 ;     Total size (Code + Data) = 2048 bytes
-;     Code                     = 1603 bytes (78%)
-;     Data                     = 445 bytes (22%)
+;     Code                     = 1604 bytes (78%)
+;     Data                     = 444 bytes (22%)
 ;
 ;     Number of instructions   = 784
-;     Number of data bytes     = 288 bytes
+;     Number of data bytes     = 287 bytes
 ;     Number of data words     = 62 bytes
 ;     Number of string bytes   = 95 bytes
 ;     Number of strings        = 6

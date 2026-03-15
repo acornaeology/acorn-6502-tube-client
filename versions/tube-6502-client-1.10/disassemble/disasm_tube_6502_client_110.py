@@ -208,8 +208,6 @@ label(0xFA71, "check_oscli_ack")
 label(0xFA73, "osbyte_impl")
 label(0xFA9C, "osbyte_high")
 label(0xFAF0, "osbyte_read_himem")
-label(0xFAF4, "osbyte_read_lomem")
-label(0xFAF8, "osbyte_read_high_word")
 label(0xFAFF, "osword_impl")
 label(0xFB77, "rdline")
 label(0xFBCC, "osargs_impl")
@@ -308,8 +306,7 @@ label(0xFAD5, "osbyte_high_wait_carry")
 label(0xFADF, "osbyte_high_wait_y")
 label(0xFAE7, "osbyte_high_wait_x")
 label(0xFAEF, "osbyte_high_return")
-label(0xFAF5, "osbyte_read_lomem_impl")
-label(0xFAFA, "osbyte_read_high_word_impl")
+label(0xFAF4, "osbyte_himem_rts")
 label(0xFB09, "osword_wait_r2_cmd")
 label(0xFB11, "osword_wait_r2_func")
 label(0xFB24, "osword_send_low_lookup")
@@ -382,7 +379,7 @@ label(0xFEFE, "tube_r4_status")
 label(0xFEFF, "tube_r4_data")
 
 # Self-modifying code sub labels
-label(0xFAF7, "osbyte_lomem_y_value")
+label(0xFAF9, "osbyte_lomem_rts")
 label(0xFDD6, "transfer_write_read_byte")
 label(0xFDF8, "transfer_read_store_byte")
 label(0xFE01, "nmi0_read_byte")
@@ -658,16 +655,20 @@ returns immediately without waiting for a response.""",
 
 subroutine(0xFAF0, "osbyte_read_himem", hook=None,
     title="OSBYTE &84: read top of memory",
-    description="Return the current top of user memory from &F2/F3.",
+    description="""\
+Return the current top of user memory from &F2/F3.
+Falls through to the RTS at osbyte_himem_rts.""",
     on_exit={"X": "memory_top low byte",
              "Y": "memory_top high byte"})
 
-subroutine(0xFAF4, "osbyte_read_lomem", hook=None,
+subroutine(0xFAF5, "osbyte_read_lomem", hook=None,
     title="OSBYTE &83: read bottom of memory",
-    description="Return the bottom of user memory, fixed at &0800.",
+    description="""\
+Return the bottom of user memory, fixed at &0800.
+Shares its RTS with osbyte_read_high_word.""",
     on_exit={"X": "&00", "Y": "&08"})
 
-subroutine(0xFAF8, "osbyte_read_high_word", hook=None,
+subroutine(0xFAFA, "osbyte_read_high_word", hook=None,
     title="OSBYTE &82: read machine high order address",
     description="""\
 Return &0000 as the high word of the address space.
@@ -1464,7 +1465,7 @@ comment(0xFAF0, "X = memory top low byte", inline=True)
 comment(0xFAF2, "Y = memory top high byte", inline=True)
 comment(0xFAF4, "Return (OSBYTE &84)", inline=True)
 comment(0xFAF5, "X = &00 (bottom of user memory)", inline=True)
-comment(0xFAF7, "Y = &08 (bottom of memory = &0800)", inline=True)
+comment(0xFAF7, "Y = &08 (bottom of memory high byte)", inline=True)
 comment(0xFAF9, "Return (OSBYTE &83)", inline=True)
 comment(0xFAFA, "X = &00 (high word low)", inline=True)
 comment(0xFAFC, "Y = &00 (high word high)", inline=True)
