@@ -2069,18 +2069,15 @@ for addr in [0xF95D, 0xF95E, 0xF95F, 0xF960, 0xF961]:
 
 # Spare space filled with &FF
 # &FEB7-&FEEF: unused ROM fill between code and I/O window
-for addr in range(0xFEB7, 0xFEF0):
-    byte(addr)
+byte(0xFEB7, 0xFEF0 - 0xFEB7)
 # &FEF0-&FEF7: Tube ULA I/O window (hardware overlays these ROM addresses;
 # the 8 bytes here precede the Tube register pairs at &FEF8-&FEFF)
-for addr in range(0xFEF0, 0xFEF8):
-    byte(addr)
+byte(0xFEF0, 0xFEF8 - 0xFEF0)
 # &FEF8-&FEFF: Tube register addresses (labelled individually above)
 for addr in range(0xFEF8, 0xFF00):
     byte(addr)
 # &FF00-&FF7F: unused fill in lower half of page &FF
-for addr in range(0xFF00, 0xFF80):
-    byte(addr)
+byte(0xFF00, 0xFF80 - 0xFF00)
 
 # Default vector table (27 x 2-byte words, copied to &0200-&0236 at reset)
 _default_vectors = [

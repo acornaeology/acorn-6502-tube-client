@@ -1924,63 +1924,11 @@ lfe17 = sub_cfe15+2
 
 ; Unused fill between code and I/O window
 .unused_fill_pre_io
-    equb &ff                                                          ; feb7: ff          .
-    equb &ff                                                          ; feb8: ff          .
-    equb &ff                                                          ; feb9: ff          .
-    equb &ff                                                          ; feba: ff          .
-    equb &ff                                                          ; febb: ff          .
-    equb &ff                                                          ; febc: ff          .
-    equb &ff                                                          ; febd: ff          .
-    equb &ff                                                          ; febe: ff          .
-    equb &ff                                                          ; febf: ff          .
-    equb &ff                                                          ; fec0: ff          .
-    equb &ff                                                          ; fec1: ff          .
-    equb &ff                                                          ; fec2: ff          .
-    equb &ff                                                          ; fec3: ff          .
-    equb &ff                                                          ; fec4: ff          .
-    equb &ff                                                          ; fec5: ff          .
-    equb &ff                                                          ; fec6: ff          .
-    equb &ff                                                          ; fec7: ff          .
-    equb &ff                                                          ; fec8: ff          .
-    equb &ff                                                          ; fec9: ff          .
-    equb &ff                                                          ; feca: ff          .
-    equb &ff                                                          ; fecb: ff          .
-    equb &ff                                                          ; fecc: ff          .
-    equb &ff                                                          ; fecd: ff          .
-    equb &ff                                                          ; fece: ff          .
-    equb &ff                                                          ; fecf: ff          .
-    equb &ff                                                          ; fed0: ff          .
-    equb &ff                                                          ; fed1: ff          .
-    equb &ff                                                          ; fed2: ff          .
-    equb &ff                                                          ; fed3: ff          .
-    equb &ff                                                          ; fed4: ff          .
-    equb &ff                                                          ; fed5: ff          .
-    equb &ff                                                          ; fed6: ff          .
-    equb &ff                                                          ; fed7: ff          .
-    equb &ff                                                          ; fed8: ff          .
-    equb &ff                                                          ; fed9: ff          .
-    equb &ff                                                          ; feda: ff          .
-    equb &ff                                                          ; fedb: ff          .
-    equb &ff                                                          ; fedc: ff          .
-    equb &ff                                                          ; fedd: ff          .
-    equb &ff                                                          ; fede: ff          .
-    equb &ff                                                          ; fedf: ff          .
-    equb &ff                                                          ; fee0: ff          .
-    equb &ff                                                          ; fee1: ff          .
-    equb &ff                                                          ; fee2: ff          .
-    equb &ff                                                          ; fee3: ff          .
-    equb &ff                                                          ; fee4: ff          .
-    equb &ff                                                          ; fee5: ff          .
-    equb &ff                                                          ; fee6: ff          .
-    equb &ff                                                          ; fee7: ff          .
-    equb &ff                                                          ; fee8: ff          .
-    equb &ff                                                          ; fee9: ff          .
-    equb &ff                                                          ; feea: ff          .
-    equb &ff                                                          ; feeb: ff          .
-    equb &ff                                                          ; feec: ff          .
-    equb &ff                                                          ; feed: ff          .
-    equb &ff                                                          ; feee: ff          .
-    equb &ff                                                          ; feef: ff          .
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; feb7: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; fec3: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; fecf: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; fedb: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff                  ; fee7: ff ff ff... ...
 ; Tube ULA I/O window: hardware registers
 ; overlay these ROM addresses. The ROM
 ; bytes here are never read by the CPU.
@@ -1988,14 +1936,7 @@ lfe17 = sub_cfe15+2
 ; &FEF8-&FEFF but are not used by the
 ; Tube Client software.
 .tube_ula_io_window
-    equb &ff                                                          ; fef0: ff          .              ; Tube R1 status (mirror, not used)
-    equb &ff                                                          ; fef1: ff          .              ; Tube R1 data (mirror, not used)
-    equb &ff                                                          ; fef2: ff          .              ; Tube R2 status (mirror, not used)
-    equb &ff                                                          ; fef3: ff          .              ; Tube R2 data (mirror, not used)
-    equb &ff                                                          ; fef4: ff          .              ; Tube R3 status (mirror, not used)
-    equb &ff                                                          ; fef5: ff          .              ; Tube R3 data (mirror, not used)
-    equb &ff                                                          ; fef6: ff          .              ; Tube R4 status (mirror, not used)
-    equb &ff                                                          ; fef7: ff          .              ; Tube R4 data (mirror, not used)
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff                       ; fef0: ff ff ff... ...            ; Tube R1 status (mirror, not used); Tube R1 data (mirror, not used); Tube R2 status (mirror, not used); Tube R2 data (mirror, not used); Tube R3 status (mirror, not used); Tube R3 data (mirror, not used); Tube R4 status (mirror, not used); Tube R4 data (mirror, not used)
 ; &fef8 referenced 4 times by &0100[1], &f962, &fcf5, &fe80
 .tube_r1_status
     equb &ff                                                          ; fef8: ff          .              ; Tube register 1 status
@@ -2027,134 +1968,17 @@ lfe17 = sub_cfe15+2
 ; MOS entry points.
 ; &ff00 referenced 2 times by &f802, &f805
 .unused_fill_page_ff
-    equb &ff                                                          ; ff00: ff          .
-    equb &ff                                                          ; ff01: ff          .
-    equb &ff                                                          ; ff02: ff          .
-    equb &ff                                                          ; ff03: ff          .
-    equb &ff                                                          ; ff04: ff          .
-    equb &ff                                                          ; ff05: ff          .
-    equb &ff                                                          ; ff06: ff          .
-    equb &ff                                                          ; ff07: ff          .
-    equb &ff                                                          ; ff08: ff          .
-    equb &ff                                                          ; ff09: ff          .
-    equb &ff                                                          ; ff0a: ff          .
-    equb &ff                                                          ; ff0b: ff          .
-    equb &ff                                                          ; ff0c: ff          .
-    equb &ff                                                          ; ff0d: ff          .
-    equb &ff                                                          ; ff0e: ff          .
-    equb &ff                                                          ; ff0f: ff          .
-    equb &ff                                                          ; ff10: ff          .
-    equb &ff                                                          ; ff11: ff          .
-    equb &ff                                                          ; ff12: ff          .
-    equb &ff                                                          ; ff13: ff          .
-    equb &ff                                                          ; ff14: ff          .
-    equb &ff                                                          ; ff15: ff          .
-    equb &ff                                                          ; ff16: ff          .
-    equb &ff                                                          ; ff17: ff          .
-    equb &ff                                                          ; ff18: ff          .
-    equb &ff                                                          ; ff19: ff          .
-    equb &ff                                                          ; ff1a: ff          .
-    equb &ff                                                          ; ff1b: ff          .
-    equb &ff                                                          ; ff1c: ff          .
-    equb &ff                                                          ; ff1d: ff          .
-    equb &ff                                                          ; ff1e: ff          .
-    equb &ff                                                          ; ff1f: ff          .
-    equb &ff                                                          ; ff20: ff          .
-    equb &ff                                                          ; ff21: ff          .
-    equb &ff                                                          ; ff22: ff          .
-    equb &ff                                                          ; ff23: ff          .
-    equb &ff                                                          ; ff24: ff          .
-    equb &ff                                                          ; ff25: ff          .
-    equb &ff                                                          ; ff26: ff          .
-    equb &ff                                                          ; ff27: ff          .
-    equb &ff                                                          ; ff28: ff          .
-    equb &ff                                                          ; ff29: ff          .
-    equb &ff                                                          ; ff2a: ff          .
-    equb &ff                                                          ; ff2b: ff          .
-    equb &ff                                                          ; ff2c: ff          .
-    equb &ff                                                          ; ff2d: ff          .
-    equb &ff                                                          ; ff2e: ff          .
-    equb &ff                                                          ; ff2f: ff          .
-    equb &ff                                                          ; ff30: ff          .
-    equb &ff                                                          ; ff31: ff          .
-    equb &ff                                                          ; ff32: ff          .
-    equb &ff                                                          ; ff33: ff          .
-    equb &ff                                                          ; ff34: ff          .
-    equb &ff                                                          ; ff35: ff          .
-    equb &ff                                                          ; ff36: ff          .
-    equb &ff                                                          ; ff37: ff          .
-    equb &ff                                                          ; ff38: ff          .
-    equb &ff                                                          ; ff39: ff          .
-    equb &ff                                                          ; ff3a: ff          .
-    equb &ff                                                          ; ff3b: ff          .
-    equb &ff                                                          ; ff3c: ff          .
-    equb &ff                                                          ; ff3d: ff          .
-    equb &ff                                                          ; ff3e: ff          .
-    equb &ff                                                          ; ff3f: ff          .
-    equb &ff                                                          ; ff40: ff          .
-    equb &ff                                                          ; ff41: ff          .
-    equb &ff                                                          ; ff42: ff          .
-    equb &ff                                                          ; ff43: ff          .
-    equb &ff                                                          ; ff44: ff          .
-    equb &ff                                                          ; ff45: ff          .
-    equb &ff                                                          ; ff46: ff          .
-    equb &ff                                                          ; ff47: ff          .
-    equb &ff                                                          ; ff48: ff          .
-    equb &ff                                                          ; ff49: ff          .
-    equb &ff                                                          ; ff4a: ff          .
-    equb &ff                                                          ; ff4b: ff          .
-    equb &ff                                                          ; ff4c: ff          .
-    equb &ff                                                          ; ff4d: ff          .
-    equb &ff                                                          ; ff4e: ff          .
-    equb &ff                                                          ; ff4f: ff          .
-    equb &ff                                                          ; ff50: ff          .
-    equb &ff                                                          ; ff51: ff          .
-    equb &ff                                                          ; ff52: ff          .
-    equb &ff                                                          ; ff53: ff          .
-    equb &ff                                                          ; ff54: ff          .
-    equb &ff                                                          ; ff55: ff          .
-    equb &ff                                                          ; ff56: ff          .
-    equb &ff                                                          ; ff57: ff          .
-    equb &ff                                                          ; ff58: ff          .
-    equb &ff                                                          ; ff59: ff          .
-    equb &ff                                                          ; ff5a: ff          .
-    equb &ff                                                          ; ff5b: ff          .
-    equb &ff                                                          ; ff5c: ff          .
-    equb &ff                                                          ; ff5d: ff          .
-    equb &ff                                                          ; ff5e: ff          .
-    equb &ff                                                          ; ff5f: ff          .
-    equb &ff                                                          ; ff60: ff          .
-    equb &ff                                                          ; ff61: ff          .
-    equb &ff                                                          ; ff62: ff          .
-    equb &ff                                                          ; ff63: ff          .
-    equb &ff                                                          ; ff64: ff          .
-    equb &ff                                                          ; ff65: ff          .
-    equb &ff                                                          ; ff66: ff          .
-    equb &ff                                                          ; ff67: ff          .
-    equb &ff                                                          ; ff68: ff          .
-    equb &ff                                                          ; ff69: ff          .
-    equb &ff                                                          ; ff6a: ff          .
-    equb &ff                                                          ; ff6b: ff          .
-    equb &ff                                                          ; ff6c: ff          .
-    equb &ff                                                          ; ff6d: ff          .
-    equb &ff                                                          ; ff6e: ff          .
-    equb &ff                                                          ; ff6f: ff          .
-    equb &ff                                                          ; ff70: ff          .
-    equb &ff                                                          ; ff71: ff          .
-    equb &ff                                                          ; ff72: ff          .
-    equb &ff                                                          ; ff73: ff          .
-    equb &ff                                                          ; ff74: ff          .
-    equb &ff                                                          ; ff75: ff          .
-    equb &ff                                                          ; ff76: ff          .
-    equb &ff                                                          ; ff77: ff          .
-    equb &ff                                                          ; ff78: ff          .
-    equb &ff                                                          ; ff79: ff          .
-    equb &ff                                                          ; ff7a: ff          .
-    equb &ff                                                          ; ff7b: ff          .
-    equb &ff                                                          ; ff7c: ff          .
-    equb &ff                                                          ; ff7d: ff          .
-    equb &ff                                                          ; ff7e: ff          .
-    equb &ff                                                          ; ff7f: ff          .
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff00: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff0c: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff18: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff24: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff30: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff3c: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff48: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff54: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff60: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff6c: ff ff ff... ...
+    equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff                       ; ff78: ff ff ff... ...
 ; ***************************************************************************************
 ; Default MOS vector table
 ; 
