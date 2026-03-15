@@ -10,7 +10,6 @@ This repository contains annotated disassemblies of the Acorn 6502 Tube Client R
 {% for version in versions %}
 - **{{ version.title }}**
   - [Formatted disassembly on acornaeology.uk]({{ version.site_url }})
-  - [Raw assembly source]({{ version.asm_path }})
 {%- for link in version.links %}
   - [{{ link.label }}]({{ link.url }})
 {%- endfor %}

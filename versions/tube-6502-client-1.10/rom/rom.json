@@ -5,6 +5,11 @@
     "sha256": "eb47559b8b5111ff505ac535faeb674c8b0ace5b664d234e7e91b85313dab2c5",
     "links": [
         {
+            "label": "Disassembly source on GitHub",
+            "url": "https://github.com/acornaeology/acorn-6502-tube-client/blob/master/versions/tube-6502-client-1.10/output/tube-6502-client-1.10.asm",
+            "icon": "github"
+        },
+        {
             "label": "Acorn 6502 Tube Client 1.10 in The BBC Micro ROM Library",
             "url": "https://tobylobster.github.io/rom_library/?md5=8c3b9252ac812c892aa21b9252abf94c",
             "icon": "chip"
@@ -12,17 +17,17 @@
         {
             "label": "Original Acorn source code for v1.10 (UADE format)",
             "url": "https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade",
-            "icon": "github"
+            "icon": "ref"
         },
         {
             "label": "J.G. Harston's reassembly of the v1.10 Tube Client (BBC BASIC)",
             "url": "https://web.archive.org/web/20200613192357/http://mdfs.net/Software/Tube/6502/Clnt65v1.src",
-            "icon": "chip"
+            "icon": "ref"
         },
         {
             "label": "Dave Banks' working disassembly of the v1.10 Client ROM (beebasm, includes conditional assembly for the Acorn Turbo 256K variant)",
             "url": "https://github.com/hoglet67/6502ClientROM",
-            "icon": "github"
+            "icon": "ref"
         }
     ]
 }
