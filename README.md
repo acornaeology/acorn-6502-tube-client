@@ -2,7 +2,7 @@
 
 [![Verify disassembly](https://github.com/acornaeology/acorn-6502-tube-client/actions/workflows/verify.yml/badge.svg)](https://github.com/acornaeology/acorn-6502-tube-client/actions/workflows/verify.yml)
 
-The Tube Client ROM for the 65C02/65C102 second processors used with the BBC Micro. Variants were used in the external 3 MHz "cheese-wedge" second processor (v1.10), and the internal 4 MHz hardware for the Master Turbo (v1.11). The Tube Client serves as the operating system for the second processor, providing the standard BBC Micro MOS API by forwarding calls over the Tube interface to the host machine. The entire OS fits in just 2 kB, stored in the upper half of a 4 kB ROM device.
+The Tube Client ROM for the 65C02/65C102 second processors used with the BBC Micro. Two variants of v1.10 were produced: One for the external 3 MHz "cheese-wedge" second processor, and another for the internal 4 MHz board for the Master Turbo. The Tube Client serves as the operating system for the second processor, providing the standard BBC Micro MOS API by forwarding calls over the Tube interface to the host machine. The entire OS fits in just 2 kB, stored in the upper half of a 4 kB ROM device.
 
 This repository contains annotated disassemblies of the Acorn 6502 Tube Client ROM, produced by reverse-engineering the original 65C02 machine code. Each disassembly includes named labels, comments explaining the logic, and cross-references between subroutines.
 

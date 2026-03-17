@@ -1,7 +1,7 @@
 {
     "slug": "acorn-6502-tube-client",
     "name": "Acorn 6502 Tube Client",
-    "description": "The Tube Client ROM for the 65C02/65C102 second processors used with the BBC Micro. Variants were used in the external 3 MHz \"cheese-wedge\" second processor (v1.10), and the internal 4 MHz hardware for the Master Turbo (v1.11). The Tube Client serves as the operating system for the second processor, providing the standard BBC Micro MOS API by forwarding calls over the Tube interface to the host machine. The entire OS fits in just 2 kB, stored in the upper half of a 4 kB ROM device.",
+    "description": "The Tube Client ROM for the 65C02/65C102 second processors used with the BBC Micro. Two variants of v1.10 were produced: One for the external 3 MHz \"cheese-wedge\" second processor, and another for the internal 4 MHz board for the Master Turbo. The Tube Client serves as the operating system for the second processor, providing the standard BBC Micro MOS API by forwarding calls over the Tube interface to the host machine. The entire OS fits in just 2 kB, stored in the upper half of a 4 kB ROM device.",
     "glossary": "GLOSSARY.md",
     "versions": ["1.10"]
 }
