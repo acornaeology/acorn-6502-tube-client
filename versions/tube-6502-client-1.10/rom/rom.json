@@ -15,6 +15,11 @@
             "icon": "chip"
         },
         {
+            "label": "Discuss this disassembly on the Stardot Forums thread: Annotated disassembly of Acorn 6502 Tube Client ROM",
+            "url": "https://www.stardot.org.uk/forums/viewtopic.php?t=32686",
+            "icon": "chat"
+        },
+        {
             "label": "Original Acorn source code for v1.10 (UADE format)",
             "url": "https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade",
             "icon": "ref"
