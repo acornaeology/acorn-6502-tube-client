@@ -8,7 +8,7 @@ This repository contains annotated disassemblies of the Acorn 6502 Tube Client R
 
 ## Versions
 
-- **Acorn 6502 Tube Client 1.10**
+- **Acorn 6502 Tube Client 1.10 (external 65C02 3 MHz)**
   - [Formatted disassembly on acornaeology.uk](https://acornaeology.uk/acorn-6502-tube-client/1.10.html)
   - [Disassembly source on GitHub](https://github.com/acornaeology/acorn-6502-tube-client/blob/master/versions/tube-6502-client-1.10/output/tube-6502-client-1.10.asm)
   - [Acorn 6502 Tube Client 1.10 in The BBC Micro ROM Library](https://tobylobster.github.io/rom_library/?md5=8c3b9252ac812c892aa21b9252abf94c)
