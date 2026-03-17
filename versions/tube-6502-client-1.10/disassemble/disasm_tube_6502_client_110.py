@@ -1168,7 +1168,7 @@ comment(0x0104, "Patched after first boot to skip banner", inline=True)
 
 # --- Startup banner (&F860) ---
 comment(0xF860, "Print inline startup banner string", inline=True)
-comment(0xF87B, "Padding NOP", inline=True)
+comment(0xF87B, "NOP (&EA) terminates string (bit 7 set)", inline=True)
 comment(0xF87C, "Low byte of command_prompt address", inline=True)
 comment(0xF87E, "Patch JMP target low byte", inline=True)
 comment(0xF881, "High byte of command_prompt address", inline=True)
@@ -1377,7 +1377,7 @@ comment(0xFA15, "Letter follows: pass to host", inline=True)
 
 # --- *HELP (&FA17) ---
 comment(0xFA17, "Print inline version string", inline=True)
-comment(0xFA2C, "Padding NOP after inline string", inline=True)
+comment(0xFA2C, "NOP (&EA) terminates string (bit 7 set)", inline=True)
 
 # --- OSCLI send to host (&FA2D) ---
 comment(0xFA2D, "Command &02: OSCLI", inline=True)

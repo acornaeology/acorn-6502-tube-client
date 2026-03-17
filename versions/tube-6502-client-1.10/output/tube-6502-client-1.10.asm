@@ -174,7 +174,7 @@ soft_reset_jmp_hi       = &f85f
     jsr print_embedded_text                                           ; f860: 20 98 fe     ..            ; Print inline startup banner string
     equs &0a, "Acorn TUBE 6502 64K", &0a, &0a, &0d, 0                 ; f863: 0a 41 63... .Ac
 
-    nop                                                               ; f87b: ea          .              ; Padding NOP
+    nop                                                               ; f87b: ea          .              ; NOP (&EA) terminates string (bit 7 set)
     lda #&8d                                                          ; f87c: a9 8d       ..             ; Low byte of command_prompt address
     sta soft_reset_jmp_lo                                             ; f87e: 8d 5e f8    .^.            ; Patch JMP target low byte
     lda #&f8                                                          ; f881: a9 f8       ..             ; High byte of command_prompt address
@@ -632,7 +632,7 @@ soft_reset_jmp_hi       = &f85f
     jsr print_embedded_text                                           ; fa17: 20 98 fe     ..            ; Print inline version string
     equs &0a, &0d, "6502 TUBE 1.10", &0a, &0d                         ; fa1a: 0a 0d 36... ..6
 
-    nop                                                               ; fa2c: ea          .              ; Padding NOP after inline string
+    nop                                                               ; fa2c: ea          .              ; NOP (&EA) terminates string (bit 7 set)
 ; ***************************************************************************************
 ; Send OSCLI command to host
 ; 
