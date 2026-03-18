@@ -109,6 +109,14 @@ label(0x0237, "error_buffer_errnum")
 # =====================================================================
 # print_embedded_text (&FE98) prints an inline string following the JSR,
 # terminated by a byte with bit 7 set. The terminator byte is NOT printed.
+#
+# The routine resumes execution by jumping directly to the terminator
+# byte's address via JMP (indirect), so the terminator is actually
+# executed as a 6502 instruction. This is why the terminator is NOP
+# (&EA = %11101010): bit 7 is set (terminating the string), it is a
+# single-byte opcode (no operand bytes to skip), and it does nothing
+# when executed. This avoids the cost of incrementing the pointer past
+# the terminator before returning.
 
 hook_subroutine(0xFE98, "print_embedded_text", stringhi_hook)
 
@@ -951,8 +959,16 @@ subroutine(0xFE98, "print_embedded_text", hook=None,
 Print the text string embedded immediately after the
 JSR to this routine. Characters are sent to OSWRCH
 until a byte with bit 7 set is encountered, which
-terminates the string. Execution resumes after the
-terminator byte.""",
+terminates the string.
+
+Execution resumes by jumping directly to the address
+of the terminator byte, so the terminator is executed
+as a 6502 instruction. This is why NOP (&EA) is used:
+bit 7 is set (ending the string loop), it is a single-
+byte opcode (no operand to skip), and it has no effect
+when executed. This saves the bytes and cycles that
+would otherwise be needed to increment the pointer
+past the terminator before returning.""",
     on_exit={"A": "terminator byte (bit 7 set)"})
 
 subroutine(0xFEB3, "nmi_acknowledge", hook=None,
@@ -1168,7 +1184,7 @@ comment(0x0104, "Patched after first boot to skip banner", inline=True)
 
 # --- Startup banner (&F860) ---
 comment(0xF860, "Print inline startup banner string", inline=True)
-comment(0xF87B, "NOP (&EA) terminates string (bit 7 set)", inline=True)
+comment(0xF87B, "NOP (&EA) terminates string and is executed", inline=True)
 comment(0xF87C, "Low byte of command_prompt address", inline=True)
 comment(0xF87E, "Patch JMP target low byte", inline=True)
 comment(0xF881, "High byte of command_prompt address", inline=True)
@@ -1377,7 +1393,7 @@ comment(0xFA15, "Letter follows: pass to host", inline=True)
 
 # --- *HELP (&FA17) ---
 comment(0xFA17, "Print inline version string", inline=True)
-comment(0xFA2C, "NOP (&EA) terminates string (bit 7 set)", inline=True)
+comment(0xFA2C, "NOP (&EA) terminates string and is executed", inline=True)
 
 # --- OSCLI send to host (&FA2D) ---
 comment(0xFA2D, "Command &02: OSCLI", inline=True)
@@ -2019,7 +2035,7 @@ comment(0xFEA6, "Read character from inline string", inline=True)
 comment(0xFEA8, "Bit 7 set: end of string", inline=True)
 comment(0xFEAA, "Print character via OSWRCH", inline=True)
 comment(0xFEAD, "Loop for next character", inline=True)
-comment(0xFEB0, "Resume execution after string", inline=True)
+comment(0xFEB0, "Jump to terminator byte and execute it", inline=True)
 
 # --- NMI acknowledge (&FEB3) ---
 comment(0xFEB3, "Write to Tube R3 to acknowledge NMI", inline=True)

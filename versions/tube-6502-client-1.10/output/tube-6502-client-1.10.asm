@@ -174,7 +174,7 @@ soft_reset_jmp_hi       = &f85f
     jsr print_embedded_text                                           ; f860: 20 98 fe     ..            ; Print inline startup banner string
     equs &0a, "Acorn TUBE 6502 64K", &0a, &0a, &0d, 0                 ; f863: 0a 41 63... .Ac
 
-    nop                                                               ; f87b: ea          .              ; NOP (&EA) terminates string (bit 7 set)
+    nop                                                               ; f87b: ea          .              ; NOP (&EA) terminates string and is executed
     lda #&8d                                                          ; f87c: a9 8d       ..             ; Low byte of command_prompt address
     sta soft_reset_jmp_lo                                             ; f87e: 8d 5e f8    .^.            ; Patch JMP target low byte
     lda #&f8                                                          ; f881: a9 f8       ..             ; High byte of command_prompt address
@@ -632,7 +632,7 @@ soft_reset_jmp_hi       = &f85f
     jsr print_embedded_text                                           ; fa17: 20 98 fe     ..            ; Print inline version string
     equs &0a, &0d, "6502 TUBE 1.10", &0a, &0d                         ; fa1a: 0a 0d 36... ..6
 
-    nop                                                               ; fa2c: ea          .              ; NOP (&EA) terminates string (bit 7 set)
+    nop                                                               ; fa2c: ea          .              ; NOP (&EA) terminates string and is executed
 ; ***************************************************************************************
 ; Send OSCLI command to host
 ; 
@@ -1878,8 +1878,16 @@ lfe17 = sub_cfe15+2
 ; Print the text string embedded immediately after the
 ; JSR to this routine. Characters are sent to OSWRCH
 ; until a byte with bit 7 set is encountered, which
-; terminates the string. Execution resumes after the
-; terminator byte.
+; terminates the string.
+; 
+; Execution resumes by jumping directly to the address
+; of the terminator byte, so the terminator is executed
+; as a 6502 instruction. This is why NOP (&EA) is used:
+; bit 7 is set (ending the string loop), it is a single-
+; byte opcode (no operand to skip), and it has no effect
+; when executed. This saves the bytes and cycles that
+; would otherwise be needed to increment the pointer
+; past the terminator before returning.
 ; 
 ; On Exit:
 ;     A: terminator byte (bit 7 set)
@@ -1906,7 +1914,7 @@ lfe17 = sub_cfe15+2
 
 ; &feb0 referenced 1 time by &fea8
 .print_text_resume
-    jmp (control_block_ptr)                                           ; feb0: 6c fa 00    l..            ; Resume execution after string
+    jmp (control_block_ptr)                                           ; feb0: 6c fa 00    l..            ; Jump to terminator byte and execute it
 
 ; ***************************************************************************************
 ; NMI acknowledge
