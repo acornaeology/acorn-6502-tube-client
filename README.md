@@ -16,6 +16,7 @@ This repository contains annotated disassemblies of the Acorn 6502 Tube Client R
   - [Original Acorn source code for v1.10 (UADE format)](https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade)
   - [J.G. Harston's reassembly of the v1.10 Tube Client (BBC BASIC)](https://web.archive.org/web/20200613192357/http://mdfs.net/Software/Tube/6502/Clnt65v1.src)
   - [Dave Banks' working disassembly of the v1.10 Client ROM (beebasm, includes conditional assembly for the Acorn Turbo 256K variant)](https://github.com/hoglet67/6502ClientROM)
+  - [Tom Seddon's reassembly of the 6502 Tube Client](https://github.com/tom-seddon/acorn_6502_copro_os_disassembly)
 
 ## How it works
 
