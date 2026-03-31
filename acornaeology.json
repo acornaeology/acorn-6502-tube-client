@@ -3,5 +3,31 @@
     "name": "Acorn 6502 Tube Client",
     "description": "The Tube Client ROM for the 65C02/65C102 second processors used with the BBC Micro. Two variants of v1.10 were produced: One for the external 3 MHz \"cheese-wedge\" second processor, and another for the internal 4 MHz board for the Master Turbo. The Tube Client serves as the operating system for the second processor, providing the standard BBC Micro MOS API by forwarding calls over the Tube interface to the host machine. The entire OS fits in just 2 kB, stored in the upper half of a 4 kB ROM device.",
     "glossary": "GLOSSARY.md",
-    "versions": ["1.10"]
+    "versions": ["1.10"],
+    "references": [
+        {
+            "label": "Original Acorn source code for v1.10 (UADE format)",
+            "url": "https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade",
+            "icon": "ref",
+            "note": "The original Acorn source code for the 6502 Tube Client, in UADE (Universal Assembler/Disassembler/Editor) format."
+        },
+        {
+            "label": "J.G. Harston's reassembly of the v1.10 Tube Client (BBC BASIC)",
+            "url": "https://web.archive.org/web/20200613192357/http://mdfs.net/Software/Tube/6502/Clnt65v1.src",
+            "icon": "ref",
+            "note": "A BBC BASIC reassembly of the 6502 Tube Client ROM."
+        },
+        {
+            "label": "Dave Banks' working disassembly of the v1.10 Client ROM (beebasm)",
+            "url": "https://github.com/hoglet67/6502ClientROM",
+            "icon": "ref",
+            "note": "A beebasm disassembly including conditional assembly for the Acorn Turbo 256K variant."
+        },
+        {
+            "label": "Tom Seddon's reassembly of the 6502 Tube Client",
+            "url": "https://github.com/tom-seddon/acorn_6502_copro_os_disassembly",
+            "icon": "ref",
+            "note": "Another reassembly of the 6502 Tube Client ROM."
+        }
+    ]
 }

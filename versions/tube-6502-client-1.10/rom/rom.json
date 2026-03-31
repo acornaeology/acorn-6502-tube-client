@@ -18,26 +18,6 @@
             "label": "Discuss this disassembly on the Stardot Forums thread: Annotated disassembly of Acorn 6502 Tube Client ROM",
             "url": "https://www.stardot.org.uk/forums/viewtopic.php?t=32686",
             "icon": "chat"
-        },
-        {
-            "label": "Original Acorn source code for v1.10 (UADE format)",
-            "url": "https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade",
-            "icon": "ref"
-        },
-        {
-            "label": "J.G. Harston's reassembly of the v1.10 Tube Client (BBC BASIC)",
-            "url": "https://web.archive.org/web/20200613192357/http://mdfs.net/Software/Tube/6502/Clnt65v1.src",
-            "icon": "ref"
-        },
-        {
-            "label": "Dave Banks' working disassembly of the v1.10 Client ROM (beebasm, includes conditional assembly for the Acorn Turbo 256K variant)",
-            "url": "https://github.com/hoglet67/6502ClientROM",
-            "icon": "ref"
-        },
-        {
-            "label": "Tom Seddon's reassembly of the 6502 Tube Client",
-            "url": "https://github.com/tom-seddon/acorn_6502_copro_os_disassembly",
-            "icon": "ref"
         }
     ]
 }
