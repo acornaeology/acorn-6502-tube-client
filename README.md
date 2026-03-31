@@ -48,6 +48,8 @@ beebasm -i versions/tube-6502-client-1.10/output/tube-6502-client-1.10.asm -o tu
   A beebasm disassembly including conditional assembly for the Acorn Turbo 256K variant.
 - [Tom Seddon's reassembly of the 6502 Tube Client](https://github.com/tom-seddon/acorn_6502_copro_os_disassembly)
   Another reassembly of the 6502 Tube Client ROM.
+- [Stardot Forums: Annotated disassembly of Acorn 6502 Tube Client ROM](https://www.stardot.org.uk/forums/viewtopic.php?t=32686)
+  Discussion thread for the 6502 Tube Client disassembly.
 
 ## Credits
 

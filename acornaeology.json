@@ -28,6 +28,12 @@
             "url": "https://github.com/tom-seddon/acorn_6502_copro_os_disassembly",
             "icon": "ref",
             "note": "Another reassembly of the 6502 Tube Client ROM."
+        },
+        {
+            "label": "Stardot Forums: Annotated disassembly of Acorn 6502 Tube Client ROM",
+            "url": "https://www.stardot.org.uk/forums/viewtopic.php?t=32686",
+            "icon": "chat",
+            "note": "Discussion thread for the 6502 Tube Client disassembly."
         }
     ]
 }
