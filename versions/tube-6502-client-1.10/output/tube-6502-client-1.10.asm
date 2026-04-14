@@ -1539,9 +1539,22 @@ soft_reset_jmp_hi       = &f85f
 ; single/double byte transfers. Types 4-5 are release.
 ; Types 6-7 are 256-byte block transfers.
 ; 
-; Reads the 4-byte transfer address from R4 (only the
-; low 2 bytes are used), configures the NMI vector and
-; transfer address, then waits for the sync byte on R4.
+; The setup phase consumes 7 bytes on R4 in this order:
+; transfer type, called ID, address bytes 4/3/2/1 (only
+; the low two are stored, via transfer_addr_ptr), then a
+; sync byte. The transfer type byte has already been read
+; by tube_r4_interrupt before falling through here; the
+; other 6 are read below. Between the last address byte
+; and the sync wait, two bytes are drained from R3 in the
+; H-to-P direction via BIT tube_r3_data.
+; 
+; No bytes are written to R3 during setup: any P-to-H R3
+; write happens later, from the NMI handler selected by
+; the transfer type. For transfer types 0-5 the routine
+; exits via RTI after the sync byte; for type 6 it runs
+; transfer_write_loop to send 256 bytes to R3, and for
+; type 7 it runs transfer_256_bytes_from_tube to read 256
+; bytes from R3.
 ; 
 ; The sync byte is the final step of the host-side Tube
 ; handshake: the host writes it only once it is ready to
@@ -1568,7 +1581,7 @@ soft_reset_jmp_hi       = &f85f
 .transfer_wait_id
     bit tube_r4_status                                                ; fd83: 2c fe fe    ,..            ; Poll Tube R4 for called ID byte
     bpl transfer_wait_id                                              ; fd86: 10 fb       ..             ; Wait until data available
-    lda tube_r4_data                                                  ; fd88: ad ff fe    ...            ; Read called ID byte
+    lda tube_r4_data                                                  ; fd88: ad ff fe    ...            ; Consume called ID byte (value discarded)
     cpy #5                                                            ; fd8b: c0 05       ..             ; Type 5: release, no transfer needed
     beq restore_regs_and_rti                                          ; fd8d: f0 58       .X             ; Yes: exit immediately
     tya                                                               ; fd8f: 98          .              ; Save transfer type
@@ -1597,8 +1610,8 @@ soft_reset_jmp_hi       = &f85f
     bpl transfer_read_addr1                                           ; fdb1: 10 fb       ..             ; Wait until data available
     lda tube_r4_data                                                  ; fdb3: ad ff fe    ...            ; Read address byte 1 (low)
     sta (transfer_addr_ptr),y                                         ; fdb6: 91 f4       ..             ; Store via transfer address pointer
-    bit tube_r3_data                                                  ; fdb8: 2c fd fe    ,..            ; Dummy read of Tube R3 to sync
-    bit tube_r3_data                                                  ; fdbb: 2c fd fe    ,..            ; Second dummy read of Tube R3
+    bit tube_r3_data                                                  ; fdb8: 2c fd fe    ,..            ; Drain 1st byte from R3 H-to-P FIFO (BIT reads R3 data)
+    bit tube_r3_data                                                  ; fdbb: 2c fd fe    ,..            ; Drain 2nd byte from R3 H-to-P FIFO
 ; &fdbe referenced 1 time by &fdc1
 .transfer_wait_sync
     bit tube_r4_status                                                ; fdbe: 2c fe fe    ,..            ; Poll Tube R4 status for host sync byte

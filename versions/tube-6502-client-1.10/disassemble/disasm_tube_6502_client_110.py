@@ -863,9 +863,22 @@ routine and the address pointer. Types 0-3 are
 single/double byte transfers. Types 4-5 are release.
 Types 6-7 are 256-byte block transfers.
 
-Reads the 4-byte transfer address from R4 (only the
-low 2 bytes are used), configures the NMI vector and
-transfer address, then waits for the sync byte on R4.
+The setup phase consumes 7 bytes on R4 in this order:
+transfer type, called ID, address bytes 4/3/2/1 (only
+the low two are stored, via transfer_addr_ptr), then a
+sync byte. The transfer type byte has already been read
+by tube_r4_interrupt before falling through here; the
+other 6 are read below. Between the last address byte
+and the sync wait, two bytes are drained from R3 in the
+H-to-P direction via BIT tube_r3_data.
+
+No bytes are written to R3 during setup: any P-to-H R3
+write happens later, from the NMI handler selected by
+the transfer type. For transfer types 0-5 the routine
+exits via RTI after the sync byte; for type 6 it runs
+transfer_write_loop to send 256 bytes to R3, and for
+type 7 it runs transfer_256_bytes_from_tube to read 256
+bytes from R3.
 
 The sync byte is the final step of the host-side Tube
 handshake: the host writes it only once it is ready to
@@ -1892,7 +1905,7 @@ comment(0xFD7E, "Look up address pointer high", inline=True)
 comment(0xFD81, "Set transfer_addr_ptr high", inline=True)
 comment(0xFD83, "Poll Tube R4 for called ID byte", inline=True)
 comment(0xFD86, "Wait until data available", inline=True)
-comment(0xFD88, "Read called ID byte", inline=True)
+comment(0xFD88, "Consume called ID byte (value discarded)", inline=True)
 comment(0xFD8B, "Type 5: release, no transfer needed", inline=True)
 comment(0xFD8D, "Yes: exit immediately", inline=True)
 comment(0xFD8F, "Save transfer type", inline=True)
@@ -1913,8 +1926,8 @@ comment(0xFDAE, "Poll Tube R4 for address byte 1", inline=True)
 comment(0xFDB1, "Wait until data available", inline=True)
 comment(0xFDB3, "Read address byte 1 (low)", inline=True)
 comment(0xFDB6, "Store via transfer address pointer", inline=True)
-comment(0xFDB8, "Dummy read of Tube R3 to sync", inline=True)
-comment(0xFDBB, "Second dummy read of Tube R3", inline=True)
+comment(0xFDB8, "Drain 1st byte from R3 H-to-P FIFO (BIT reads R3 data)", inline=True)
+comment(0xFDBB, "Drain 2nd byte from R3 H-to-P FIFO", inline=True)
 comment(0xFDBE, "Poll Tube R4 status for host sync byte", inline=True)
 comment(0xFDC1, "Spin until host writes sync byte (gates data phase)", inline=True)
 comment(0xFDC3, "Read sync byte", inline=True)
