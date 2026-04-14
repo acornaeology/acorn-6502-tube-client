@@ -1541,7 +1541,14 @@ soft_reset_jmp_hi       = &f85f
 ; 
 ; Reads the 4-byte transfer address from R4 (only the
 ; low 2 bytes are used), configures the NMI vector and
-; transfer address, then reads the sync byte from R4.
+; transfer address, then waits for the sync byte on R4.
+; 
+; The sync byte is the final step of the host-side Tube
+; handshake: the host writes it only once it is ready to
+; begin the data phase. The parasite blocks in the BIT/BPL
+; loop at transfer_wait_sync until bit 7 of R4 status is
+; set, so if the sync byte is never written the parasite
+; spins here indefinitely.
 ; ***************************************************************************************
 ; &fd65 referenced 1 time by &fd42
 .data_transfer_setup
@@ -1594,8 +1601,8 @@ soft_reset_jmp_hi       = &f85f
     bit tube_r3_data                                                  ; fdbb: 2c fd fe    ,..            ; Second dummy read of Tube R3
 ; &fdbe referenced 1 time by &fdc1
 .transfer_wait_sync
-    bit tube_r4_status                                                ; fdbe: 2c fe fe    ,..            ; Poll Tube R4 for sync byte
-    bpl transfer_wait_sync                                            ; fdc1: 10 fb       ..             ; Wait until data available
+    bit tube_r4_status                                                ; fdbe: 2c fe fe    ,..            ; Poll Tube R4 status for host sync byte
+    bpl transfer_wait_sync                                            ; fdc1: 10 fb       ..             ; Spin until host writes sync byte (gates data phase)
     lda tube_r4_data                                                  ; fdc3: ad ff fe    ...            ; Read sync byte
     pla                                                               ; fdc6: 68          h              ; Restore transfer type
     cmp #6                                                            ; fdc7: c9 06       ..             ; Is it type 6 or above?

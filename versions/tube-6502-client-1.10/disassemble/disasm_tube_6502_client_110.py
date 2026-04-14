@@ -865,7 +865,14 @@ Types 6-7 are 256-byte block transfers.
 
 Reads the 4-byte transfer address from R4 (only the
 low 2 bytes are used), configures the NMI vector and
-transfer address, then reads the sync byte from R4.""")
+transfer address, then waits for the sync byte on R4.
+
+The sync byte is the final step of the host-side Tube
+handshake: the host writes it only once it is ready to
+begin the data phase. The parasite blocks in the BIT/BPL
+loop at transfer_wait_sync until bit 7 of R4 status is
+set, so if the sync byte is never written the parasite
+spins here indefinitely.""")
 
 subroutine(0xFDE7, "restore_regs_and_rti", hook=None,
     title="Restore registers and return from interrupt",
@@ -1908,8 +1915,8 @@ comment(0xFDB3, "Read address byte 1 (low)", inline=True)
 comment(0xFDB6, "Store via transfer address pointer", inline=True)
 comment(0xFDB8, "Dummy read of Tube R3 to sync", inline=True)
 comment(0xFDBB, "Second dummy read of Tube R3", inline=True)
-comment(0xFDBE, "Poll Tube R4 for sync byte", inline=True)
-comment(0xFDC1, "Wait until data available", inline=True)
+comment(0xFDBE, "Poll Tube R4 status for host sync byte", inline=True)
+comment(0xFDC1, "Spin until host writes sync byte (gates data phase)", inline=True)
 comment(0xFDC3, "Read sync byte", inline=True)
 comment(0xFDC6, "Restore transfer type", inline=True)
 comment(0xFDC7, "Is it type 6 or above?", inline=True)
