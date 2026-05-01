@@ -31,8 +31,8 @@ Requires [uv](https://docs.astral.sh/uv/) and [beebasm](https://github.com/stard
 ```sh
 uv sync
 {% for version in versions -%}
-uv run acorn-tube-client-disasm-tool disassemble {{ version.id }}
-uv run acorn-tube-client-disasm-tool verify {{ version.id }}
+uv run python versions/tube-6502-client-{{ version.id }}/disassemble/disasm_tube_6502_client_{{ version.id|replace(".", "") }}.py
+uv run tools/verify_with_banking.py {{ version.id }}
 {% endfor -%}
 ```
 

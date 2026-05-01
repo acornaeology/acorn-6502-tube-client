@@ -1,7 +1,8 @@
 """Disassembly driver for Acorn 6502 Tube Client 1.10.
 
 Configures py8dis to produce an annotated disassembly of the Tube Client ROM.
-Run via: uv run acorn-tube-client-disasm-tool disassemble 1.10
+Run via:
+  uv run python versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py
 
 The physical ROM is 4 kB but only the upper 2 kB is mapped into the
 65C02 address space at &F800-&FFFF. The lower 2 kB is not used.

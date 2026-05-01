@@ -6,9 +6,9 @@ license = "MIT"
 authors = [
     { name = "Robert Smallshire" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-    "networkx>=3.0",
+    "fantasm>=0.2.0",
     "py8dis @ git+https://github.com/acornaeology/py8dis.git",
 ]
 
@@ -20,9 +20,6 @@ dev = [
 [tool.uv]
 index-url = "https://pypi.org/simple"
 
-[project.scripts]
-acorn-tube-client-disasm-tool = "disasm_tools.cli:main"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -31,4 +28,5 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/disasm_tools"]
+# This repo is annotated-disassembly content, not a published library.
+only-include = ["versions"]

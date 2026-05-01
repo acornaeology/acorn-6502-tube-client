@@ -26,8 +26,8 @@ Requires [uv](https://docs.astral.sh/uv/) and [beebasm](https://github.com/stard
 
 ```sh
 uv sync
-uv run acorn-tube-client-disasm-tool disassemble 1.10
-uv run acorn-tube-client-disasm-tool verify 1.10
+uv run python versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py
+uv run tools/verify_with_banking.py 1.10
 ```
 
 ## (Re-)Assembling locally

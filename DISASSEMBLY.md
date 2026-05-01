@@ -15,18 +15,23 @@ For project overview and build instructions, see [README.md](README.md). For arc
 
 ## Quick reference: CLI tools
 
-All tools are invoked via `uv run acorn-tube-client-disasm-tool <command>`.
+The disassembly tooling is provided by [fantasm](https://github.com/acornaeology/fantasm), invoked as `uv run fantasm <command>`. The full command surface is documented in fantasm's own README; the most-used commands here are:
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `disassemble` | Generate `.asm` and `.json` from ROM | `... disassemble 1.10` |
-| `verify` | Reassemble and byte-compare against original ROM | `... verify 1.10` |
-| `lint` | Validate annotation addresses in driver script | `... lint 1.10` |
-| `compare` | Compare two ROM versions (byte and opcode level) | `... compare 1.10 1.20` |
-| `extract` | Extract assembly section by address range or label | `... extract 1.10 &F800 &F900` |
-| `audit` | Audit subroutine annotations (summary, detail, flags) | `... audit 1.10 --summary` |
+| (driver script) | Run py8dis to generate `.asm` and `.json` from ROM | `uv run python versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py` |
+| `tools/verify_with_banking.py` | Slice the upper 2 kB and verify with beebasm | `uv run tools/verify_with_banking.py 1.10` |
+| `lint` | Validate annotation addresses against the disassembly | `fantasm lint 1.10 versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py` |
+| `compare` | Compare two ROM versions (byte and opcode level) | `fantasm compare 1.10 1.20` |
+| `asm extract` | Extract assembly section by address range or label | `fantasm asm extract 1.10 &F800 &F900` |
+| `audit summary/detail/undeclared` | Subroutine annotation audit | `fantasm audit summary 1.10` |
+| `cfg leaves/roots/depth/sub/blocks/sub-context` | Inter-procedural call graph queries | `fantasm cfg depth 1.10` |
+| `comments suggest/check` | Comment suggestions and consistency checks | `fantasm comments check 1.10` |
+| `labels classify/apply` | Auto-label classification + rename application | `fantasm labels classify 1.10` |
+| `sub insert` | Find insertion point for a new `subroutine()` | `fantasm sub insert <driver> &F800` |
+| `addresses map` | Map source addresses to a target ROM | `fantasm addresses map 1.10 1.20 --addr 0xF800` |
 
-The `extract` command accepts hex addresses in multiple formats (`&F800`, `$F800`, `0xF800`) as well as label names.
+`fantasm` accepts hex addresses in multiple formats (`&F800`, `$F800`, `0xF800`) as well as label names where appropriate.
 
 
 ## Producing a new version disassembly
@@ -59,8 +64,8 @@ For the first version, start with a minimal driver that loads the ROM and sets e
 Run:
 
 ```sh
-uv run acorn-tube-client-disasm-tool disassemble <VER>
-uv run acorn-tube-client-disasm-tool verify <VER>
+uv run python versions/tube-6502-client-<VER>/disassemble/disasm_tube_6502_client_<VER_NO_DOTS>.py
+uv run tools/verify_with_banking.py <VER>
 ```
 
 Fix errors until verification passes, then annotate.
@@ -120,12 +125,9 @@ Assembly comments are formatted to fit within 62 characters (py8dis formatting c
 
 ## Tools reference
 
+The disassembly toolchain itself lives in [fantasm](https://github.com/acornaeology/fantasm) — see its API/CLI docs for module-level details. The repo-local tools that remain are:
+
 | Tool | Source | Purpose |
 |------|--------|---------|
-| CLI entry point | `src/disasm_tools/cli.py` | Dispatches all subcommands |
-| Verify | `src/disasm_tools/verify.py` | beebasm reassembly and byte comparison |
-| Lint | `src/disasm_tools/lint.py` | Validate annotation addresses and doc links |
-| Compare | `src/disasm_tools/compare.py` | Binary comparison with SequenceMatcher |
-| Extract | `src/disasm_tools/asm_extract.py` | Extract assembly sections by address or label |
-| Audit | `src/disasm_tools/audit.py` | Subroutine annotation audit |
-| Opcode tables | `src/disasm_tools/mos6502.py` | 6502 instruction lengths |
+| Verify (banked) | `tools/verify_with_banking.py` | Slice the upper 2 kB out of the 4 kB ROM and verify via `fantasm.api.verify` |
+| README generator | `generate_readme.py` | Render `README.md` from `acornaeology.json` and `README.md.j2` |

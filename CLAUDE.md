@@ -11,31 +11,33 @@ Annotated disassembly of the Acorn 6502 Tube Client ROM — the operating system
 Requires [uv](https://docs.astral.sh/uv/) and [beebasm](https://github.com/stardot/beebasm) (v1.10+).
 
 ```sh
-uv sync                                              # Install dependencies
-uv run acorn-tube-client-disasm-tool disassemble 1.10 # Generate .asm and .json from ROM
-uv run acorn-tube-client-disasm-tool lint 1.10        # Validate annotation addresses
-uv run acorn-tube-client-disasm-tool verify 1.10      # Reassemble and byte-compare against original ROM
+uv sync                                                                                      # Install dependencies (incl. fantasm)
+uv run python versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py      # Generate .asm and .json via py8dis
+uv run fantasm lint 1.10 versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py   # Validate annotation addresses
+uv run tools/verify_with_banking.py 1.10                                                     # Slice the upper 2 kB and verify with beebasm
 ```
 
-Verification is the primary correctness check: the generated assembly must reassemble to a byte-identical copy of the original ROM. Lint validates that all annotation addresses (comments, subroutines, labels) reference valid item addresses in the py8dis output. CI runs `disassemble`, `lint`, then `verify` on every push.
+Verification is the primary correctness check: the generated assembly must reassemble to a byte-identical copy of the upper 2 kB of the original ROM. Lint validates that all annotation addresses (comments, subroutines, labels) reference valid item addresses in the py8dis output. CI runs disassemble, lint, then verify on every push.
 
 ## Architecture
 
-### CLI entry point
+### Tooling: fantasm + py8dis
 
-`src/disasm_tools/cli.py` — subcommands: `disassemble`, `verify`, `lint`, `compare`, `extract`, `audit`, `cfg`, `context`, `labels`, `rename-labels`, `insert-point`, `comment-check`. Sets env vars `ACORN_TUBE_CLIENT_ROM` and `ACORN_TUBE_CLIENT_OUTPUT` before invoking version-specific scripts.
+The disassembly tooling is provided by [fantasm](https://github.com/acornaeology/fantasm) — installed as a regular project dependency. fantasm exposes a `fantasm` CLI (subcommands: `verify`, `lint`, `compare`, `audit`, `cfg`, `comments`, `labels`, `context`, `asm`, `sub`, `addresses`, `annotations`, `backfill`, `promote`, `fingerprint`, `shared`, `info`, `project`) and a `fantasm.api` package for programmatic use. Project layout, prefixes, and per-version metadata live in `fantasm.toml`.
+
+[py8dis](https://github.com/acornaeology/py8dis) (a programmable 6502/65C02 disassembler) is invoked directly via the per-version driver script under `versions/tube-6502-client-<VER>/disassemble/`; fantasm operates on the `.asm` / `.json` artefacts py8dis emits.
 
 ### Disassembly driver
 
-`versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py` — the main annotation file. Configures py8dis with labels, constants, subroutine descriptions, comments, and relocated code blocks using py8dis's DSL (`label()`, `constant()`, `comment()`, `subroutine()`, `move()`, `hook_subroutine()`). This is where most development work happens.
+`versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py` — the main annotation file. Configures py8dis with labels, constants, subroutine descriptions, comments, and relocated code blocks using py8dis's DSL (`label()`, `constant()`, `comment()`, `subroutine()`, `move()`, `hook_subroutine()`). The driver also performs the 4 kB → 2 kB upper-half slice before feeding py8dis. This is where most development work happens.
 
 ### Lint
 
-`src/disasm_tools/lint.py` — validates that every `comment()`, `subroutine()`, and `label()` address in a driver script corresponds to a valid address in the py8dis JSON output. Also validates `address_links` and `glossary_links` in each version's `rom.json`.
+`fantasm lint <VER> <DRIVER_PATH>` validates that every `comment()`, `subroutine()`, and `label()` address in a driver script corresponds to a valid address in the py8dis JSON output. Doc-link checks against `rom.json`'s `address_links` / `glossary_links` aren't covered by fantasm yet; they remain TODO.
 
 ### Verification
 
-`src/disasm_tools/verify.py` — assembles the generated `.asm` with beebasm and does a byte-for-byte comparison against the original ROM.
+`tools/verify_with_banking.py <VER>` slices the upper 2 kB out of the 4 kB ROM file (only the upper half is mapped at &F800-&FFFF) and feeds it to `fantasm.api.verify.verify_round_trip`, which assembles the generated `.asm` with beebasm and does a byte-for-byte comparison against the slice. Drop the wrapper and switch to plain `fantasm verify <VER>` once [fantasm#1](https://github.com/acornaeology/fantasm/issues/1) lands.
 
 ### Version layout
 
@@ -44,7 +46,7 @@ Each ROM version lives under `versions/tube-6502-client-<version>/`. Subdirector
 - `disassemble/` — py8dis driver script
 - `output/` — generated assembly (`.asm`) and structured data (`.json`)
 
-Version IDs in `acornaeology.json` and CLI arguments are bare numbers (`1.10`). The `resolve_version_dirpath()` helper in `src/disasm_tools/paths.py` maps them to the directory using the `tube-6502-client` prefix.
+Version IDs in `acornaeology.json` and CLI arguments are bare numbers (`1.10`). The directory layout is governed by `[versions] prefixes` in `fantasm.toml`; fantasm's `resolve_version_files()` maps a version ID to the matching `versions/tube-6502-client-{version_id}/` directory.
 
 ### Glossary
 
