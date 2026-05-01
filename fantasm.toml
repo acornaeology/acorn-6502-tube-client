@@ -16,20 +16,5 @@ prefixes = ["tube-6502-client"]
 # but the driver-script identifier replaces them with underscores.
 driver_filename = "disasm_tube_6502_client_{version_id_no_dots}.py"
 
-# Tube Client workspace: page-zero variables and the relocated startup
-# block at &0100 (the reset routine copies 7 bytes from &F859 to &0100,
-# then jumps there to page out the ROM). External regions cover the
-# Tube FIFOs at &FEE0-&FEE7. Both kick in only for versions declared
-# in the version graph below.
-[memory]
-regions = [
-    { start = 0x0000, end = 0x00FF },   # zero-page workspace
-    { start = 0x0100, end = 0x0106 },   # relocated reset stub
-    { start = 0x0200, end = 0x02FF },   # MOS-level vectors + error buffer
-]
-external_regions = [
-    { start = 0xFEE0, end = 0xFEE7 },   # Tube FIFOs (R1-R4)
-]
-
 [[versions.entry]]
 id = "1.10"

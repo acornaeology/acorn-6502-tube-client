@@ -11,10 +11,10 @@ Annotated disassembly of the Acorn 6502 Tube Client ROM — the operating system
 Requires [uv](https://docs.astral.sh/uv/) and [beebasm](https://github.com/stardot/beebasm) (v1.10+).
 
 ```sh
-uv sync                                                                                      # Install dependencies (incl. fantasm)
-uv run python versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py      # Generate .asm and .json via py8dis
+uv sync                                                                                              # Install dependencies (incl. fantasm)
+uv run fantasm disassemble 1.10                                                                       # Run py8dis driver via fantasm (sets FANTASM_ROM / FANTASM_OUTPUT_DIR)
 uv run fantasm lint 1.10 versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py   # Validate annotation addresses
-uv run tools/verify_with_banking.py 1.10                                                     # Slice the upper 2 kB and verify with beebasm
+uv run fantasm verify 1.10                                                                            # Reassemble and byte-compare (slices the upper 2 kB automatically)
 ```
 
 Verification is the primary correctness check: the generated assembly must reassemble to a byte-identical copy of the upper 2 kB of the original ROM. Lint validates that all annotation addresses (comments, subroutines, labels) reference valid item addresses in the py8dis output. CI runs disassemble, lint, then verify on every push.
@@ -37,7 +37,7 @@ The disassembly tooling is provided by [fantasm](https://github.com/acornaeology
 
 ### Verification
 
-`tools/verify_with_banking.py <VER>` slices the upper 2 kB out of the 4 kB ROM file (only the upper half is mapped at &F800-&FFFF) and feeds it to `fantasm.api.verify.verify_round_trip`, which assembles the generated `.asm` with beebasm and does a byte-for-byte comparison against the slice. Drop the wrapper and switch to plain `fantasm verify <VER>` once [fantasm#1](https://github.com/acornaeology/fantasm/issues/1) lands.
+`fantasm verify <VER>` assembles the generated `.asm` with beebasm and compares it against the original ROM. Tube Client's ROM file is 4 kB but only the upper 2 kB is mapped at &F800-&FFFF; fantasm 0.4.0's verify slices the trailing portion of the file when it's larger than the assembled output, so this comparison Just Works without a project-side wrapper.
 
 ### Version layout
 

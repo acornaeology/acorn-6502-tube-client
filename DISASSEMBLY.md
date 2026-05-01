@@ -19,8 +19,8 @@ The disassembly tooling is provided by [fantasm](https://github.com/acornaeology
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| (driver script) | Run py8dis to generate `.asm` and `.json` from ROM | `uv run python versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py` |
-| `tools/verify_with_banking.py` | Slice the upper 2 kB and verify with beebasm | `uv run tools/verify_with_banking.py 1.10` |
+| `disassemble` | Run py8dis to generate `.asm` and `.json` from ROM | `fantasm disassemble 1.10` |
+| `verify` | Reassemble and byte-compare (slices the upper 2 kB automatically) | `fantasm verify 1.10` |
 | `lint` | Validate annotation addresses against the disassembly | `fantasm lint 1.10 versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py` |
 | `compare` | Compare two ROM versions (byte and opcode level) | `fantasm compare 1.10 1.20` |
 | `asm extract` | Extract assembly section by address range or label | `fantasm asm extract 1.10 &F800 &F900` |
@@ -64,8 +64,8 @@ For the first version, start with a minimal driver that loads the ROM and sets e
 Run:
 
 ```sh
-uv run python versions/tube-6502-client-<VER>/disassemble/disasm_tube_6502_client_<VER_NO_DOTS>.py
-uv run tools/verify_with_banking.py <VER>
+uv run fantasm disassemble <VER>
+uv run fantasm verify <VER>
 ```
 
 Fix errors until verification passes, then annotate.
@@ -129,5 +129,4 @@ The disassembly toolchain itself lives in [fantasm](https://github.com/acornaeol
 
 | Tool | Source | Purpose |
 |------|--------|---------|
-| Verify (banked) | `tools/verify_with_banking.py` | Slice the upper 2 kB out of the 4 kB ROM and verify via `fantasm.api.verify` |
 | README generator | `generate_readme.py` | Render `README.md` from `acornaeology.json` and `README.md.j2` |

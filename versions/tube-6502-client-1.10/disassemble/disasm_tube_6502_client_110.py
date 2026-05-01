@@ -20,12 +20,15 @@ init(assembler_name="beebasm", lower_case=True)
 
 _script_dirpath = Path(__file__).resolve().parent
 _version_dirpath = _script_dirpath.parent
+# `fantasm disassemble VID` sets FANTASM_ROM / FANTASM_OUTPUT_DIR;
+# direct `python <driver>` invocations fall back to the conventional
+# paths under the version directory.
 _rom_filepath = os.environ.get(
-    "ACORN_TUBE_CLIENT_ROM",
+    "FANTASM_ROM",
     str(_version_dirpath / "rom" / "tube-6502-client-1.10.rom"),
 )
 _output_dirpath = Path(os.environ.get(
-    "ACORN_TUBE_CLIENT_OUTPUT",
+    "FANTASM_OUTPUT_DIR",
     str(_version_dirpath / "output"),
 ))
 

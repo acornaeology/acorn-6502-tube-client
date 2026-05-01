@@ -48,8 +48,9 @@ jobs:
           make -C /tmp/beebasm/build -j$(nproc)
           sudo cp /tmp/beebasm/build/beebasm /usr/local/bin/
 
-      # Render the version_id with dots removed, since the driver
-      # script's filename uses the no-dots form (1.10 -> 110).
+      # Render the version_id with dots removed for the lint step
+      # (it takes the driver path as a positional argument); the
+      # disassemble and verify steps take the version_id straight.
       - name: Compute driver path
         id: driver
         run: |
@@ -57,19 +58,14 @@ jobs:
           ver_no_dots="${ver//./}"
           echo "path=versions/tube-6502-client-${ver}/disassemble/disasm_tube_6502_client_${ver_no_dots}.py" >> "$GITHUB_OUTPUT"
 
-      # py8dis is invoked directly via the per-version driver script.
-      # fantasm operates on the .json/.asm artefacts py8dis emits.
-      # `fantasm disassemble VID` is filed as fantasm#2 — once it
-      # lands the driver-script invocation collapses to a fantasm call.
       - name: Disassemble Acorn 6502 Tube Client ${{ matrix.version }}
-        run: uv run python ${{ steps.driver.outputs.path }}
+        run: uv run fantasm disassemble ${{ matrix.version }}
 
       - name: Lint Acorn 6502 Tube Client ${{ matrix.version }}
         run: uv run fantasm lint ${{ matrix.version }} ${{ steps.driver.outputs.path }}
 
-      # Tube Client ROM is 4 kB but only the upper 2 kB is mapped, so
-      # `fantasm verify` (strict size match) doesn't apply directly.
-      # tools/verify_with_banking.py wraps fantasm.api.verify with the
-      # slice. Drop once fantasm#1 lands.
+      # Tube Client ROM is 4 kB but only the upper 2 kB is mapped at
+      # &F800-&FFFF; fantasm 0.4.0's `verify` slices the trailing
+      # portion of the ROM file before comparing.
       - name: Verify Acorn 6502 Tube Client ${{ matrix.version }}
-        run: uv run tools/verify_with_banking.py ${{ matrix.version }}
+        run: uv run fantasm verify ${{ matrix.version }}
