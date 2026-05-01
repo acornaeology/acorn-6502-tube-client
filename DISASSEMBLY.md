@@ -15,7 +15,7 @@ For project overview and build instructions, see [README.md](README.md). For arc
 
 ## Quick reference: CLI tools
 
-The disassembly tooling is provided by [fantasm](https://github.com/acornaeology/fantasm), invoked as `uv run fantasm <command>`. The full command surface is documented in fantasm's own README; the most-used commands here are:
+The disassembly tooling is provided by [fantasm](https://acornaeology.github.io/fantasm/), invoked as `uv run fantasm <command>`. The full command-by-command reference is at <https://acornaeology.github.io/fantasm/cli.html> and the workflow guide at <https://acornaeology.github.io/fantasm/workflows.html>; the most-used commands here are:
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -125,7 +125,7 @@ Assembly comments are formatted to fit within 62 characters (py8dis formatting c
 
 ## Tools reference
 
-The disassembly toolchain itself lives in [fantasm](https://github.com/acornaeology/fantasm) — see its API/CLI docs for module-level details. The repo-local tools that remain are:
+The disassembly toolchain itself lives in [fantasm](https://acornaeology.github.io/fantasm/) — see [the published docs](https://acornaeology.github.io/fantasm/) for module-level details. The repo-local tools that remain are:
 
 | Tool | Source | Purpose |
 |------|--------|---------|
