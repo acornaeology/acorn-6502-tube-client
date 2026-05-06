@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "fantasm>=0.4.0",
-    "py8dis @ git+https://github.com/acornaeology/py8dis.git",
+    "dasmos>=1.0",
 ]
 
 [dependency-groups]

@@ -7,8 +7,8 @@ name = "acorn-6502-tube-client"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "dasmos" },
     { name = "fantasm" },
-    { name = "py8dis" },
 ]
 
 [package.dev-dependencies]
@@ -18,8 +18,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "dasmos", specifier = ">=1.0" },
     { name = "fantasm", specifier = ">=0.4.0" },
-    { name = "py8dis", git = "https://github.com/acornaeology/py8dis.git" },
 ]
 
 [package.metadata.requires-dev]
@@ -80,6 +80,21 @@ source = { registry = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/p
 sdist = { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44" }
 wheels = [
     { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6" },
+]
+
+[[package]]
+name = "dasmos"
+version = "1.0.0"
+source = { registry = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/simple" }
+dependencies = [
+    { name = "asyoulikeit" },
+    { name = "click" },
+    { name = "mistletoe" },
+    { name = "stevedore" },
+]
+sdist = { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/ba/90/21860ddba5200c27eaa55f9ee4e74ebc87d10beba4c754f2105cc7e0525e/dasmos-1.0.0.tar.gz", hash = "sha256:db0087ddb6fd5dff28c950abb05bf8e15181e0fc210300c7af978e7ef20f6f14" }
+wheels = [
+    { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/0a/26/c0222fa25c8ec20c85a1f4df59a6b89b1e3c51b9660d15db4dd0aff1628a/dasmos-1.0.0-py3-none-any.whl", hash = "sha256:568b52c8df4b5f6e0637d599285d80cd66a2ace255ba5ed560de4d11dff2aaa3" },
 ]
 
 [[package]]
@@ -145,6 +160,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mistletoe"
+version = "1.5.1"
+source = { registry = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/simple" }
+sdist = { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/31/ae/d33647e2a26a8899224f36afc5e7b7a670af30f1fd87231e9f07ca19d673/mistletoe-1.5.1.tar.gz", hash = "sha256:c5571ce6ca9cfdc7ce9151c3ae79acb418e067812000907616427197648030a3" }
+wheels = [
+    { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/20/60/0980fefdc4d12c18c1bbab9d62852f27aded8839233c7b0a9827aaf395f5/mistletoe-1.5.1-py3-none-any.whl", hash = "sha256:d3e97664798261503f685f6a6281b092628367cf3128fc68a015a993b0c4feb3" },
+]
+
+[[package]]
 name = "networkx"
 version = "3.6.1"
 source = { registry = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/simple" }
@@ -186,11 +210,6 @@ sdist = { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/py
 wheels = [
     { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/5d/19/fd3ef348460c80af7bb4669ea7926651d1f95c23ff2df18b9d24bab4f3fa/pre_commit-4.5.1-py2.py3-none-any.whl", hash = "sha256:3b3afd891e97337708c1674210f8eba659b52a38ea5f822ff142d10786221f77" },
 ]
-
-[[package]]
-name = "py8dis"
-version = "0.1.0"
-source = { git = "https://github.com/acornaeology/py8dis.git#04bd72586baf1c6f948a5f4894f5863b55c8977c" }
 
 [[package]]
 name = "pygments"
