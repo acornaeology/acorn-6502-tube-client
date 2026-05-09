@@ -1,6 +1,6 @@
 """Disassembly driver for Acorn 6502 Tube Client 1.10.
 
-Configures py8dis to produce an annotated disassembly of the Tube Client ROM.
+Configures dasmos to produce an annotated disassembly of the Tube Client ROM.
 Run via:
   uv run python versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py
 

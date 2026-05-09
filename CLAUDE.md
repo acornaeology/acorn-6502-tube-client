@@ -4,38 +4,38 @@ This file provides guidance when working with code in this repository.
 
 ## Project overview
 
-Annotated disassembly of the Acorn 6502 Tube Client ROM — the operating system for the 65C02 second (parasite) processor used with the BBC Micro. Python scripts drive py8dis (a programmable 6502 disassembler) to produce readable, verified assembly output from the original ROM binary. The first version covered is 1.10.
+Annotated disassembly of the Acorn 6502 Tube Client ROM — the operating system for the 65C02 second (parasite) processor used with the BBC Micro. Python scripts drive [dasmos](https://github.com/acornaeology/dasmos) (a programmable 6502/65C02 disassembler with a stable 1.0 API) to produce readable, verified assembly output from the original ROM binary. The first version covered is 1.10.
 
 ## Build commands
 
 Requires [uv](https://docs.astral.sh/uv/) and [beebasm](https://github.com/stardot/beebasm) (v1.10+).
 
 ```sh
-uv sync                                                                                              # Install dependencies (incl. fantasm)
-uv run fantasm disassemble 1.10                                                                       # Run py8dis driver via fantasm (sets FANTASM_ROM / FANTASM_OUTPUT_DIR)
+uv sync                                                                                              # Install dependencies (incl. fantasm and dasmos)
+uv run fantasm disassemble 1.10                                                                       # Run dasmos driver via fantasm (sets FANTASM_ROM / FANTASM_OUTPUT_DIR)
 uv run fantasm lint 1.10 versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py   # Validate annotation addresses
 uv run fantasm verify 1.10                                                                            # Reassemble and byte-compare (slices the upper 2 kB automatically)
 ```
 
-Verification is the primary correctness check: the generated assembly must reassemble to a byte-identical copy of the upper 2 kB of the original ROM. Lint validates that all annotation addresses (comments, subroutines, labels) reference valid item addresses in the py8dis output. CI runs disassemble, lint, then verify on every push.
+Verification is the primary correctness check: the generated assembly must reassemble to a byte-identical copy of the upper 2 kB of the original ROM. Lint validates that all annotation addresses (comments, subroutines, labels) reference valid item addresses in the dasmos output. CI runs disassemble, lint, then verify on every push.
 
 ## Architecture
 
-### Tooling: fantasm + py8dis
+### Tooling: fantasm + dasmos
 
 The disassembly tooling is provided by [fantasm](https://github.com/acornaeology/fantasm) — installed as a regular project dependency. fantasm exposes a `fantasm` CLI (subcommands: `verify`, `lint`, `compare`, `audit`, `cfg`, `comments`, `labels`, `context`, `asm`, `sub`, `addresses`, `annotations`, `backfill`, `promote`, `fingerprint`, `shared`, `info`, `project`, `disassemble`) and a `fantasm.api` package for programmatic use. Project layout, prefixes, and per-version metadata live in `fantasm.toml`.
 
 **Full fantasm reference: <https://acornaeology.github.io/fantasm/>** — the user guide covers every subcommand, the `fantasm.toml` schema, the version-graph workflows, and the importable `fantasm.api`. Reach for it before guessing.
 
-[py8dis](https://github.com/acornaeology/py8dis) (a programmable 6502/65C02 disassembler) is invoked directly via the per-version driver script under `versions/tube-6502-client-<VER>/disassemble/`; fantasm operates on the `.asm` / `.json` artefacts py8dis emits.
+[dasmos](https://github.com/acornaeology/dasmos) (a programmable 6502/65C02 disassembler — a ground-up rewrite of py8dis with a stable 1.0 API, byte-faithful round-trip oracle, and Stevedore-managed CPU / renderer / environment plug-ins) is invoked directly via the per-version driver script under `versions/tube-6502-client-<VER>/disassemble/`; fantasm operates on the `.asm` / `.json` artefacts dasmos emits. Driver-API guide and full module reference: <https://acornaeology.github.io/dasmos/>. The local source-of-truth checkout is at `/Users/rjs/Code/acornaeology/dasmos/` (sibling to this repo) — read `src/dasmos/` directly when investigating behaviour.
 
 ### Disassembly driver
 
-`versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py` — the main annotation file. Configures py8dis with labels, constants, subroutine descriptions, comments, and relocated code blocks using py8dis's DSL (`label()`, `constant()`, `comment()`, `subroutine()`, `move()`, `hook_subroutine()`). The driver also performs the 4 kB → 2 kB upper-half slice before feeding py8dis. This is where most development work happens.
+`versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py` — the main annotation file. Constructs a `dasmos.Disassembler` (`d = dasmos.Disassembler.create(cpu="65C02", ...)`) and annotates it with `d.label(...)`, `d.comment(...)`, `d.entry(...)`, `d.add_move(...)`, etc. Hook subroutines are registered via the same call shape as before, with the bundled hooks living in `dasmos.hooks` (`stringhi_hook`, `stringz_hook`, `stringcr_hook`). Output is produced by `ir = d.disassemble()` followed by `ir.render("beebasm" | "json")`. The driver also performs the 4 kB → 2 kB upper-half slice before feeding dasmos. This is where most development work happens.
 
 ### Lint
 
-`fantasm lint <VER> <DRIVER_PATH>` validates that every `comment()`, `subroutine()`, and `label()` address in a driver script corresponds to a valid address in the py8dis JSON output. Doc-link checks against `rom.json`'s `address_links` / `glossary_links` aren't covered by fantasm yet; they remain TODO.
+`fantasm lint <VER> <DRIVER_PATH>` validates that every `comment()`, `subroutine()`, and `label()` address in a driver script corresponds to a valid address in the dasmos JSON output. Doc-link checks against `rom.json`'s `address_links` / `glossary_links` aren't covered by fantasm yet; they remain TODO.
 
 ### Verification
 
@@ -45,7 +45,7 @@ The disassembly tooling is provided by [fantasm](https://github.com/acornaeology
 
 Each ROM version lives under `versions/tube-6502-client-<version>/`. Subdirectories:
 - `rom/` — original ROM binary and metadata (`rom.json` with hashes)
-- `disassemble/` — py8dis driver script
+- `disassemble/` — dasmos driver script
 - `output/` — generated assembly (`.asm`) and structured data (`.json`)
 
 Version IDs in `acornaeology.json` and CLI arguments are bare numbers (`1.10`). The directory layout is governed by `[versions] prefixes` in `fantasm.toml`; fantasm's `resolve_version_files()` maps a version ID to the matching `versions/tube-6502-client-{version_id}/` directory.
@@ -56,14 +56,14 @@ Version IDs in `acornaeology.json` and CLI arguments are bare numbers (`1.10`). 
 
 ### Disassembly guide
 
-`DISASSEMBLY.md` — development guide covering the workflow for producing version disassemblies, CLI tool reference, py8dis DSL conventions, annotation guidelines, and common gotchas.
+`DISASSEMBLY.md` — development guide covering the workflow for producing version disassemblies, CLI tool reference, dasmos driver-API conventions, annotation guidelines, and common gotchas.
 
 ## Key technical context
 
 - Tube Client ROM size: 2048 bytes (2 kB, half of a 4 kB ROM)
 - ROM base address: TBC (provisionally &F800, occupying &F800-&FFFF)
 - The ROM provides the MOS API for the parasite processor by forwarding calls to the host over the Tube interface
-- py8dis dependency is a custom fork at `github.com/acornaeology/py8dis`
-- Assembly output targets beebasm syntax
+- dasmos is a regular PyPI dependency (`dasmos>=1.0`); the local checkout at `/Users/rjs/Code/acornaeology/dasmos/` is the source of truth for behaviour investigations
+- Assembly output targets beebasm syntax (via `ir.render("beebasm")`)
 - Assembly comments are formatted to fit within 62 characters
-- The 65C02 has additional instructions over the NMOS 6502; use "65C02" CPU mode in py8dis
+- The 65C02 has additional instructions over the NMOS 6502; pass `cpu="65C02"` to `dasmos.Disassembler.create(...)`

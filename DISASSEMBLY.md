@@ -19,7 +19,7 @@ The disassembly tooling is provided by [fantasm](https://acornaeology.github.io/
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `disassemble` | Run py8dis to generate `.asm` and `.json` from ROM | `fantasm disassemble 1.10` |
+| `disassemble` | Run the dasmos driver to generate `.asm` and `.json` from ROM | `fantasm disassemble 1.10` |
 | `verify` | Reassemble and byte-compare (slices the upper 2 kB automatically) | `fantasm verify 1.10` |
 | `lint` | Validate annotation addresses against the disassembly | `fantasm lint 1.10 versions/tube-6502-client-1.10/disassemble/disasm_tube_6502_client_110.py` |
 | `compare` | Compare two ROM versions (byte and opcode level) | `fantasm compare 1.10 1.20` |
@@ -71,25 +71,31 @@ uv run fantasm verify <VER>
 Fix errors until verification passes, then annotate.
 
 
-## py8dis driver script reference
+## dasmos driver script reference
 
-The driver script configures py8dis using a Python DSL. Each call annotates the disassembly output.
+The driver script configures a `dasmos.Disassembler` instance using its Python API. Each call annotates the disassembly output. The full driver-API guide is at <https://acornaeology.github.io/dasmos/driver_api.html>.
 
-### Core DSL calls
+### Core API calls
 
-**`label(address, name)`** — Assign a symbolic name to a ROM or RAM address.
+**`d = dasmos.Disassembler.create(cpu="65C02", ...)`** — Construct the disassembler. Use `cpu="65C02"` for the parasite processor.
 
-**`constant(name, value)`** — Define a named constant for a numeric value. Used for hardware register addresses, OSBYTE numbers, etc. The value is symbolic, not a ROM address.
+**`d.load(rom_filepath, base_address)`** — Load a ROM image at a given base address.
 
-**`comment(address, text)`** — Attach a comment to a specific instruction address.
+**`d.label(address, name)`** — Assign a symbolic name to a ROM or RAM address (covers both in-ROM and runtime-only addresses).
 
-**`subroutine(address, title, description)`** — Mark the start of a subroutine with a title and description.
+**`d.comment(address, text)`** — Attach a comment to a specific instruction address.
 
-**`entry(address)`** — Mark an address as a code entry point.
+**`d.subroutine(address, title, description)`** — Mark the start of a subroutine with a title and description.
 
-**`move(dest, source, length)`** — Declare a relocated code block.
+**`d.entry(address, name=...)`** — Mark an address as a code entry point.
 
-**`hook_subroutine(address, hook_function)`** — Register a custom Python function for special handling.
+**`d.add_move(dest, source, length)`** — Declare a relocated code block; returns a typed `Move` handle that is also a context manager (`with move: d.label(...)` scopes annotations under it).
+
+**`d.hook_subroutine(address, hook_function)`** — Register a custom Python function for special handling. Bundled hooks (`stringhi_hook`, `stringz_hook`, `stringcr_hook`) live in `dasmos.hooks`.
+
+**`d.format_hint(addr, FormatHint.X)`** / sugars `d.char_literal(addr)`, `d.inkey_code(addr)` — Declare the operand-byte's semantic intent (CHAR / DECIMAL / HEX / BINARY / OCTAL / INKEY); each renderer chooses its syntax.
+
+**`ir = d.disassemble()` then `ir.render("beebasm" | "json")`** — Produce the rendered assembly or structured JSON output.
 
 
 ## Annotation guidelines
@@ -104,7 +110,7 @@ A good subroutine description:
 
 ### Comment length
 
-Assembly comments are formatted to fit within 62 characters (py8dis formatting constraint).
+Assembly comments are formatted to fit within 62 characters (dasmos beebasm-renderer formatting constraint, inherited from py8dis layout conventions).
 
 ### Hex notation
 
@@ -114,13 +120,13 @@ Assembly comments are formatted to fit within 62 characters (py8dis formatting c
 
 ## Key gotchas
 
-1. **py8dis auto-labels can collide.** Any `return_N`, `loop_cXXXX`, etc. that appears in both main ROM and relocated code will cause beebasm duplicate label errors. Fix by adding explicit labels.
+1. **Auto-labels can collide.** Any `return_N`, `loop_cXXXX`, etc. that appears in both main ROM and relocated code will cause beebasm duplicate label errors. Fix by adding explicit labels.
 
 2. **`constant()` doesn't take ROM addresses.** Constants are symbolic values and should NOT have their values transformed by address maps.
 
 3. **The ROM is exactly 2048 bytes.** Much smaller than a standard 8 kB sideways ROM. Code is tightly packed.
 
-4. **Use 65C02 CPU mode.** The parasite processor is a 65C02, which has additional instructions and addressing modes over the NMOS 6502.
+4. **Use 65C02 CPU mode.** The parasite processor is a 65C02, which has additional instructions and addressing modes over the NMOS 6502. Pass `cpu="65C02"` to `dasmos.Disassembler.create(...)`.
 
 
 ## Tools reference

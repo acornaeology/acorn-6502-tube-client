@@ -6,7 +6,7 @@ name = "acorn-6502-tube-client"
 [rom]
 # CMOS 65C02 in the external 6502 second processor. The ROM is a 4 kB
 # image of which only the upper 2 kB is mapped at &F800-&FFFF; the
-# driver script slices the upper half before feeding py8dis.
+# driver script slices the upper half before feeding dasmos.
 cpu = "65c02"
 base_address = 0xF800
 
