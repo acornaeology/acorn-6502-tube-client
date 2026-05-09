@@ -1,9 +1,9 @@
 repos:
   - repo: local
     hooks:
-      - id: readme-check
-        name: Check README is up-to-date
-        entry: uv run generate_readme.py --check
+      - id: readme-update
+        name: Regenerate README.md
+        entry: bash -c 'uv run generate_readme.py && git add README.md'
         language: system
         files: ^(README\.md\.j2|generate_readme\.py|acornaeology\.json|versions/.*/rom/rom\.json)
         pass_filenames: false
