@@ -1900,7 +1900,7 @@ lfe17 = sub_cfe15+2
 ; of the vector table in bytes (&36 = 54 = 27 vectors). Bytes 1-2 = address of the
 ; default vector table (&FF80).
 .vector_table_info
-    equb &36                                                          ; ffb6: 36          6        ; Vector table: length &36 at &FF80  Vector count in bytes (&36 = 27 words)
+    equb &36                                                          ; ffb6: 36          6        ; Vector table length: &36 bytes (27 words at &FF80)
     equw default_vector_table                                         ; ffb7: 80 ff       ..       ; Address of default vector table
 ; ***************************************************************************************
 ; MOS entry: unsupported (5 stubs at &FFB9-&FFC7)

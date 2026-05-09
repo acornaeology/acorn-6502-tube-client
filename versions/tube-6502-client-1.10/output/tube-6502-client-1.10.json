@@ -13569,7 +13569,7 @@
         "***************************************************************************************",
         "Vector table descriptor\n\nThree-byte block at &FFB6 used by OSBYTE &FD\n(read vector table info). Byte 0 = length of the\nvector table in bytes (&36 = 54 = 27 vectors).\nBytes 1-2 = address of the default vector table\n(&FF80)."
       ],
-      "comment_inline": "Vector table: length &36 at &FF80 Vector count in bytes (&36 = 27 words)",
+      "comment_inline": "Vector table length: &36 bytes (27 words at &FF80)",
       "type": "byte",
       "values": [
         54
