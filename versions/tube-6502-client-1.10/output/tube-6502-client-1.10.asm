@@ -1,12 +1,12 @@
 ; Memory locations
 zp_data_base          = &00
-; &00 referenced 2 times by &fbe9, &fc08
+; &00 used as index base 2 times by &fbe9, &fc08
 zp_data_base_1        = &01
-; &01 referenced 2 times by &fbe4, &fc03
+; &01 used as index base 2 times by &fbe4, &fc03
 zp_data_base_2        = &02
-; &02 referenced 2 times by &fbdf, &fbfe
+; &02 used as index base 2 times by &fbdf, &fbfe
 zp_data_base_3        = &03
-; &03 referenced 2 times by &fbda, &fbf9
+; &03 used as index base 2 times by &fbda, &fbf9
 current_program       = &ee
 ; &ee referenced 7 times by &f844, &f8b7, &f8c3, &f8c7, &f8ee, &fa5f, &fa66
 current_program_hi    = &ef
@@ -44,7 +44,7 @@ last_error_hi         = &fe
 escape_flag           = &ff
 ; &ff referenced 2 times by &f84e, &fd3a
 userv                 = &0200
-; &0200 referenced 1 time by &f810
+; &0200 used as index base 1 time by &f810
 brkv                  = &0202
 ; &0202 referenced 3 times by &f901, &f924, &fd15
 brkv_hi               = &0203
@@ -80,7 +80,7 @@ evntv                 = &0220
 error_buffer          = &0236
 ; &0236 referenced 2 times by &fd4f, &fd62
 error_buffer_errnum   = &0237
-; &0237 referenced 2 times by &fd56, &fd5d
+; &0237 referenced 1 time by &fd56; also used as index base 1 time by &fd5d
 soft_reset_jmp        = &f85d
 soft_reset_jmp_lo     = &f85e
 ; &f85e referenced 1 time by &f87e
@@ -102,14 +102,20 @@ cpu 1
 ; Reads Tube R1 status to page out the ROM, enables interrupts, then jumps to display the
 ; startup banner. On subsequent soft resets, the JMP target at &F85E is patched to skip
 ; the banner and enter the command prompt directly.
-; &0100 referenced 2 times by &f83e, &f856
+; &0100 referenced 1 time by &f856; also used as index base 1 time by &f83e
 .low_memory_code
 .low_memory_startup_code
     lda tube_r1_status                                                ; f859: ad f8 fe    ... :0100[1]        ; Read Tube R1 status to page ROM out
-; &0103 referenced 1 time by &fd00
+; irq_return_addr_lo also names &0103 as a stack-frame base:
+; brk_handler_entry reads &0103,X (X = SP) to fetch the pushed
+; BRK return address low byte.
+; &0103 used as index base 1 time by &fd00
 .irq_return_addr_lo
     cli                                                               ; f85c: 58          X :0103[1]          ; Enable interrupts for data transfers
-; &0104 referenced 1 time by &fd09
+; irq_return_addr_hi also names &0104 as a stack-frame base:
+; brk_handler_entry reads &0104,X (X = SP) to fetch the pushed
+; BRK return address high byte.
+; &0104 used as index base 1 time by &fd09
 .irq_return_addr_hi
     jmp startup_banner                                                ; f85d: 4c 60 f8    L`. :0104[1]        ; Patched after first boot to skip banner
 
@@ -399,7 +405,7 @@ cpu 1
 ; &f96c referenced 1 time by &ffc8
 .osrdch_impl
     lda #0                                                            ; f96c: a9 00       ..       ; Command &00: request character
-    jsr send_byte_to_tube_r2                                          ; f96e: 20 4a fc     J.      ; Send command to host via Tube R2
+    jsr send_command                                                  ; f96e: 20 4a fc     J.      ; Send command to host via Tube R2
 ; ***************************************************************************************
 ; Wait for carry byte and data byte
 ;
@@ -621,7 +627,7 @@ cpu 1
 ; &fa2d referenced 7 times by &f9e4, &f9ee, &f9fb, &fa08, &fa15, &fa42, &fa4f
 .oscli_send_to_host
     lda #2                                                            ; fa2d: a9 02       ..       ; Command &02: OSCLI
-    jsr send_byte_to_tube_r2                                          ; fa2f: 20 4a fc     J.      ; Send command code to host
+    jsr send_command                                                  ; fa2f: 20 4a fc     J.      ; Send command code to host
     jsr send_string_via_ptr                                           ; fa32: 20 b6 f9     ..      ; Send command string via string_ptr
 ; ***************************************************************************************
 ; Wait for OSCLI acknowledgement
@@ -947,7 +953,7 @@ cpu 1
 ; &fb77 referenced 1 time by &fb04
 .rdline
     lda #&0a                                                          ; fb77: a9 0a       ..       ; Command &0A: read line
-    jsr send_byte_to_tube_r2                                          ; fb79: 20 4a fc     J.      ; Send command to host
+    jsr send_command                                                  ; fb79: 20 4a fc     J.      ; Send command to host
     ldy #4                                                            ; fb7c: a0 04       ..       ; Start at control block byte 4
 ; &fb7e referenced 2 times by &fb81, &fb8b
 .rdline_send_block_loop
@@ -959,7 +965,7 @@ cpu 1
     cpy #1                                                            ; fb89: c0 01       ..       ; Reached byte 1?
     bne rdline_send_block_loop                                        ; fb8b: d0 f1       ..       ; No: send next (bytes 4, 3, 2)
     lda #7                                                            ; fb8d: a9 07       ..       ; &07 as high byte of buffer address
-    jsr send_byte_to_tube_r2                                          ; fb8f: 20 4a fc     J.      ; Send buffer address high byte
+    jsr send_command                                                  ; fb8f: 20 4a fc     J.      ; Send buffer address high byte
     lda (string_ptr),y                                                ; fb92: b1 f8       ..       ; Get actual buffer high byte
     pha                                                               ; fb94: 48          H        ; Save on stack for later
     dey                                                               ; fb95: 88          .        ; Decrement to byte 0
@@ -1018,22 +1024,22 @@ cpu 1
 .osargs_impl
     pha                                                               ; fbcc: 48          H        ; Save function on stack
     lda #&0c                                                          ; fbcd: a9 0c       ..       ; Command &0C: OSARGS
-    jsr send_byte_to_tube_r2                                          ; fbcf: 20 4a fc     J.      ; Send command to host
+    jsr send_command                                                  ; fbcf: 20 4a fc     J.      ; Send command to host
 ; &fbd2 referenced 1 time by &fbd5
 .osargs_wait_r2_handle
     bit tube_r2_status                                                ; fbd2: 2c fa fe    ,..      ; Poll Tube R2 status
     bvc osargs_wait_r2_handle                                         ; fbd5: 50 fb       P.       ; Wait until R2 ready
     sty tube_r2_data                                                  ; fbd7: 8c fb fe    ...      ; Send file handle
     lda zp_data_base_3,x                                              ; fbda: b5 03       ..       ; Get data word byte 3
-    jsr send_byte_to_tube_r2                                          ; fbdc: 20 4a fc     J.      ; Send data byte 3
+    jsr send_command                                                  ; fbdc: 20 4a fc     J.      ; Send data byte 3
     lda zp_data_base_2,x                                              ; fbdf: b5 02       ..       ; Get data word byte 2
-    jsr send_byte_to_tube_r2                                          ; fbe1: 20 4a fc     J.      ; Send data byte 2
+    jsr send_command                                                  ; fbe1: 20 4a fc     J.      ; Send data byte 2
     lda zp_data_base_1,x                                              ; fbe4: b5 01       ..       ; Get data word byte 1
-    jsr send_byte_to_tube_r2                                          ; fbe6: 20 4a fc     J.      ; Send data byte 1
+    jsr send_command                                                  ; fbe6: 20 4a fc     J.      ; Send data byte 1
     lda zp_data_base,x                                                ; fbe9: b5 00       ..       ; Get data word byte 0
-    jsr send_byte_to_tube_r2                                          ; fbeb: 20 4a fc     J.      ; Send data byte 0
+    jsr send_command                                                  ; fbeb: 20 4a fc     J.      ; Send data byte 0
     pla                                                               ; fbee: 68          h        ; Restore function code
-    jsr send_byte_to_tube_r2                                          ; fbef: 20 4a fc     J.      ; Send function code
+    jsr send_command                                                  ; fbef: 20 4a fc     J.      ; Send function code
     jsr wait_for_tube_r2_byte                                         ; fbf2: 20 75 f9     u.      ; Wait for result byte
     pha                                                               ; fbf5: 48          H        ; Save result on stack
     jsr wait_for_tube_r2_byte                                         ; fbf6: 20 75 f9     u.      ; Wait for data byte 3
@@ -1063,14 +1069,14 @@ cpu 1
 .osfind_impl
     pha                                                               ; fc0c: 48          H        ; Save function on stack
     lda #&12                                                          ; fc0d: a9 12       ..       ; Command &12: OSFIND
-    jsr send_byte_to_tube_r2                                          ; fc0f: 20 4a fc     J.      ; Send command to host
+    jsr send_command                                                  ; fc0f: 20 4a fc     J.      ; Send command to host
     pla                                                               ; fc12: 68          h        ; Restore function code
-    jsr send_byte_to_tube_r2                                          ; fc13: 20 4a fc     J.      ; Send function code
+    jsr send_command                                                  ; fc13: 20 4a fc     J.      ; Send function code
     cmp #0                                                            ; fc16: c9 00       ..       ; Is it close (A=0)?
     bne osfind_open                                                   ; fc18: d0 0a       ..       ; No: handle open
     pha                                                               ; fc1a: 48          H        ; Save A=0
     tya                                                               ; fc1b: 98          .        ; Transfer handle from Y to A
-    jsr send_byte_to_tube_r2                                          ; fc1c: 20 4a fc     J.      ; Send handle
+    jsr send_command                                                  ; fc1c: 20 4a fc     J.      ; Send handle
     jsr wait_for_tube_r2_byte                                         ; fc1f: 20 75 f9     u.      ; Wait for acknowledge
     pla                                                               ; fc22: 68          h        ; Restore A=0
     rts                                                               ; fc23: 60          `        ; Return
@@ -1093,9 +1099,9 @@ cpu 1
 ;     C: set if EOF
 .osbget_impl
     lda #&0e                                                          ; fc2a: a9 0e       ..       ; Command &0E: OSBGET
-    jsr send_byte_to_tube_r2                                          ; fc2c: 20 4a fc     J.      ; Send command to host
+    jsr send_command                                                  ; fc2c: 20 4a fc     J.      ; Send command to host
     tya                                                               ; fc2f: 98          .        ; Transfer handle from Y to A
-    jsr send_byte_to_tube_r2                                          ; fc30: 20 4a fc     J.      ; Send handle
+    jsr send_command                                                  ; fc30: 20 4a fc     J.      ; Send handle
     jmp wait_carry_and_byte                                           ; fc33: 4c 71 f9    Lq.      ; Wait for carry and data byte
 ; ***************************************************************************************
 ; OSBPUT implementation
@@ -1113,11 +1119,11 @@ cpu 1
 .osbput_impl
     pha                                                               ; fc36: 48          H        ; Save byte to write
     lda #&10                                                          ; fc37: a9 10       ..       ; Command &10: OSBPUT
-    jsr send_byte_to_tube_r2                                          ; fc39: 20 4a fc     J.      ; Send command to host
+    jsr send_command                                                  ; fc39: 20 4a fc     J.      ; Send command to host
     tya                                                               ; fc3c: 98          .        ; Transfer handle from Y to A
-    jsr send_byte_to_tube_r2                                          ; fc3d: 20 4a fc     J.      ; Send handle
+    jsr send_command                                                  ; fc3d: 20 4a fc     J.      ; Send handle
     pla                                                               ; fc40: 68          h        ; Restore byte to write
-    jsr send_byte_to_tube_r2                                          ; fc41: 20 4a fc     J.      ; Send data byte
+    jsr send_command                                                  ; fc41: 20 4a fc     J.      ; Send data byte
     pha                                                               ; fc44: 48          H        ; Save A for restore after ack
     jsr wait_for_tube_r2_byte                                         ; fc45: 20 75 f9     u.      ; Wait for acknowledge
     pla                                                               ; fc48: 68          h        ; Restore A (preserved)
@@ -1133,10 +1139,10 @@ cpu 1
 ; On Exit:
 ;     A: preserved
 ; &fc4a referenced 25 times by &f96e, &fa2f, &fb79, &fb8f, &fbcf, &fbdc, &fbe1, &fbe6, &fbeb, &fbef, &fc0f, &fc13, &fc1c, &fc2c, &fc30, &fc39, &fc3d, &fc41, &fc4d, &fc5a, &fc61, &fc75, &fc95, &fc9c, &fca3
-.send_byte_to_tube_r2
 .send_command
+.send_byte_to_tube_r2
     bit tube_r2_status                                                ; fc4a: 2c fa fe    ,..      ; Poll Tube R2 status
-    bvc send_byte_to_tube_r2                                          ; fc4d: 50 fb       P.       ; Wait until R2 ready
+    bvc send_command                                                  ; fc4d: 50 fb       P.       ; Wait until R2 ready
     sta tube_r2_data                                                  ; fc4f: 8d fb fe    ...      ; Write byte to Tube R2 data
     rts                                                               ; fc52: 60          `        ; Return with A preserved
 ; ***************************************************************************************
@@ -1155,12 +1161,12 @@ cpu 1
     stx control_block_ptr                                             ; fc55: 86 fa       ..       ; Store control block low byte
     pha                                                               ; fc57: 48          H        ; Save function on stack
     lda #&14                                                          ; fc58: a9 14       ..       ; Command &14: OSFILE
-    jsr send_byte_to_tube_r2                                          ; fc5a: 20 4a fc     J.      ; Send command to host
+    jsr send_command                                                  ; fc5a: 20 4a fc     J.      ; Send command to host
     ldy #&11                                                          ; fc5d: a0 11       ..       ; Start at control block byte &11
 ; &fc5f referenced 1 time by &fc67
 .osfile_send_block_loop
     lda (control_block_ptr),y                                         ; fc5f: b1 fa       ..       ; Get control block byte
-    jsr send_byte_to_tube_r2                                          ; fc61: 20 4a fc     J.      ; Send to host
+    jsr send_command                                                  ; fc61: 20 4a fc     J.      ; Send to host
     dey                                                               ; fc64: 88          .        ; Decrement index
     cpy #1                                                            ; fc65: c0 01       ..       ; Reached byte 1?
     bne osfile_send_block_loop                                        ; fc67: d0 f6       ..       ; No: send next byte
@@ -1172,7 +1178,7 @@ cpu 1
     tay                                                               ; fc70: a8          .        ; Transfer to Y
     jsr send_string                                                   ; fc71: 20 b2 f9     ..      ; Send filename string
     pla                                                               ; fc74: 68          h        ; Restore function code
-    jsr send_byte_to_tube_r2                                          ; fc75: 20 4a fc     J.      ; Send function code
+    jsr send_command                                                  ; fc75: 20 4a fc     J.      ; Send function code
     jsr wait_for_tube_r2_byte                                         ; fc78: 20 75 f9     u.      ; Wait for result byte
     pha                                                               ; fc7b: 48          H        ; Save result on stack
     ldy #&11                                                          ; fc7c: a0 11       ..       ; Start at control block byte &11
@@ -1203,16 +1209,16 @@ cpu 1
     stx control_block_ptr                                             ; fc90: 86 fa       ..       ; Store control block low byte
     pha                                                               ; fc92: 48          H        ; Save function on stack
     lda #&16                                                          ; fc93: a9 16       ..       ; Command &16: OSGBPB
-    jsr send_byte_to_tube_r2                                          ; fc95: 20 4a fc     J.      ; Send command to host
+    jsr send_command                                                  ; fc95: 20 4a fc     J.      ; Send command to host
     ldy #&0c                                                          ; fc98: a0 0c       ..       ; Start at control block byte &0C
 ; &fc9a referenced 1 time by &fca0
 .osgbpb_send_block_loop
     lda (control_block_ptr),y                                         ; fc9a: b1 fa       ..       ; Get control block byte
-    jsr send_byte_to_tube_r2                                          ; fc9c: 20 4a fc     J.      ; Send to host
+    jsr send_command                                                  ; fc9c: 20 4a fc     J.      ; Send to host
     dey                                                               ; fc9f: 88          .        ; Decrement index
     bpl osgbpb_send_block_loop                                        ; fca0: 10 f8       ..       ; Loop for bytes &0C..&00
     pla                                                               ; fca2: 68          h        ; Restore function code
-    jsr send_byte_to_tube_r2                                          ; fca3: 20 4a fc     J.      ; Send function code
+    jsr send_command                                                  ; fca3: 20 4a fc     J.      ; Send function code
     ldy #&0c                                                          ; fca6: a0 0c       ..       ; Start at control block byte &0C
 ; &fca8 referenced 1 time by &fcae
 .osgbpb_recv_block_loop
@@ -1244,7 +1250,7 @@ cpu 1
 ;
 ; For functions >= &80, the send length is taken from byte 0 of the control block instead
 ; of this table.
-; &fcbc referenced 1 time by &fb24
+; &fcbc used as index base 1 time by &fb24
 .osword_send_lengths
     equb &00                                                          ; fcbc: 00          .        ; (unused: OSWORD 0 handled separately)
     equb &00                                                          ; fcbd: 00          .        ; &01 Read system clock
@@ -1278,7 +1284,7 @@ cpu 1
 ;
 ; For functions >= &80, the receive length is taken from byte 1 of the control block
 ; instead of this table.
-; &fcd0 referenced 1 time by &fb50
+; &fcd0 used as index base 1 time by &fb50
 .osword_recv_lengths
     equb &80                                                          ; fcd0: 80          .        ; &14 send / (recv slot 0 unused)
     equb &05                                                          ; fcd1: 05          .        ; &01 Read system clock
@@ -1552,7 +1558,7 @@ nmi7_transfer_addr = transfer_read_store_byte+1
     iny                                                               ; fdfb: c8          .        ; Next byte
     bne transfer_read_loop                                            ; fdfc: d0 f0       ..       ; Loop for 256 bytes
 .transfer_read_done
-; &fdff referenced 2 times by &f819, &f81c
+; &fdff used as index base 2 times by &f819, &f81c
 io_page_base = transfer_read_done+1
     beq restore_regs_and_rti                                          ; fdfe: f0 e7       ..       ; Always branch to exit
 ; ***************************************************************************************
@@ -1660,7 +1666,7 @@ lfe17 = sub_cfe15+2
 ; of the two-byte field that holds the current transfer address for that type. Types 0-1
 ; and 6-7 point to self-modifying code address operands; types 2-5 point to the
 ; data_transfer_addr zero page location (&F6).
-; &fe60 referenced 1 time by &fd79
+; &fe60 used as index base 1 time by &fd79
 .transfer_addr_ptr_table
     equb <(nmi0_transfer_addr)                                        ; fe60: 02          .        ; Low bytes of transfer addr pointers
     equb <(nmi1_transfer_addr)                                        ; fe61: 16          .     
@@ -1675,7 +1681,7 @@ lfe17 = sub_cfe15+2
 ;
 ; High bytes corresponding to the low byte table at &FE60. Together they form 8 pointers
 ; to the address fields used by each transfer type.
-; &fe68 referenced 1 time by &fd7e
+; &fe68 used as index base 1 time by &fd7e
 .transfer_addr_ptr_hi_table
     equb >(nmi0_transfer_addr)                                        ; fe68: fe          .        ; High bytes of transfer addr pointers
     equb >(nmi1_transfer_addr)                                        ; fe69: fe          .     
@@ -1691,7 +1697,7 @@ lfe17 = sub_cfe15+2
 ; Eight entries indexed by transfer type (0-7). Each entry is the low byte of the NMI
 ; handler routine for that type. Types 0-3 have dedicated handlers; types 4-7 all use the
 ; NMI acknowledge routine.
-; &fe70 referenced 1 time by &fd6d
+; &fe70 used as index base 1 time by &fd6d
 .nmi_routine_addr_table
     equb <(nmi_single_byte_to_tube)                                   ; fe70: 00          .        ; Low bytes of NMI handler addresses
     equb <(nmi_single_byte_from_tube)                                 ; fe71: 11          .     
@@ -1706,7 +1712,7 @@ lfe17 = sub_cfe15+2
 ;
 ; High bytes corresponding to the low byte table at &FE70. Together they form 8 NMI
 ; handler addresses.
-; &fe78 referenced 1 time by &fd73
+; &fe78 used as index base 1 time by &fd73
 .nmi_routine_addr_hi_table
     equb >(nmi_single_byte_to_tube)                                   ; fe78: fe          .        ; High bytes of NMI handler addresses
     equb >(nmi_single_byte_from_tube)                                 ; fe79: fe          .     
@@ -1844,7 +1850,7 @@ lfe17 = sub_cfe15+2
 ;
 ; The reset code copies all of page &FF to RAM with LDA/STA &FF00,X but only &FF80
 ; onwards contains the default vector table and MOS entry points.
-; &ff00 referenced 2 times by &f802, &f805
+; &ff00 used as index base 2 times by &f802, &f805
 .unused_fill_page_ff
     equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff00: ff ff ff... ......
     equb &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff, &ff   ; ff0c: ff ff ff... ......
@@ -1864,7 +1870,7 @@ lfe17 = sub_cfe15+2
 ; initial value for the corresponding MOS vector. Vectors for unimplemented functions
 ; point to the 'unsupported' error handler; unused event and indirect vectors point to
 ; null_return (RTS).
-; &ff80 referenced 1 time by &f80d
+; &ff80 used as index base 1 time by &f80d
 .default_vector_table
     equw unsupported                                                  ; ff80: b7 fc       ..       ; USERV - User vector
     equw error_handler                                                ; ff82: 45 f9       E.       ; BRKV - BRK vector
@@ -2089,7 +2095,7 @@ nmi_vector_hi = nmi_vector+1
 .reset_vector
     equw reset                                                        ; fffc: 00 f8       ..       ; RESET vector
 .irq_vector
-; &ffff referenced 4 times by &fdd6, &fdf8, &fe01, &fe15
+; &ffff referenced 2 times by &fe01, &fe15; also used as index base 2 times by &fdd6, &fdf8
 irq_vector_hi = irq_vector+1
     equw interrupt_handler                                            ; fffe: e5 fc       ..       ; IRQ/BRK vector
 .pydis_end

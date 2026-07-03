@@ -1,5 +1,6 @@
 {
   "meta": {
+    "schema_version": 2,
     "load_addr": 63488,
     "end_addr": 65536
   },
@@ -761,6 +762,8 @@
     "error_buffer_errnum": 567
   },
   "memory_map": [],
+  "index_bases": [],
+  "regions": [],
   "items": [
     {
       "addr": 63488,
@@ -770,10 +773,6 @@
       ],
       "labels": [
         "reset"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Power-on reset\n\nInitialise the 65C02 parasite processor.\n\nCopies the ROM contents to RAM, sets up the default MOS\nvectors, clears the escape flag, and jumps via low memory\nto page out the ROM and start the operating system."
       ],
       "comment_inline": "Start copy index at 0",
       "type": "code",
@@ -790,12 +789,15 @@
       "labels": [
         "copy_page_ff_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Read byte from page &FF of ROM",
+      "xref_summaries": [
         "&f802 referenced 1 time by &f809"
       ],
-      "comment_inline": "Read byte from page &FF of ROM",
       "references": [
-        63497
+        {
+          "addr": 63497,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -860,12 +862,15 @@
       "labels": [
         "copy_vectors_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Read default vector value",
+      "xref_summaries": [
         "&f80d referenced 1 time by &f814"
       ],
-      "comment_inline": "Read default vector value",
       "references": [
-        63508
+        {
+          "addr": 63508,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -939,12 +944,15 @@
       "labels": [
         "copy_io_page_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Read ROM byte below Tube I/O window",
+      "xref_summaries": [
         "&f819 referenced 1 time by &f820"
       ],
-      "comment_inline": "Read ROM byte below Tube I/O window",
       "references": [
-        63520
+        {
+          "addr": 63520,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -1045,13 +1053,19 @@
       "labels": [
         "copy_rom_page"
       ],
-      "comments_before": [
+      "comment_inline": "Read byte from ROM page",
+      "xref_summaries": [
         "&f82a referenced 2 times by &f82f, &f837"
       ],
-      "comment_inline": "Read byte from ROM page",
       "references": [
-        63535,
-        63543
+        {
+          "addr": 63535,
+          "kind": "direct"
+        },
+        {
+          "addr": 63543,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -1165,12 +1179,15 @@
       "labels": [
         "copy_startup_code_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Read startup code byte",
+      "xref_summaries": [
         "&f83b referenced 1 time by &f842"
       ],
-      "comment_inline": "Read startup code byte",
       "references": [
-        63554
+        {
+          "addr": 63554,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -1353,15 +1370,19 @@
         "low_memory_code",
         "low_memory_startup_code"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Low memory startup code (relocated from ROM at reloc_low_memory_src)\n\nCopied from ROM to &0100 by the reset routine.\n\nReads Tube R1 status to page out the ROM, enables\ninterrupts, then jumps to display the startup banner.\nOn subsequent soft resets, the JMP target at &F85E is\npatched to skip the banner and enter the command prompt\ndirectly.",
-        "&f859 referenced 2 times by &f83e, &f856"
-      ],
       "comment_inline": "Read Tube R1 status to page ROM out",
+      "xref_summaries": [
+        "&f859 referenced 1 time by &f856; also used as index base 1 time by &f83e"
+      ],
       "references": [
-        63550,
-        63574
+        {
+          "addr": 63550,
+          "kind": "indexed"
+        },
+        {
+          "addr": 63574,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -1378,12 +1399,18 @@
       "labels": [
         "irq_return_addr_lo"
       ],
-      "comments_before": [
-        "&f85c referenced 1 time by &fd00"
+      "comments_before_label": [
+        "irq_return_addr_lo also names &0103 as a stack-frame base:\nbrk_handler_entry reads &0103,X (X = SP) to fetch the pushed\nBRK return address low byte."
       ],
       "comment_inline": "Enable interrupts for data transfers",
+      "xref_summaries": [
+        "&f85c used as index base 1 time by &fd00"
+      ],
       "references": [
-        64768
+        {
+          "addr": 64768,
+          "kind": "indexed"
+        }
       ],
       "type": "code",
       "mnemonic": "cli"
@@ -1399,12 +1426,18 @@
       "labels": [
         "irq_return_addr_hi"
       ],
-      "comments_before": [
-        "&f85d referenced 1 time by &fd09"
+      "comments_before_label": [
+        "irq_return_addr_hi also names &0104 as a stack-frame base:\nbrk_handler_entry reads &0104,X (X = SP) to fetch the pushed\nBRK return address high byte."
       ],
       "comment_inline": "Patched after first boot to skip banner",
+      "xref_summaries": [
+        "&f85d used as index base 1 time by &fd09"
+      ],
       "references": [
-        64777
+        {
+          "addr": 64777,
+          "kind": "indexed"
+        }
       ],
       "type": "code",
       "mnemonic": "jmp",
@@ -1422,14 +1455,16 @@
       "labels": [
         "startup_banner"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Display startup banner and initialise\n\nPrint the startup banner, patch the soft reset entry\nto skip the banner on future resets, then wait for the\nhost's acknowledge byte.\n\nIf the acknowledge has bit 7 set, the host is requesting\ncode execution; otherwise enters the command prompt.",
+      "comment_inline": "Print inline startup banner string",
+      "xref_summaries": [
         "&f860 referenced 1 time by &0104[1]"
       ],
-      "comment_inline": "Print inline startup banner string",
       "references": [
-        260
+        {
+          "addr": 260,
+          "kind": "direct",
+          "move_id": 1
+        }
       ],
       "type": "code",
       "mnemonic": "jsr",
@@ -1574,15 +1609,19 @@
       "labels": [
         "command_prompt"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Command prompt loop\n\nThe main supervisor command prompt.\n\nPrints a '*' prompt, reads a line of input using\nOSWORD 0, and passes it to OSCLI for execution.\nHandles Escape by acknowledging it and reporting\nthe error.",
+      "comment_inline": "Print '*' prompt character",
+      "xref_summaries": [
         "&f88d referenced 2 times by &f8a4, &f95a"
       ],
-      "comment_inline": "Print '*' prompt character",
       "references": [
-        63652,
-        63834
+        {
+          "addr": 63652,
+          "kind": "direct"
+        },
+        {
+          "addr": 63834,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -1721,12 +1760,15 @@
       "labels": [
         "command_prompt_escape"
       ],
-      "comments_before": [
+      "comment_inline": "OSBYTE &7E: acknowledge Escape",
+      "xref_summaries": [
         "&f8a7 referenced 1 time by &f89b"
       ],
-      "comment_inline": "OSBYTE &7E: acknowledge Escape",
       "references": [
-        63643
+        {
+          "addr": 63643,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -1797,15 +1839,19 @@
       "labels": [
         "enter_code"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Enter code at transfer address\n\nCheck whether the code at the data transfer address\nhas a valid ROM header with a (C) string, and if so\nverify it is a 6502 language ROM.\n\nSets the current program and memory top to the\ntransfer address, then enters the code with A=1.\nIf the header is missing or invalid, enters with A=1\nanyway (raw code entry). Generates an error if the\nROM type indicates it is not a language or not 6502\ncode.\n\nNote: the v1.10 ROM always enters with A=1 regardless\nof whether it is a RESET or OSCLI entry, and does not\npass the carry flag. J.G. Harston identifies this as a bug.",
+      "comment_inline": "Get transfer address low byte",
+      "xref_summaries": [
         "&f8b5 referenced 2 times by &f88b, &fa62"
       ],
-      "comment_inline": "Get transfer address low byte",
       "references": [
-        63627,
-        64098
+        {
+          "addr": 63627,
+          "kind": "direct"
+        },
+        {
+          "addr": 64098,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -2250,17 +2296,27 @@
       "labels": [
         "enter_raw_code"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Enter raw code\n\nEnter code at the transfer address without a valid\nROM header. Loads A=1 and jumps via the memory top\npointer (which has been set to the transfer address).\n\nNote: J.G. Harston identifies a bug where raw code should be\nentered with A=0, and the carry should indicate\nwhether the entry is from RESET or OSCLI.",
+      "comment_inline": "Enter code with A=1",
+      "xref_summaries": [
         "&f8fa referenced 4 times by &f8d5, &f8dc, &f8e3, &f8ea"
       ],
-      "comment_inline": "Enter code with A=1",
       "references": [
-        63701,
-        63708,
-        63715,
-        63722
+        {
+          "addr": 63701,
+          "kind": "direct"
+        },
+        {
+          "addr": 63708,
+          "kind": "direct"
+        },
+        {
+          "addr": 63715,
+          "kind": "direct"
+        },
+        {
+          "addr": 63722,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -2289,14 +2345,15 @@
       "labels": [
         "error_not_a_language"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Generate 'not a language' error\n\nSet up the BRK vector to point to the default error\nhandler, then generate error 0: 'This is not a\nlanguage'. The error handler must be re-established\nhere because the previous language's handler will\nhave been overwritten.",
+      "comment_inline": "Set BRKV low to error handler",
+      "xref_summaries": [
         "&f8ff referenced 1 time by &f8f4"
       ],
-      "comment_inline": "Set BRKV low to error handler",
       "references": [
-        63732
+        {
+          "addr": 63732,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -2408,14 +2465,15 @@
       "labels": [
         "error_not_6502_code"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Generate 'not 6502 code' error\n\nSet up the BRK vector to point to the default error\nhandler, then generate error 0: 'I cannot run this\ncode'. Called when the ROM type indicates the code is\nnot suitable for a 6502 processor.",
+      "comment_inline": "Set BRKV low to error handler",
+      "xref_summaries": [
         "&f922 referenced 1 time by &f8f8"
       ],
-      "comment_inline": "Set BRKV low to error handler",
       "references": [
-        63736
+        {
+          "addr": 63736,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -2527,10 +2585,6 @@
       "labels": [
         "error_handler"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Error handler\n\nDefault BRK handler. Clears the stack, prints the\nerror message from the BRK instruction, and returns\nto the command prompt."
-      ],
       "comment_inline": "Reset stack pointer to &FF",
       "type": "code",
       "mnemonic": "ldx",
@@ -2579,12 +2633,15 @@
       "labels": [
         "print_error_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Get next error message character",
+      "xref_summaries": [
         "&f94d referenced 1 time by &f955"
       ],
-      "comment_inline": "Get next error message character",
       "references": [
-        63829
+        {
+          "addr": 63829,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -2651,12 +2708,15 @@
       "labels": [
         "print_error_done"
       ],
-      "comments_before": [
+      "comment_inline": "Print trailing newline",
+      "xref_summaries": [
         "&f957 referenced 1 time by &f94f"
       ],
-      "comment_inline": "Print trailing newline",
       "references": [
-        63823
+        {
+          "addr": 63823,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jsr",
@@ -2685,10 +2745,6 @@
       ],
       "labels": [
         "rdline_control_block"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSWORD 0 control block\n\nParameter block passed to OSWORD 0 (read line) when reading\ninput at the supervisor command prompt. Specifies where to\nstore the input text, the buffer size, and the range of\nacceptable character codes."
       ],
       "comment_inline": "Buffer address low (&0236)",
       "type": "byte",
@@ -2750,15 +2806,19 @@
       "labels": [
         "oswrch_impl"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSWRCH implementation\n\nSend character in A to the host via Tube R1.\n\nOn Entry:\n    A: character to send\n\nOn Exit:\n    A: preserved",
+      "comment_inline": "Check Tube R1 status",
+      "xref_summaries": [
         "&f962 referenced 2 times by &f966, &ffcb"
       ],
-      "comment_inline": "Check Tube R1 status",
       "references": [
-        63846,
-        65483
+        {
+          "addr": 63846,
+          "kind": "direct"
+        },
+        {
+          "addr": 65483,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -2820,14 +2880,15 @@
       "labels": [
         "osrdch_impl"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSRDCH implementation\n\nRead a character from the host via the Tube.\n\nSends command &00 to the host, then waits for\na carry byte and the character.\n\nOn Exit:\n    A: character received\n    C: Escape flag",
+      "comment_inline": "Command &00: request character",
+      "xref_summaries": [
         "&f96c referenced 1 time by &ffc8"
       ],
-      "comment_inline": "Command &00: request character",
       "references": [
-        65480
+        {
+          "addr": 65480,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -2857,15 +2918,19 @@
       "labels": [
         "wait_carry_and_byte"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Wait for carry byte and data byte\n\nWait for two bytes from Tube R2: first a carry\nindicator, then the data byte.\n\nThe carry byte is shifted left so bit 7 moves into\nthe carry flag, then falls through to read the\nactual data byte.\n\nOn Exit:\n    A: data byte from Tube R2\n    C: carry indicator from host",
+      "comment_inline": "Wait for carry byte from host",
+      "xref_summaries": [
         "&f971 referenced 2 times by &fc33, &fcb4"
       ],
-      "comment_inline": "Wait for carry byte from host",
       "references": [
-        64563,
-        64692
+        {
+          "addr": 64563,
+          "kind": "direct"
+        },
+        {
+          "addr": 64692,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jsr",
@@ -2892,31 +2957,83 @@
       "labels": [
         "wait_for_tube_r2_byte"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Wait for byte from Tube R2\n\nPoll Tube R2 status until data is available, then\nread and return the byte.\n\nOn Exit:\n    A: byte read from Tube R2",
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&f975 referenced 18 times by &f886, &f971, &f978, &fa35, &fba3, &fbf2, &fbf6, &fbfb, &fc00, &fc05, &fc1f, &fc27, &fc45, &fc78, &fc7e, &fca8, &fd53, &fd5a"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        63622,
-        63857,
-        63864,
-        64053,
-        64419,
-        64498,
-        64502,
-        64507,
-        64512,
-        64517,
-        64543,
-        64551,
-        64581,
-        64632,
-        64638,
-        64680,
-        64851,
-        64858
+        {
+          "addr": 63622,
+          "kind": "direct"
+        },
+        {
+          "addr": 63857,
+          "kind": "direct"
+        },
+        {
+          "addr": 63864,
+          "kind": "direct"
+        },
+        {
+          "addr": 64053,
+          "kind": "direct"
+        },
+        {
+          "addr": 64419,
+          "kind": "direct"
+        },
+        {
+          "addr": 64498,
+          "kind": "direct"
+        },
+        {
+          "addr": 64502,
+          "kind": "direct"
+        },
+        {
+          "addr": 64507,
+          "kind": "direct"
+        },
+        {
+          "addr": 64512,
+          "kind": "direct"
+        },
+        {
+          "addr": 64517,
+          "kind": "direct"
+        },
+        {
+          "addr": 64543,
+          "kind": "direct"
+        },
+        {
+          "addr": 64551,
+          "kind": "direct"
+        },
+        {
+          "addr": 64581,
+          "kind": "direct"
+        },
+        {
+          "addr": 64632,
+          "kind": "direct"
+        },
+        {
+          "addr": 64638,
+          "kind": "direct"
+        },
+        {
+          "addr": 64680,
+          "kind": "direct"
+        },
+        {
+          "addr": 64851,
+          "kind": "direct"
+        },
+        {
+          "addr": 64858,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -2959,10 +3076,6 @@
       "labels": [
         "null_return"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Null return\n\nAn RTS used as a no-op handler for vectors that have\nno action (EVNTV, IND1V-IND3V in the default table)."
-      ],
       "comment_inline": "Return",
       "type": "code",
       "mnemonic": "rts"
@@ -2975,15 +3088,19 @@
       "labels": [
         "skip_spaces_step"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Advance and skip spaces in command string\n\nIncrement Y then fall through to skip_spaces. Called\nwhen the current character has been consumed and any\nfollowing spaces should be skipped.\n\nOn Entry:\n    Y: offset of the character just consumed\n\nOn Exit:\n    A: first non-space character after skipped spaces\n    Y: offset of that character",
+      "comment_inline": "Advance past current character",
+      "xref_summaries": [
         "&f97e referenced 2 times by &f983, &fa44"
       ],
-      "comment_inline": "Advance past current character",
       "references": [
-        63875,
-        64068
+        {
+          "addr": 63875,
+          "kind": "direct"
+        },
+        {
+          "addr": 64068,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "iny"
@@ -2997,15 +3114,19 @@
       "labels": [
         "skip_spaces"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Skip spaces in command string\n\nAdvance past space characters in the string at (string_ptr),Y.\n\nOn Entry:\n    Y: current offset into string\n\nOn Exit:\n    A: first non-space character\n    Y: offset of that character",
+      "comment_inline": "Get character from string",
+      "xref_summaries": [
         "&f97f referenced 2 times by &f9d1, &fa4a"
       ],
-      "comment_inline": "Get character from string",
       "references": [
-        63953,
-        64074
+        {
+          "addr": 63953,
+          "kind": "direct"
+        },
+        {
+          "addr": 64074,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -3055,14 +3176,15 @@
       "labels": [
         "scan_hex"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Parse hexadecimal number\n\nRead a hexadecimal number from the string at\n(string_ptr),Y into the hex accumulator at &F0/F1.\n\nOn Entry:\n    Y: offset into string\n\nOn Exit:\n    HEX_ACCUMULATOR: parsed value (low byte)\n    HEX_ACCUMULATOR_HI: parsed value (high byte)\n    X: non-zero if any digits were parsed\n    Y: offset past last hex digit\n    A: first non-hex character",
+      "comment_inline": "X=0: no digits parsed yet",
+      "xref_summaries": [
         "&f986 referenced 1 time by &fa47"
       ],
-      "comment_inline": "X=0: no digits parsed yet",
       "references": [
-        64071
+        {
+          "addr": 64071,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "ldx",
@@ -3103,12 +3225,15 @@
       "labels": [
         "scan_hex_next_char"
       ],
-      "comments_before": [
+      "comment_inline": "Get current character",
+      "xref_summaries": [
         "&f98c referenced 1 time by &f9af"
       ],
-      "comment_inline": "Get current character",
       "references": [
-        63919
+        {
+          "addr": 63919,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -3231,12 +3356,15 @@
       "labels": [
         "scan_hex_got_digit"
       ],
-      "comments_before": [
+      "comment_inline": "Shift digit into upper nybble",
+      "xref_summaries": [
         "&f9a0 referenced 1 time by &f994"
       ],
-      "comment_inline": "Shift digit into upper nybble",
       "references": [
-        63892
+        {
+          "addr": 63892,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "asl"
@@ -3287,12 +3415,15 @@
       "labels": [
         "scan_hex_shift_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Shift bit out of digit",
+      "xref_summaries": [
         "&f9a6 referenced 1 time by &f9ac"
       ],
-      "comment_inline": "Shift bit out of digit",
       "references": [
-        63916
+        {
+          "addr": 63916,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "asl"
@@ -3375,14 +3506,23 @@
       "labels": [
         "scan_hex_return"
       ],
-      "comments_before": [
+      "comment_inline": "Return",
+      "xref_summaries": [
         "&f9b1 referenced 3 times by &f990, &f99a, &f99e"
       ],
-      "comment_inline": "Return",
       "references": [
-        63888,
-        63898,
-        63902
+        {
+          "addr": 63888,
+          "kind": "direct"
+        },
+        {
+          "addr": 63898,
+          "kind": "direct"
+        },
+        {
+          "addr": 63902,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "rts"
@@ -3396,15 +3536,19 @@
       "labels": [
         "send_string"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Send string to Tube R2\n\nSend a CR-terminated string to the host via Tube R2.\n\nOn Entry:\n    X: string address low byte\n    Y: string address high byte\n\nOn Exit:\n    Y: restored from string_ptr_hi",
+      "comment_inline": "Set string pointer low byte",
+      "xref_summaries": [
         "&f9b2 referenced 2 times by &fc24, &fc71"
       ],
-      "comment_inline": "Set string pointer low byte",
       "references": [
-        64548,
-        64625
+        {
+          "addr": 64548,
+          "kind": "direct"
+        },
+        {
+          "addr": 64625,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "stx",
@@ -3434,12 +3578,15 @@
       "labels": [
         "send_string_via_ptr"
       ],
-      "comments_before": [
+      "comment_inline": "Start at offset 0",
+      "xref_summaries": [
         "&f9b6 referenced 1 time by &fa32"
       ],
-      "comment_inline": "Start at offset 0",
       "references": [
-        64050
+        {
+          "addr": 64050,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "ldy",
@@ -3455,13 +3602,19 @@
       "labels": [
         "send_string_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&f9b8 referenced 2 times by &f9bb, &f9c5"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        63931,
-        63941
+        {
+          "addr": 63931,
+          "kind": "direct"
+        },
+        {
+          "addr": 63941,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -3572,10 +3725,6 @@
       "labels": [
         "oscli_impl"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSCLI implementation\n\nExecute a * command. Parses the command to check for\n*GO and *HELP which are handled locally; all other\ncommands are forwarded to the host via the Tube.\n\nOn Entry:\n    X: command string address low byte\n    Y: command string address high byte"
-      ],
       "comment_inline": "Save A on stack",
       "type": "code",
       "mnemonic": "pha"
@@ -3627,12 +3776,15 @@
       "labels": [
         "oscli_skip_stars_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Skip leading spaces",
+      "xref_summaries": [
         "&f9d1 referenced 1 time by &f9d7"
       ],
-      "comment_inline": "Skip leading spaces",
       "references": [
-        63959
+        {
+          "addr": 63959,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jsr",
@@ -4066,17 +4218,27 @@
       "labels": [
         "command_help"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Handle *HELP command\n\nPrint local help text showing the Tube Client\nversion, then fall through to forward the *HELP\ncommand to the host.",
+      "comment_inline": "Print inline version string",
+      "xref_summaries": [
         "&fa17 referenced 4 times by &f9e8, &f9f5, &fa02, &fa11"
       ],
-      "comment_inline": "Print inline version string",
       "references": [
-        63976,
-        63989,
-        64002,
-        64017
+        {
+          "addr": 63976,
+          "kind": "direct"
+        },
+        {
+          "addr": 63989,
+          "kind": "direct"
+        },
+        {
+          "addr": 64002,
+          "kind": "direct"
+        },
+        {
+          "addr": 64017,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jsr",
@@ -4127,20 +4289,39 @@
       "labels": [
         "oscli_send_to_host"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Send OSCLI command to host\n\nForward the command string at (string_ptr) to the\nhost via Tube R2 with command code &02.\n\nTube protocol: &02 string &0D -- &7F or &80\n\nIf the response has bit 7 set, code needs to be\nentered (a language was selected).",
+      "comment_inline": "Command &02: OSCLI",
+      "xref_summaries": [
         "&fa2d referenced 7 times by &f9e4, &f9ee, &f9fb, &fa08, &fa15, &fa42, &fa4f"
       ],
-      "comment_inline": "Command &02: OSCLI",
       "references": [
-        63972,
-        63982,
-        63995,
-        64008,
-        64021,
-        64066,
-        64079
+        {
+          "addr": 63972,
+          "kind": "direct"
+        },
+        {
+          "addr": 63982,
+          "kind": "direct"
+        },
+        {
+          "addr": 63995,
+          "kind": "direct"
+        },
+        {
+          "addr": 64008,
+          "kind": "direct"
+        },
+        {
+          "addr": 64021,
+          "kind": "direct"
+        },
+        {
+          "addr": 64066,
+          "kind": "direct"
+        },
+        {
+          "addr": 64079,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -4184,14 +4365,15 @@
       "labels": [
         "oscli_wait_ack"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Wait for OSCLI acknowledgement\n\nWait for the host's response byte after sending an\nOSCLI command. If the response has bit 7 set (&80),\nthe host has selected a language and code needs to be\nentered at the transfer address. Otherwise restore A\nand return to the caller.\n\nAlso used by OSBYTE &8E (select language) via the\ncheck at osbyte_check_ack.",
+      "comment_inline": "Wait for host acknowledgement",
+      "xref_summaries": [
         "&fa35 referenced 1 time by &fa71"
       ],
-      "comment_inline": "Wait for host acknowledgement",
       "references": [
-        64113
+        {
+          "addr": 64113,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jsr",
@@ -4250,14 +4432,15 @@
       "labels": [
         "command_go"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Handle *GO command\n\nParse *GO [address]. If an address is given, set the\ntransfer address to it. If no address given, use the\ncurrent transfer address. Falls through to execute\nthe code.\n\nNote: does not check for a separator after 'GO', so\ncommands like *GOAD would be incorrectly matched.\nJ.G. Harston identifies this as a bug.",
+      "comment_inline": "Force uppercase",
+      "xref_summaries": [
         "&fa3e referenced 1 time by &f9e0"
       ],
-      "comment_inline": "Force uppercase",
       "references": [
-        63968
+        {
+          "addr": 63968,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "and",
@@ -4436,15 +4619,19 @@
       "labels": [
         "execute_code"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Execute code and restore state\n\nSave the current program pointer, call enter_code,\nthen restore the current program and memory top\non return.\n\nNote: in v1.10, the carry flag is not explicitly set\nbefore calling enter_code, so entered code cannot\nreliably distinguish RESET from OSCLI entry. J.G. Harston\nidentifies this as a bug.",
+      "comment_inline": "Get current program high byte",
+      "xref_summaries": [
         "&fa5c referenced 2 times by &fa3a, &fa52"
       ],
-      "comment_inline": "Get current program high byte",
       "references": [
-        64058,
-        64082
+        {
+          "addr": 64058,
+          "kind": "direct"
+        },
+        {
+          "addr": 64082,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -4595,14 +4782,15 @@
         "check_oscli_ack",
         "osbyte_check_ack"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Check OSCLI acknowledgement (OSBYTE &8E path)\n\nEntry point used by OSBYTE &8E (select language).\nIf the function matched &8E, branches to wait for\nthe OSCLI acknowledgement byte from the host, which\nmay trigger code entry.",
+      "comment_inline": "If &8E matched, wait for OSCLI ack",
+      "xref_summaries": [
         "&fa71 referenced 1 time by &face"
       ],
-      "comment_inline": "If &8E matched, wait for OSCLI ack",
       "references": [
-        64206
+        {
+          "addr": 64206,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "beq",
@@ -4618,10 +4806,6 @@
       ],
       "labels": [
         "osbyte_impl"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSBYTE implementation\n\nHandle OSBYTE calls. Functions &82-&84 are handled\nlocally (memory high word, bottom/top of memory).\nLow functions (A < &80) send command &04 with X and A.\nHigh functions send command &06 with X, Y, and A.\n\nSpecial handling for OSBYTE &8E (select language) which\nchecks for code to enter, and &9D (fast BPUT) which\nreturns immediately without waiting for a response.\n\nOn Entry:\n    A: function\n    X: parameter 1\n    Y: parameter 2\n\nOn Exit:\n    A: preserved\n    X: returned value (for A >= &80)\n    Y: returned value (for A >= &80)\n    C: returned value (for A >= &80)"
       ],
       "comment_inline": "Function >= &80?",
       "type": "code",
@@ -4671,12 +4855,15 @@
       "labels": [
         "osbyte_low_wait_r2_1"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fa7a referenced 1 time by &fa7d"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64125
+        {
+          "addr": 64125,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -4721,12 +4908,15 @@
       "labels": [
         "osbyte_low_wait_r2_2"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fa82 referenced 1 time by &fa85"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64133
+        {
+          "addr": 64133,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -4780,12 +4970,15 @@
       "labels": [
         "osbyte_low_wait_r2_3"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fa8b referenced 1 time by &fa8e"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64142
+        {
+          "addr": 64142,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -4830,12 +5023,15 @@
       "labels": [
         "osbyte_low_wait_result"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 for response",
+      "xref_summaries": [
         "&fa93 referenced 1 time by &fa96"
       ],
-      "comment_inline": "Poll Tube R2 for response",
       "references": [
-        64150
+        {
+          "addr": 64150,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -4888,12 +5084,15 @@
       "labels": [
         "osbyte_high"
       ],
-      "comments_before": [
+      "comment_inline": "Is it OSBYTE &82 (read high word)?",
+      "xref_summaries": [
         "&fa9c referenced 1 time by &fa75"
       ],
-      "comment_inline": "Is it OSBYTE &82 (read high word)?",
       "references": [
-        64117
+        {
+          "addr": 64117,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "cmp",
@@ -4990,12 +5189,15 @@
       "labels": [
         "osbyte_high_wait_r2_1"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&faab referenced 1 time by &faae"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64174
+        {
+          "addr": 64174,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5040,12 +5242,15 @@
       "labels": [
         "osbyte_high_wait_r2_2"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fab3 referenced 1 time by &fab6"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64182
+        {
+          "addr": 64182,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5090,12 +5295,15 @@
       "labels": [
         "osbyte_high_wait_r2_3"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fabb referenced 1 time by &fabe"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64190
+        {
+          "addr": 64190,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5149,12 +5357,15 @@
       "labels": [
         "osbyte_high_wait_r2_4"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fac4 referenced 1 time by &fac7"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64199
+        {
+          "addr": 64199,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5256,12 +5467,15 @@
       "labels": [
         "osbyte_high_wait_carry"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 for carry byte",
+      "xref_summaries": [
         "&fad5 referenced 1 time by &fad8"
       ],
-      "comment_inline": "Poll Tube R2 for carry byte",
       "references": [
-        64216
+        {
+          "addr": 64216,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5324,12 +5538,15 @@
       "labels": [
         "osbyte_high_wait_y"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 for Y return value",
+      "xref_summaries": [
         "&fadf referenced 1 time by &fae2"
       ],
-      "comment_inline": "Poll Tube R2 for Y return value",
       "references": [
-        64226
+        {
+          "addr": 64226,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5374,12 +5591,15 @@
       "labels": [
         "osbyte_high_wait_x"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 for X return value",
+      "xref_summaries": [
         "&fae7 referenced 1 time by &faea"
       ],
-      "comment_inline": "Poll Tube R2 for X return value",
       "references": [
-        64234
+        {
+          "addr": 64234,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5422,12 +5642,15 @@
       "labels": [
         "osbyte_high_return"
       ],
-      "comments_before": [
+      "comment_inline": "Return",
+      "xref_summaries": [
         "&faef referenced 1 time by &fad2"
       ],
-      "comment_inline": "Return",
       "references": [
-        64210
+        {
+          "addr": 64210,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "rts"
@@ -5441,14 +5664,15 @@
       "labels": [
         "osbyte_read_himem"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSBYTE &84: read top of memory\n\nReturn the current top of user memory from &F2/F3.\nFalls through to the RTS at osbyte_himem_rts.\n\nOn Exit:\n    X: memory_top low byte\n    Y: memory_top high byte",
+      "comment_inline": "X = memory top low byte",
+      "xref_summaries": [
         "&faf0 referenced 1 time by &faa6"
       ],
-      "comment_inline": "X = memory top low byte",
       "references": [
-        64166
+        {
+          "addr": 64166,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "ldx",
@@ -5490,14 +5714,15 @@
       "labels": [
         "osbyte_read_lomem"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSBYTE &83: read bottom of memory\n\nReturn the bottom of user memory, fixed at &0800.\nShares its RTS with osbyte_read_high_word.\n\nOn Exit:\n    X: &00\n    Y: &08",
+      "comment_inline": "X = &00 (bottom of user memory)",
+      "xref_summaries": [
         "&faf5 referenced 1 time by &faa2"
       ],
-      "comment_inline": "X = &00 (bottom of user memory)",
       "references": [
-        64162
+        {
+          "addr": 64162,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "ldx",
@@ -5535,14 +5760,15 @@
       "labels": [
         "osbyte_read_high_word"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSBYTE &82: read machine high order address\n\nReturn &0000 as the high word of the address space.\nThis indicates the 6502 has a 16-bit address space\nwith no bank switching.\n\nOn Exit:\n    X: &00\n    Y: &00",
+      "comment_inline": "X = &00 (high word low)",
+      "xref_summaries": [
         "&fafa referenced 1 time by &fa9e"
       ],
-      "comment_inline": "X = &00 (high word low)",
       "references": [
-        64158
+        {
+          "addr": 64158,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "ldx",
@@ -5576,10 +5802,6 @@
       ],
       "labels": [
         "osword_impl"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSWORD implementation\n\nHandle OSWORD calls. OSWORD 0 (read line) is handled\nspecially via rdline. All other functions send the\ncontrol block to the host and receive the response,\nwith block sizes determined by lookup tables.\n\nOn Entry:\n    A: function\n    XY: control block address"
       ],
       "comment_inline": "Store control block address low",
       "type": "code",
@@ -5653,12 +5875,15 @@
       "labels": [
         "osword_wait_r2_cmd"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fb09 referenced 1 time by &fb0c"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64268
+        {
+          "addr": 64268,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5703,12 +5928,15 @@
       "labels": [
         "osword_wait_r2_func"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fb11 referenced 1 time by &fb14"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64276
+        {
+          "addr": 64276,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5822,12 +6050,15 @@
       "labels": [
         "osword_send_low_lookup"
       ],
-      "comments_before": [
+      "comment_inline": "Get send length from table",
+      "xref_summaries": [
         "&fb24 referenced 1 time by &fb1a"
       ],
-      "comment_inline": "Get send length from table",
       "references": [
-        64282
+        {
+          "addr": 64282,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "ldy",
@@ -5880,14 +6111,23 @@
       "labels": [
         "osword_send_block"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fb2d referenced 3 times by &fb21, &fb29, &fb30"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64289,
-        64297,
-        64304
+        {
+          "addr": 64289,
+          "kind": "direct"
+        },
+        {
+          "addr": 64297,
+          "kind": "direct"
+        },
+        {
+          "addr": 64304,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -5954,13 +6194,19 @@
       "labels": [
         "osword_send_bytes_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fb38 referenced 2 times by &fb3b, &fb43"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64315,
-        64323
+        {
+          "addr": 64315,
+          "kind": "direct"
+        },
+        {
+          "addr": 64323,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -6038,12 +6284,15 @@
       "labels": [
         "osword_recv_get_length"
       ],
-      "comments_before": [
+      "comment_inline": "Get function back in A",
+      "xref_summaries": [
         "&fb45 referenced 1 time by &fb36"
       ],
-      "comment_inline": "Get function back in A",
       "references": [
-        64310
+        {
+          "addr": 64310,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "txa"
@@ -6118,12 +6367,15 @@
       "labels": [
         "osword_recv_low_lookup"
       ],
-      "comments_before": [
+      "comment_inline": "Get receive length from table",
+      "xref_summaries": [
         "&fb50 referenced 1 time by &fb46"
       ],
-      "comment_inline": "Get receive length from table",
       "references": [
-        64326
+        {
+          "addr": 64326,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "ldy",
@@ -6176,14 +6428,23 @@
       "labels": [
         "osword_recv_block"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fb59 referenced 3 times by &fb4d, &fb55, &fb5c"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64333,
-        64341,
-        64348
+        {
+          "addr": 64333,
+          "kind": "direct"
+        },
+        {
+          "addr": 64341,
+          "kind": "direct"
+        },
+        {
+          "addr": 64348,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -6250,13 +6511,19 @@
       "labels": [
         "osword_recv_bytes_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 for data",
+      "xref_summaries": [
         "&fb64 referenced 2 times by &fb67, &fb6f"
       ],
-      "comment_inline": "Poll Tube R2 for data",
       "references": [
-        64359,
-        64367
+        {
+          "addr": 64359,
+          "kind": "direct"
+        },
+        {
+          "addr": 64367,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -6335,12 +6602,15 @@
       "labels": [
         "osword_restore_regs"
       ],
-      "comments_before": [
+      "comment_inline": "Restore Y from string_ptr_hi",
+      "xref_summaries": [
         "&fb71 referenced 1 time by &fb62"
       ],
-      "comment_inline": "Restore Y from string_ptr_hi",
       "references": [
-        64354
+        {
+          "addr": 64354,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "ldy",
@@ -6388,14 +6658,15 @@
       "labels": [
         "rdline"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Read line of input (OSWORD 0)\n\nRead a line of text from the host.\n\nSends command &0A with the control block parameters,\nthen receives the input string character by character.\n\nTube protocol: &0A block -- &FF or &7F string &0D\n\nOn Exit:\n    Y: length of string (excluding CR)\n    C: 0 if OK, 1 if Escape",
+      "comment_inline": "Command &0A: read line",
+      "xref_summaries": [
         "&fb77 referenced 1 time by &fb04"
       ],
-      "comment_inline": "Command &0A: read line",
       "references": [
-        64260
+        {
+          "addr": 64260,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -6436,13 +6707,19 @@
       "labels": [
         "rdline_send_block_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fb7e referenced 2 times by &fb81, &fb8b"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64385,
-        64395
+        {
+          "addr": 64385,
+          "kind": "direct"
+        },
+        {
+          "addr": 64395,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -6589,12 +6866,15 @@
       "labels": [
         "rdline_send_addr_low"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fb96 referenced 1 time by &fb99"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64409
+        {
+          "addr": 64409,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -6765,13 +7045,19 @@
       "labels": [
         "rdline_recv_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 for data",
+      "xref_summaries": [
         "&fbb2 referenced 2 times by &fbb5, &fbbf"
       ],
-      "comment_inline": "Poll Tube R2 for data",
       "references": [
-        64437,
-        64447
+        {
+          "addr": 64437,
+          "kind": "direct"
+        },
+        {
+          "addr": 64447,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -6907,12 +7193,15 @@
       "labels": [
         "rdline_escape"
       ],
-      "comments_before": [
+      "comment_inline": "Discard saved buffer low byte",
+      "xref_summaries": [
         "&fbc7 referenced 1 time by &fba8"
       ],
-      "comment_inline": "Discard saved buffer low byte",
       "references": [
-        64424
+        {
+          "addr": 64424,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "pla"
@@ -6954,10 +7243,6 @@
       "labels": [
         "osargs_impl"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSARGS implementation\n\nRead or write information about an open file.\n\nSends command &0C with handle, 4-byte data word,\nand function code. Receives result and updated data.\n\nOn Entry:\n    A: function\n    X: zero-page data word address\n    Y: handle\n\nOn Exit:\n    A: result\n    DATA WORD AT X: updated"
-      ],
       "comment_inline": "Save function on stack",
       "type": "code",
       "mnemonic": "pha"
@@ -6997,12 +7282,15 @@
       "labels": [
         "osargs_wait_r2_handle"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
         "&fbd2 referenced 1 time by &fbd5"
       ],
-      "comment_inline": "Poll Tube R2 status",
       "references": [
-        64469
+        {
+          "addr": 64469,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -7325,10 +7613,6 @@
       "labels": [
         "osfind_impl"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSFIND implementation\n\nOpen or close a file.\n\nFor close (A=0): sends command &12, function, handle.\nFor open (A<>0): sends command &12, function, filename.\n\nOn Entry:\n    A: function\n    XY: filename address (open) or Y = handle (close)\n\nOn Exit:\n    A: handle (open) or preserved (close)"
-      ],
       "comment_inline": "Save function on stack",
       "type": "code",
       "mnemonic": "pha"
@@ -7479,12 +7763,15 @@
       "labels": [
         "osfind_open"
       ],
-      "comments_before": [
+      "comment_inline": "Send filename string",
+      "xref_summaries": [
         "&fc24 referenced 1 time by &fc18"
       ],
-      "comment_inline": "Send filename string",
       "references": [
-        64536
+        {
+          "addr": 64536,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jsr",
@@ -7514,10 +7801,6 @@
       ],
       "labels": [
         "osbget_impl"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSBGET implementation\n\nRead a byte from an open file.\n\nSends command &0E with handle, waits for carry and byte.\n\nOn Entry:\n    Y: handle\n\nOn Exit:\n    A: byte read\n    C: set if EOF"
       ],
       "comment_inline": "Command &0E: OSBGET",
       "type": "code",
@@ -7582,10 +7865,6 @@
       ],
       "labels": [
         "osbput_impl"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSBPUT implementation\n\nWrite a byte to an open file.\n\nSends command &10 with handle and byte.\n\nOn Entry:\n    A: byte\n    Y: handle\n\nOn Exit:\n    A: preserved"
       ],
       "comment_inline": "Save byte to write",
       "type": "code",
@@ -7711,41 +7990,114 @@
         254
       ],
       "labels": [
-        "send_byte_to_tube_r2",
-        "send_command"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Send byte to Tube R2\n\nWait for Tube R2 to be free, then send byte.\n\nOn Entry:\n    A: byte to send\n\nOn Exit:\n    A: preserved",
-        "&fc4a referenced 25 times by &f96e, &fa2f, &fb79, &fb8f, &fbcf, &fbdc, &fbe1, &fbe6, &fbeb, &fbef, &fc0f, &fc13, &fc1c, &fc2c, &fc30, &fc39, &fc3d, &fc41, &fc4d, &fc5a, &fc61, &fc75, &fc95, &fc9c, &fca3"
+        "send_command",
+        "send_byte_to_tube_r2"
       ],
       "comment_inline": "Poll Tube R2 status",
+      "xref_summaries": [
+        "&fc4a referenced 25 times by &f96e, &fa2f, &fb79, &fb8f, &fbcf, &fbdc, &fbe1, &fbe6, &fbeb, &fbef, &fc0f, &fc13, &fc1c, &fc2c, &fc30, &fc39, &fc3d, &fc41, &fc4d, &fc5a, &fc61, &fc75, &fc95, &fc9c, &fca3"
+      ],
       "references": [
-        63854,
-        64047,
-        64377,
-        64399,
-        64463,
-        64476,
-        64481,
-        64486,
-        64491,
-        64495,
-        64527,
-        64531,
-        64540,
-        64556,
-        64560,
-        64569,
-        64573,
-        64577,
-        64589,
-        64602,
-        64609,
-        64629,
-        64661,
-        64668,
-        64675
+        {
+          "addr": 63854,
+          "kind": "direct"
+        },
+        {
+          "addr": 64047,
+          "kind": "direct"
+        },
+        {
+          "addr": 64377,
+          "kind": "direct"
+        },
+        {
+          "addr": 64399,
+          "kind": "direct"
+        },
+        {
+          "addr": 64463,
+          "kind": "direct"
+        },
+        {
+          "addr": 64476,
+          "kind": "direct"
+        },
+        {
+          "addr": 64481,
+          "kind": "direct"
+        },
+        {
+          "addr": 64486,
+          "kind": "direct"
+        },
+        {
+          "addr": 64491,
+          "kind": "direct"
+        },
+        {
+          "addr": 64495,
+          "kind": "direct"
+        },
+        {
+          "addr": 64527,
+          "kind": "direct"
+        },
+        {
+          "addr": 64531,
+          "kind": "direct"
+        },
+        {
+          "addr": 64540,
+          "kind": "direct"
+        },
+        {
+          "addr": 64556,
+          "kind": "direct"
+        },
+        {
+          "addr": 64560,
+          "kind": "direct"
+        },
+        {
+          "addr": 64569,
+          "kind": "direct"
+        },
+        {
+          "addr": 64573,
+          "kind": "direct"
+        },
+        {
+          "addr": 64577,
+          "kind": "direct"
+        },
+        {
+          "addr": 64589,
+          "kind": "direct"
+        },
+        {
+          "addr": 64602,
+          "kind": "direct"
+        },
+        {
+          "addr": 64609,
+          "kind": "direct"
+        },
+        {
+          "addr": 64629,
+          "kind": "direct"
+        },
+        {
+          "addr": 64661,
+          "kind": "direct"
+        },
+        {
+          "addr": 64668,
+          "kind": "direct"
+        },
+        {
+          "addr": 64675,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -7797,10 +8149,6 @@
       ],
       "labels": [
         "osfile_impl"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSFILE implementation\n\nOperate on whole files (load, save, read/write attributes).\n\nSends command &14 with 16-byte control block, filename,\nand function code. Receives result and updated control block.\n\nOn Entry:\n    A: function\n    XY: control block address"
       ],
       "comment_inline": "Store control block high byte",
       "type": "code",
@@ -7876,12 +8224,15 @@
       "labels": [
         "osfile_send_block_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Get control block byte",
+      "xref_summaries": [
         "&fc5f referenced 1 time by &fc67"
       ],
-      "comment_inline": "Get control block byte",
       "references": [
-        64615
+        {
+          "addr": 64615,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -8079,12 +8430,15 @@
       "labels": [
         "osfile_recv_block_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Wait for response byte",
+      "xref_summaries": [
         "&fc7e referenced 1 time by &fc86"
       ],
-      "comment_inline": "Wait for response byte",
       "references": [
-        64646
+        {
+          "addr": 64646,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jsr",
@@ -8191,10 +8545,6 @@
       "labels": [
         "osgbpb_impl"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSGBPB implementation\n\nMultiple byte read and write.\n\nSends command &16 with 13-byte control block and function.\nReceives updated control block, carry, and result.\n\nOn Entry:\n    A: function\n    XY: control block address"
-      ],
       "comment_inline": "Store control block high byte",
       "type": "code",
       "mnemonic": "sty",
@@ -8269,12 +8619,15 @@
       "labels": [
         "osgbpb_send_block_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Get control block byte",
+      "xref_summaries": [
         "&fc9a referenced 1 time by &fca0"
       ],
-      "comment_inline": "Get control block byte",
       "references": [
-        64672
+        {
+          "addr": 64672,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -8362,12 +8715,15 @@
       "labels": [
         "osgbpb_recv_block_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Wait for response byte",
+      "xref_summaries": [
         "&fca8 referenced 1 time by &fcae"
       ],
-      "comment_inline": "Wait for response byte",
       "references": [
-        64686
+        {
+          "addr": 64686,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jsr",
@@ -8458,18 +8814,31 @@
       "labels": [
         "unsupported"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Unsupported MOS call\n\nGenerate a 'Bad' error for unsupported MOS calls.\nUsed as the default handler for USERV, IRQ2V, FSCV,\nand several other vectors that have no parasite-side\nimplementation.",
+      "comment_inline": "Generate error 255: 'Bad'",
+      "xref_summaries": [
         "&fcb7 referenced 5 times by &ffb9, &ffbc, &ffbf, &ffc2, &ffc5"
       ],
-      "comment_inline": "Generate error 255: 'Bad'",
       "references": [
-        65465,
-        65468,
-        65471,
-        65474,
-        65477
+        {
+          "addr": 65465,
+          "kind": "direct"
+        },
+        {
+          "addr": 65468,
+          "kind": "direct"
+        },
+        {
+          "addr": 65471,
+          "kind": "direct"
+        },
+        {
+          "addr": 65474,
+          "kind": "direct"
+        },
+        {
+          "addr": 65477,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "brk"
@@ -8502,14 +8871,15 @@
       "labels": [
         "osword_send_lengths"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSWORD send block length table\n\nIndexed by OSWORD number via LDY table,X where X is\nthe OSWORD function. Entry 0 is never used because\nOSWORD 0 (RDLINE) is handled separately. Entries\n1-20 give the number of bytes to send from the\ncontrol block to the host for each OSWORD function.\nFunctions above &14 (20) default to sending 16 bytes.\n\nFor functions >= &80, the send length is taken from\nbyte 0 of the control block instead of this table.",
-        "&fcbc referenced 1 time by &fb24"
-      ],
       "comment_inline": "(unused: OSWORD 0 handled separately)",
+      "xref_summaries": [
+        "&fcbc used as index base 1 time by &fb24"
+      ],
       "references": [
-        64292
+        {
+          "addr": 64292,
+          "kind": "indexed"
+        }
       ],
       "type": "byte",
       "values": [
@@ -8733,14 +9103,15 @@
       "labels": [
         "osword_recv_lengths"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "OSWORD receive block length table\n\nIndexed by OSWORD number via LDY table,X. Gives the\nnumber of bytes to receive back from the host into\nthe control block. Entries 1-20 correspond to OSWORD\nfunctions &01-&14. Functions above &14 default to\nreceiving 16 bytes.\n\nThe first byte (&80) is shared: it serves as both\nthe OSWORD &14 send length (meaning the length is in\nthe control block) and the unused recv slot 0.\n\nFor functions >= &80, the receive length is taken from\nbyte 1 of the control block instead of this table.",
-        "&fcd0 referenced 1 time by &fb50"
-      ],
       "comment_inline": "&14 send / (recv slot 0 unused)",
+      "xref_summaries": [
+        "&fcd0 used as index base 1 time by &fb50"
+      ],
       "references": [
-        64336
+        {
+          "addr": 64336,
+          "kind": "indexed"
+        }
       ],
       "type": "byte",
       "values": [
@@ -8976,10 +9347,6 @@
       "labels": [
         "interrupt_handler"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Interrupt handler entry\n\nHardware interrupt entry point. Saves A, checks the\nbreak flag in the stacked processor status to distinguish\nBRK from IRQ, and dispatches accordingly."
-      ],
       "comment_inline": "Save A in irq_a_store",
       "type": "code",
       "mnemonic": "sta",
@@ -9053,10 +9420,6 @@
       "labels": [
         "irq1_handler"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "IRQ1 handler\n\nFirst-level IRQ handler. Checks Tube R4 for data\ntransfer requests, then Tube R1 for escape/event\nnotifications. Falls through to IRQ2V if neither."
-      ],
       "comment_inline": "Check Tube R4 for data",
       "type": "code",
       "mnemonic": "bit",
@@ -9126,14 +9489,15 @@
       "labels": [
         "brk_handler_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "BRK handler dispatch\n\nExtract the return address from the stack, subtract 1\nto point to the byte after the BRK opcode (the error\nblock), store the pointer in last_error (&FD/FE),\nthen re-enable interrupts and dispatch via BRKV.",
+      "comment_inline": "Save X on stack",
+      "xref_summaries": [
         "&fcfd referenced 1 time by &fceb"
       ],
-      "comment_inline": "Save X on stack",
       "references": [
-        64747
+        {
+          "addr": 64747,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "txa"
@@ -9314,14 +9678,15 @@
       "labels": [
         "tube_r1_interrupt"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Handle Tube R1 interrupt (escape and events)\n\nProcess data received via Tube R1. If bit 7 is set,\nit is an Escape state change (stored in escape_flag).\nOtherwise, it is an event notification: reads the\nevent parameters (Y, X, event number) from R1 and\ndispatches via EVNTV.",
+      "comment_inline": "Read data from Tube R1",
+      "xref_summaries": [
         "&fd18 referenced 1 time by &fcf8"
       ],
-      "comment_inline": "Read data from Tube R1",
       "references": [
-        64760
+        {
+          "addr": 64760,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -9520,12 +9885,15 @@
       "labels": [
         "dispatch_event"
       ],
-      "comments_before": [
+      "comment_inline": "Dispatch event via EVNTV",
+      "xref_summaries": [
         "&fd36 referenced 1 time by &fd2c"
       ],
-      "comment_inline": "Dispatch event via EVNTV",
       "references": [
-        64812
+        {
+          "addr": 64812,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jmp",
@@ -9541,14 +9909,15 @@
       "labels": [
         "set_escape_flag"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Set escape flag from Tube R1 data\n\nCalled when Tube R1 data has bit 7 set, indicating\nan Escape state change. Shifts bit 6 of the received\nbyte into bit 7 via ASL and stores the result in\nescape_flag (&FF). Bit 7 set = Escape active.",
+      "comment_inline": "Shift bit 6 into bit 7 for Escape",
+      "xref_summaries": [
         "&fd39 referenced 1 time by &fd1b"
       ],
-      "comment_inline": "Shift bit 6 into bit 7 for Escape",
       "references": [
-        64795
+        {
+          "addr": 64795,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "asl"
@@ -9598,14 +9967,15 @@
       "labels": [
         "tube_r4_interrupt"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Handle Tube R4 interrupt\n\nProcess data received via Tube R4. If bit 7 is set,\nit is an error from the host: reads the error number\nand message via R2 into the error buffer, then\nexecutes the error via a JMP to the buffer (which\nstarts with a BRK opcode).\n\nIf bit 7 is clear, it is a data transfer request:\nfalls through to data_transfer_setup.",
+      "comment_inline": "Read data from Tube R4",
+      "xref_summaries": [
         "&fd3f referenced 1 time by &fcf3"
       ],
-      "comment_inline": "Read data from Tube R4",
       "references": [
-        64755
+        {
+          "addr": 64755,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -9645,12 +10015,15 @@
       "labels": [
         "tube_r4_wait_error"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R2 for error data",
+      "xref_summaries": [
         "&fd45 referenced 1 time by &fd48"
       ],
-      "comment_inline": "Poll Tube R2 for error data",
       "references": [
-        64840
+        {
+          "addr": 64840,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -9755,12 +10128,15 @@
       "labels": [
         "tube_r4_read_error_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Advance buffer index",
+      "xref_summaries": [
         "&fd59 referenced 1 time by &fd60"
       ],
-      "comment_inline": "Advance buffer index",
       "references": [
-        64864
+        {
+          "addr": 64864,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "iny"
@@ -9830,14 +10206,15 @@
       "labels": [
         "data_transfer_setup"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Set up data transfer via NMI\n\nConfigure the NMI handler for a data transfer.\n\nThe transfer type (0-7) from R4 selects the NMI\nroutine and the address pointer. Types 0-3 are\nsingle/double byte transfers. Types 4-5 are release.\nTypes 6-7 are 256-byte block transfers.\n\nThe setup phase consumes 7 bytes on R4 in this order:\ntransfer type, called ID, address bytes 4/3/2/1 (only\nthe low two are stored, via transfer_addr_ptr), then a\nsync byte. The transfer type byte has already been read\nby tube_r4_interrupt before falling through here; the\nother 6 are read below. Between the last address byte\nand the sync wait, two bytes are drained from R3 in the\nH-to-P direction via BIT tube_r3_data.\n\nNo bytes are written to R3 during setup: any P-to-H R3\nwrite happens later, from the NMI handler selected by\nthe transfer type. For transfer types 0-5 the routine\nexits via RTI after the sync byte; for type 6 it runs\ntransfer_write_loop to send 256 bytes to R3, and for\ntype 7 it runs transfer_256_bytes_from_tube to read 256\nbytes from R3.\n\nThe sync byte is the final step of the host-side Tube\nhandshake: the host writes it only once it is ready to\nbegin the data phase. The parasite blocks in the BIT/BPL\nloop at transfer_wait_sync until bit 7 of R4 status is\nset, so if the sync byte is never written the parasite\nspins here indefinitely.",
+      "comment_inline": "Save transfer type in NMI vector",
+      "xref_summaries": [
         "&fd65 referenced 1 time by &fd42"
       ],
-      "comment_inline": "Save transfer type in NMI vector",
       "references": [
-        64834
+        {
+          "addr": 64834,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "sta",
@@ -9997,12 +10374,15 @@
       "labels": [
         "transfer_wait_id"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R4 for called ID byte",
+      "xref_summaries": [
         "&fd83 referenced 1 time by &fd86"
       ],
-      "comment_inline": "Poll Tube R4 for called ID byte",
       "references": [
-        64902
+        {
+          "addr": 64902,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -10100,12 +10480,15 @@
       "labels": [
         "transfer_read_addr4"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R4 for address byte 4",
+      "xref_summaries": [
         "&fd93 referenced 1 time by &fd96"
       ],
-      "comment_inline": "Poll Tube R4 for address byte 4",
       "references": [
-        64918
+        {
+          "addr": 64918,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -10150,12 +10533,15 @@
       "labels": [
         "transfer_read_addr3"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R4 for address byte 3",
+      "xref_summaries": [
         "&fd9b referenced 1 time by &fd9e"
       ],
-      "comment_inline": "Poll Tube R4 for address byte 3",
       "references": [
-        64926
+        {
+          "addr": 64926,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -10200,12 +10586,15 @@
       "labels": [
         "transfer_read_addr2"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R4 for address byte 2",
+      "xref_summaries": [
         "&fda3 referenced 1 time by &fda6"
       ],
-      "comment_inline": "Poll Tube R4 for address byte 2",
       "references": [
-        64934
+        {
+          "addr": 64934,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -10272,12 +10661,15 @@
       "labels": [
         "transfer_read_addr1"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R4 for address byte 1",
+      "xref_summaries": [
         "&fdae referenced 1 time by &fdb1"
       ],
-      "comment_inline": "Poll Tube R4 for address byte 1",
       "references": [
-        64945
+        {
+          "addr": 64945,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -10363,12 +10755,15 @@
       "labels": [
         "transfer_wait_sync"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R4 status for host sync byte",
+      "xref_summaries": [
         "&fdbe referenced 1 time by &fdc1"
       ],
-      "comment_inline": "Poll Tube R4 status for host sync byte",
       "references": [
-        64961
+        {
+          "addr": 64961,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -10470,13 +10865,19 @@
       "labels": [
         "transfer_write_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Read Tube R3 status",
+      "xref_summaries": [
         "&fdcf referenced 2 times by &fdd4, &fddd"
       ],
-      "comment_inline": "Read Tube R3 status",
       "references": [
-        64980,
-        64989
+        {
+          "addr": 64980,
+          "kind": "direct"
+        },
+        {
+          "addr": 64989,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -10576,12 +10977,15 @@
       "labels": [
         "transfer_write_sync"
       ],
-      "comments_before": [
+      "comment_inline": "Poll Tube R3 status",
+      "xref_summaries": [
         "&fddf referenced 1 time by &fde2"
       ],
-      "comment_inline": "Poll Tube R3 status",
       "references": [
-        64994
+        {
+          "addr": 64994,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -10624,16 +11028,23 @@
       "labels": [
         "restore_regs_and_rti"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Restore registers and return from interrupt\n\nCommon exit path for data transfer setup. Restores Y\nfrom the stack, retrieves saved A from irq_a_store,\nand executes RTI.",
+      "comment_inline": "Restore Y from stack",
+      "xref_summaries": [
         "&fde7 referenced 3 times by &fd8d, &fdc9, &fdfe"
       ],
-      "comment_inline": "Restore Y from stack",
       "references": [
-        64909,
-        64969,
-        65022
+        {
+          "addr": 64909,
+          "kind": "direct"
+        },
+        {
+          "addr": 64969,
+          "kind": "direct"
+        },
+        {
+          "addr": 65022,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "pla"
@@ -10678,14 +11089,15 @@
       "labels": [
         "transfer_256_bytes_from_tube"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Transfer 256 bytes from Tube via R3\n\nRead 256 bytes from Tube R3 into memory at the\naddress patched into the STA instruction. Used for\ntransfer type 7 (256-byte read from host).\n\nThe target address is set up by data_transfer_setup\nvia the transfer address pointer table.",
+      "comment_inline": "Y=0 for 256-byte counter",
+      "xref_summaries": [
         "&fdec referenced 1 time by &fdcb"
       ],
-      "comment_inline": "Y=0 for 256-byte counter",
       "references": [
-        64971
+        {
+          "addr": 64971,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "ldy",
@@ -10701,13 +11113,19 @@
       "labels": [
         "transfer_read_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Read Tube R3 status",
+      "xref_summaries": [
         "&fdee referenced 2 times by &fdf3, &fdfc"
       ],
-      "comment_inline": "Read Tube R3 status",
       "references": [
-        65011,
-        65020
+        {
+          "addr": 65011,
+          "kind": "direct"
+        },
+        {
+          "addr": 65020,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -10811,10 +11229,10 @@
           "io_page_base"
         ]
       },
-      "comments_before": [
-        "&fdff referenced 2 times by &f819, &f81c"
-      ],
       "comment_inline": "Always branch to exit",
+      "xref_summaries": [
+        "&fdff used as index base 2 times by &f819, &f81c"
+      ],
       "type": "code",
       "mnemonic": "beq",
       "operand": "restore_regs_and_rti",
@@ -10828,10 +11246,6 @@
       ],
       "labels": [
         "nmi_single_byte_to_tube"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "NMI: single byte to Tube\n\nTransfer type 0. Sends one byte from the transfer\naddress to Tube R3, then increments the address."
       ],
       "comment_inline": "Save A",
       "type": "code",
@@ -10855,11 +11269,11 @@
           "lfe03"
         ]
       },
-      "comments_before": [
+      "comment_inline": "Read byte (address patched by setup)",
+      "xref_summaries": [
         "&fe02 referenced 1 time by &fe07",
         "&fe03 referenced 1 time by &fe0c"
       ],
-      "comment_inline": "Read byte (address patched by setup)",
       "type": "code",
       "mnemonic": "lda",
       "operand": "irq_vector_hi",
@@ -10929,12 +11343,15 @@
       "labels": [
         "nmi0_done"
       ],
-      "comments_before": [
+      "comment_inline": "Restore A",
+      "xref_summaries": [
         "&fe0f referenced 1 time by &fe0a"
       ],
-      "comment_inline": "Restore A",
       "references": [
-        65034
+        {
+          "addr": 65034,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "pla"
@@ -10955,10 +11372,6 @@
       ],
       "labels": [
         "nmi_single_byte_from_tube"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "NMI: single byte from Tube\n\nTransfer type 1. Reads one byte from Tube R3 and\nstores it at the transfer address, then increments\nthe address."
       ],
       "comment_inline": "Save A",
       "type": "code",
@@ -10996,11 +11409,11 @@
           "lfe17"
         ]
       },
-      "comments_before": [
+      "comment_inline": "Store byte (address patched by setup)",
+      "xref_summaries": [
         "&fe16 referenced 1 time by &fe18",
         "&fe17 referenced 1 time by &fe1d"
       ],
-      "comment_inline": "Store byte (address patched by setup)",
       "type": "code",
       "mnemonic": "sta",
       "operand": "irq_vector_hi",
@@ -11056,12 +11469,15 @@
       "labels": [
         "nmi1_done"
       ],
-      "comments_before": [
+      "comment_inline": "Restore A",
+      "xref_summaries": [
         "&fe20 referenced 1 time by &fe1b"
       ],
-      "comment_inline": "Restore A",
       "references": [
-        65051
+        {
+          "addr": 65051,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "pla"
@@ -11082,10 +11498,6 @@
       ],
       "labels": [
         "nmi_two_bytes_to_tube"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "NMI: two bytes to Tube\n\nTransfer type 2. Sends two consecutive bytes from\n(data_transfer_addr) to Tube R3, incrementing the\npointer after each byte."
       ],
       "comment_inline": "Save A",
       "type": "code",
@@ -11195,12 +11607,15 @@
       "labels": [
         "nmi2_second_byte"
       ],
-      "comments_before": [
+      "comment_inline": "Read second byte via pointer",
+      "xref_summaries": [
         "&fe32 referenced 1 time by &fe2e"
       ],
-      "comment_inline": "Read second byte via pointer",
       "references": [
-        65070
+        {
+          "addr": 65070,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -11269,12 +11684,15 @@
       "labels": [
         "nmi2_done"
       ],
-      "comments_before": [
+      "comment_inline": "Restore Y from stack",
+      "xref_summaries": [
         "&fe3d referenced 1 time by &fe39"
       ],
-      "comment_inline": "Restore Y from stack",
       "references": [
-        65081
+        {
+          "addr": 65081,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "pla"
@@ -11313,10 +11731,6 @@
       ],
       "labels": [
         "nmi_two_bytes_from_tube"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "NMI: two bytes from Tube\n\nTransfer type 3. Reads two bytes from Tube R3 and\nstores them at (data_transfer_addr), incrementing\nthe pointer after each byte."
       ],
       "comment_inline": "Save A",
       "type": "code",
@@ -11427,12 +11841,15 @@
       "labels": [
         "nmi3_second_byte"
       ],
-      "comments_before": [
+      "comment_inline": "Read second byte from Tube R3",
+      "xref_summaries": [
         "&fe51 referenced 1 time by &fe4d"
       ],
-      "comment_inline": "Read second byte from Tube R3",
       "references": [
-        65101
+        {
+          "addr": 65101,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -11500,12 +11917,15 @@
       "labels": [
         "nmi3_done"
       ],
-      "comments_before": [
+      "comment_inline": "Restore Y from stack",
+      "xref_summaries": [
         "&fe5c referenced 1 time by &fe58"
       ],
-      "comment_inline": "Restore Y from stack",
       "references": [
-        65112
+        {
+          "addr": 65112,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "pla"
@@ -11545,14 +11965,15 @@
       "labels": [
         "transfer_addr_ptr_table"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Transfer address pointer table (low bytes)\n\nEight entries indexed by transfer type (0-7). Each\nentry is the low byte of the address of the two-byte\nfield that holds the current transfer address for\nthat type. Types 0-1 and 6-7 point to self-modifying\ncode address operands; types 2-5 point to the\ndata_transfer_addr zero page location (&F6).",
-        "&fe60 referenced 1 time by &fd79"
-      ],
       "comment_inline": "Low bytes of transfer addr pointers",
+      "xref_summaries": [
+        "&fe60 used as index base 1 time by &fd79"
+      ],
       "references": [
-        64889
+        {
+          "addr": 64889,
+          "kind": "indexed"
+        }
       ],
       "type": "byte",
       "values": [
@@ -11661,14 +12082,15 @@
       "labels": [
         "transfer_addr_ptr_hi_table"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Transfer address pointer table (high bytes)\n\nHigh bytes corresponding to the low byte table at\n&FE60. Together they form 8 pointers to the address\nfields used by each transfer type.",
-        "&fe68 referenced 1 time by &fd7e"
-      ],
       "comment_inline": "High bytes of transfer addr pointers",
+      "xref_summaries": [
+        "&fe68 used as index base 1 time by &fd7e"
+      ],
       "references": [
-        64894
+        {
+          "addr": 64894,
+          "kind": "indexed"
+        }
       ],
       "type": "byte",
       "values": [
@@ -11777,14 +12199,15 @@
       "labels": [
         "nmi_routine_addr_table"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "NMI routine address table (low bytes)\n\nEight entries indexed by transfer type (0-7). Each\nentry is the low byte of the NMI handler routine\nfor that type. Types 0-3 have dedicated handlers;\ntypes 4-7 all use the NMI acknowledge routine.",
-        "&fe70 referenced 1 time by &fd6d"
-      ],
       "comment_inline": "Low bytes of NMI handler addresses",
+      "xref_summaries": [
+        "&fe70 used as index base 1 time by &fd6d"
+      ],
       "references": [
-        64877
+        {
+          "addr": 64877,
+          "kind": "indexed"
+        }
       ],
       "type": "byte",
       "values": [
@@ -11893,14 +12316,15 @@
       "labels": [
         "nmi_routine_addr_hi_table"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "NMI routine address table (high bytes)\n\nHigh bytes corresponding to the low byte table at\n&FE70. Together they form 8 NMI handler addresses.",
-        "&fe78 referenced 1 time by &fd73"
-      ],
       "comment_inline": "High bytes of NMI handler addresses",
+      "xref_summaries": [
+        "&fe78 used as index base 1 time by &fd73"
+      ],
       "references": [
-        64883
+        {
+          "addr": 64883,
+          "kind": "indexed"
+        }
       ],
       "type": "byte",
       "values": [
@@ -12011,18 +12435,31 @@
       "labels": [
         "wait_for_tube_r1_byte"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Wait for byte in Tube R1\n\nWait for data in Tube R1, allowing Tube R4 transfer\nrequests to be serviced via IRQ while waiting.\n\nPolls R1 status; if R4 has data instead, briefly\nenables interrupts to let the R4 handler run, then\nresumes polling R1.\n\nOn Exit:\n    A: byte from Tube R1",
+      "comment_inline": "Check Tube R1 for data",
+      "xref_summaries": [
         "&fe80 referenced 5 times by &fd21, &fd25, &fd29, &fe88, &fe91"
       ],
-      "comment_inline": "Check Tube R1 for data",
       "references": [
-        64801,
-        64805,
-        64809,
-        65160,
-        65169
+        {
+          "addr": 64801,
+          "kind": "direct"
+        },
+        {
+          "addr": 64805,
+          "kind": "direct"
+        },
+        {
+          "addr": 64809,
+          "kind": "direct"
+        },
+        {
+          "addr": 65160,
+          "kind": "direct"
+        },
+        {
+          "addr": 65169,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "bit",
@@ -12147,12 +12584,15 @@
       "labels": [
         "tube_r1_read_byte"
       ],
-      "comments_before": [
+      "comment_inline": "Read byte from Tube R1",
+      "xref_summaries": [
         "&fe94 referenced 1 time by &fe83"
       ],
-      "comment_inline": "Read byte from Tube R1",
       "references": [
-        65155
+        {
+          "addr": 65155,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -12177,15 +12617,19 @@
       "labels": [
         "print_embedded_text"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Print inline text\n\nPrint the text string embedded immediately after the\nJSR to this routine. Characters are sent to OSWRCH\nuntil a byte with bit 7 set is encountered, which\nterminates the string.\n\nExecution resumes by jumping directly to the address\nof the terminator byte, so the terminator is executed\nas a 6502 instruction. This is why NOP (&EA) is used:\nbit 7 is set (ending the string loop), it is a single-\nbyte opcode (no operand to skip), and it has no effect\nwhen executed. This saves the bytes and cycles that\nwould otherwise be needed to increment the pointer\npast the terminator before returning.\n\nOn Exit:\n    A: terminator byte (bit 7 set)",
+      "comment_inline": "Pull return address low",
+      "xref_summaries": [
         "&fe98 referenced 2 times by &f860, &fa17"
       ],
-      "comment_inline": "Pull return address low",
       "references": [
-        63584,
-        64023
+        {
+          "addr": 63584,
+          "kind": "direct"
+        },
+        {
+          "addr": 64023,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "pla"
@@ -12245,12 +12689,15 @@
       "labels": [
         "print_text_loop"
       ],
-      "comments_before": [
+      "comment_inline": "Increment string pointer low",
+      "xref_summaries": [
         "&fea0 referenced 1 time by &fead"
       ],
-      "comment_inline": "Increment string pointer low",
       "references": [
-        65197
+        {
+          "addr": 65197,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "inc",
@@ -12296,12 +12743,15 @@
       "labels": [
         "print_text_get_char"
       ],
-      "comments_before": [
+      "comment_inline": "Read character from inline string",
+      "xref_summaries": [
         "&fea6 referenced 1 time by &fea2"
       ],
-      "comment_inline": "Read character from inline string",
       "references": [
-        65186
+        {
+          "addr": 65186,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -12360,12 +12810,15 @@
       "labels": [
         "print_text_resume"
       ],
-      "comments_before": [
+      "comment_inline": "Jump to terminator byte and execute it",
+      "xref_summaries": [
         "&feb0 referenced 1 time by &fea8"
       ],
-      "comment_inline": "Jump to terminator byte and execute it",
       "references": [
-        65192
+        {
+          "addr": 65192,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jmp",
@@ -12382,10 +12835,6 @@
       ],
       "labels": [
         "nmi_acknowledge"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "NMI acknowledge\n\nAcknowledge an NMI by writing A to Tube R3, then\nreturn from interrupt. Used as the NMI handler for\ntransfer types 4-7 (release and 256-byte block\ntransfers, which do not use NMI for individual\nbytes). Also the initial value of the NMI vector\nat reset."
       ],
       "comment_inline": "Write to Tube R3 to acknowledge NMI",
       "type": "code",
@@ -12466,10 +12915,6 @@
       "labels": [
         "unused_fill_pre_io"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Unused fill between code and I/O window\n\n39 bytes of &FF fill between the end of the NMI\nacknowledge routine and the start of the Tube ULA\nI/O register window at &FEF0."
-      ],
       "type": "byte",
       "values": [
         255,
@@ -12538,10 +12983,6 @@
       ],
       "labels": [
         "tube_ula_io_window"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Tube ULA I/O window\n\nHardware registers overlay these ROM addresses.\nThe ROM bytes here are never read by the CPU.\nThe registers at &FEF0-&FEF7 mirror &FEF8-&FEFF\nbut are not used by the Tube Client software."
       ],
       "comment_inline": "Tube R1 status (mirror, not used)",
       "type": "byte",
@@ -12634,15 +13075,28 @@
       "labels": [
         "tube_r1_status"
       ],
-      "comments_before": [
+      "comment_inline": "Tube register 1 status",
+      "xref_summaries": [
         "&fef8 referenced 4 times by &0100[1], &f962, &fcf5, &fe80"
       ],
-      "comment_inline": "Tube register 1 status",
       "references": [
-        256,
-        63842,
-        64757,
-        65152
+        {
+          "addr": 256,
+          "kind": "direct",
+          "move_id": 1
+        },
+        {
+          "addr": 63842,
+          "kind": "direct"
+        },
+        {
+          "addr": 64757,
+          "kind": "direct"
+        },
+        {
+          "addr": 65152,
+          "kind": "direct"
+        }
       ],
       "type": "byte",
       "values": [
@@ -12657,14 +13111,23 @@
       "labels": [
         "tube_r1_data"
       ],
-      "comments_before": [
+      "comment_inline": "Tube register 1 data",
+      "xref_summaries": [
         "&fef9 referenced 3 times by &f968, &fd18, &fe94"
       ],
-      "comment_inline": "Tube register 1 data",
       "references": [
-        63848,
-        64792,
-        65172
+        {
+          "addr": 63848,
+          "kind": "direct"
+        },
+        {
+          "addr": 64792,
+          "kind": "direct"
+        },
+        {
+          "addr": 65172,
+          "kind": "direct"
+        }
       ],
       "type": "byte",
       "values": [
@@ -12679,36 +13142,111 @@
       "labels": [
         "tube_r2_status"
       ],
-      "comments_before": [
+      "comment_inline": "Tube register 2 status",
+      "xref_summaries": [
         "&fefa referenced 25 times by &f975, &f9b8, &fa7a, &fa82, &fa8b, &fa93, &faab, &fab3, &fabb, &fac4, &fad5, &fadf, &fae7, &fb09, &fb11, &fb2d, &fb38, &fb59, &fb64, &fb7e, &fb96, &fbb2, &fbd2, &fc4a, &fd45"
       ],
-      "comment_inline": "Tube register 2 status",
       "references": [
-        63861,
-        63928,
-        64122,
-        64130,
-        64139,
-        64147,
-        64171,
-        64179,
-        64187,
-        64196,
-        64213,
-        64223,
-        64231,
-        64265,
-        64273,
-        64301,
-        64312,
-        64345,
-        64356,
-        64382,
-        64406,
-        64434,
-        64466,
-        64586,
-        64837
+        {
+          "addr": 63861,
+          "kind": "direct"
+        },
+        {
+          "addr": 63928,
+          "kind": "direct"
+        },
+        {
+          "addr": 64122,
+          "kind": "direct"
+        },
+        {
+          "addr": 64130,
+          "kind": "direct"
+        },
+        {
+          "addr": 64139,
+          "kind": "direct"
+        },
+        {
+          "addr": 64147,
+          "kind": "direct"
+        },
+        {
+          "addr": 64171,
+          "kind": "direct"
+        },
+        {
+          "addr": 64179,
+          "kind": "direct"
+        },
+        {
+          "addr": 64187,
+          "kind": "direct"
+        },
+        {
+          "addr": 64196,
+          "kind": "direct"
+        },
+        {
+          "addr": 64213,
+          "kind": "direct"
+        },
+        {
+          "addr": 64223,
+          "kind": "direct"
+        },
+        {
+          "addr": 64231,
+          "kind": "direct"
+        },
+        {
+          "addr": 64265,
+          "kind": "direct"
+        },
+        {
+          "addr": 64273,
+          "kind": "direct"
+        },
+        {
+          "addr": 64301,
+          "kind": "direct"
+        },
+        {
+          "addr": 64312,
+          "kind": "direct"
+        },
+        {
+          "addr": 64345,
+          "kind": "direct"
+        },
+        {
+          "addr": 64356,
+          "kind": "direct"
+        },
+        {
+          "addr": 64382,
+          "kind": "direct"
+        },
+        {
+          "addr": 64406,
+          "kind": "direct"
+        },
+        {
+          "addr": 64434,
+          "kind": "direct"
+        },
+        {
+          "addr": 64466,
+          "kind": "direct"
+        },
+        {
+          "addr": 64586,
+          "kind": "direct"
+        },
+        {
+          "addr": 64837,
+          "kind": "direct"
+        }
       ],
       "type": "byte",
       "values": [
@@ -12723,36 +13261,111 @@
       "labels": [
         "tube_r2_data"
       ],
-      "comments_before": [
+      "comment_inline": "Tube register 2 data",
+      "xref_summaries": [
         "&fefb referenced 25 times by &f97a, &f9bf, &fa7f, &fa87, &fa90, &fa98, &fab0, &fab8, &fac0, &fac9, &fada, &fae4, &faec, &fb0e, &fb16, &fb32, &fb3f, &fb5e, &fb69, &fb85, &fb9b, &fbb7, &fbd7, &fc4f, &fd4a"
       ],
-      "comment_inline": "Tube register 2 data",
       "references": [
-        63866,
-        63935,
-        64127,
-        64135,
-        64144,
-        64152,
-        64176,
-        64184,
-        64192,
-        64201,
-        64218,
-        64228,
-        64236,
-        64270,
-        64278,
-        64306,
-        64319,
-        64350,
-        64361,
-        64389,
-        64411,
-        64439,
-        64471,
-        64591,
-        64842
+        {
+          "addr": 63866,
+          "kind": "direct"
+        },
+        {
+          "addr": 63935,
+          "kind": "direct"
+        },
+        {
+          "addr": 64127,
+          "kind": "direct"
+        },
+        {
+          "addr": 64135,
+          "kind": "direct"
+        },
+        {
+          "addr": 64144,
+          "kind": "direct"
+        },
+        {
+          "addr": 64152,
+          "kind": "direct"
+        },
+        {
+          "addr": 64176,
+          "kind": "direct"
+        },
+        {
+          "addr": 64184,
+          "kind": "direct"
+        },
+        {
+          "addr": 64192,
+          "kind": "direct"
+        },
+        {
+          "addr": 64201,
+          "kind": "direct"
+        },
+        {
+          "addr": 64218,
+          "kind": "direct"
+        },
+        {
+          "addr": 64228,
+          "kind": "direct"
+        },
+        {
+          "addr": 64236,
+          "kind": "direct"
+        },
+        {
+          "addr": 64270,
+          "kind": "direct"
+        },
+        {
+          "addr": 64278,
+          "kind": "direct"
+        },
+        {
+          "addr": 64306,
+          "kind": "direct"
+        },
+        {
+          "addr": 64319,
+          "kind": "direct"
+        },
+        {
+          "addr": 64350,
+          "kind": "direct"
+        },
+        {
+          "addr": 64361,
+          "kind": "direct"
+        },
+        {
+          "addr": 64389,
+          "kind": "direct"
+        },
+        {
+          "addr": 64411,
+          "kind": "direct"
+        },
+        {
+          "addr": 64439,
+          "kind": "direct"
+        },
+        {
+          "addr": 64471,
+          "kind": "direct"
+        },
+        {
+          "addr": 64591,
+          "kind": "direct"
+        },
+        {
+          "addr": 64842,
+          "kind": "direct"
+        }
       ],
       "type": "byte",
       "values": [
@@ -12767,14 +13380,23 @@
       "labels": [
         "tube_r3_status"
       ],
-      "comments_before": [
+      "comment_inline": "Tube register 3 status",
+      "xref_summaries": [
         "&fefc referenced 3 times by &fdcf, &fddf, &fdee"
       ],
-      "comment_inline": "Tube register 3 status",
       "references": [
-        64975,
-        64991,
-        65006
+        {
+          "addr": 64975,
+          "kind": "direct"
+        },
+        {
+          "addr": 64991,
+          "kind": "direct"
+        },
+        {
+          "addr": 65006,
+          "kind": "direct"
+        }
       ],
       "type": "byte",
       "values": [
@@ -12789,23 +13411,59 @@
       "labels": [
         "tube_r3_data"
       ],
-      "comments_before": [
+      "comment_inline": "Tube register 3 data",
+      "xref_summaries": [
         "&fefd referenced 12 times by &fdb8, &fdbb, &fdd9, &fde4, &fdf5, &fe04, &fe12, &fe29, &fe34, &fe46, &fe51, &feb3"
       ],
-      "comment_inline": "Tube register 3 data",
       "references": [
-        64952,
-        64955,
-        64985,
-        64996,
-        65013,
-        65028,
-        65042,
-        65065,
-        65076,
-        65094,
-        65105,
-        65203
+        {
+          "addr": 64952,
+          "kind": "direct"
+        },
+        {
+          "addr": 64955,
+          "kind": "direct"
+        },
+        {
+          "addr": 64985,
+          "kind": "direct"
+        },
+        {
+          "addr": 64996,
+          "kind": "direct"
+        },
+        {
+          "addr": 65013,
+          "kind": "direct"
+        },
+        {
+          "addr": 65028,
+          "kind": "direct"
+        },
+        {
+          "addr": 65042,
+          "kind": "direct"
+        },
+        {
+          "addr": 65065,
+          "kind": "direct"
+        },
+        {
+          "addr": 65076,
+          "kind": "direct"
+        },
+        {
+          "addr": 65094,
+          "kind": "direct"
+        },
+        {
+          "addr": 65105,
+          "kind": "direct"
+        },
+        {
+          "addr": 65203,
+          "kind": "direct"
+        }
       ],
       "type": "byte",
       "values": [
@@ -12820,19 +13478,43 @@
       "labels": [
         "tube_r4_status"
       ],
-      "comments_before": [
+      "comment_inline": "Tube register 4 status",
+      "xref_summaries": [
         "&fefe referenced 8 times by &fcf0, &fd83, &fd93, &fd9b, &fda3, &fdae, &fdbe, &fe85"
       ],
-      "comment_inline": "Tube register 4 status",
       "references": [
-        64752,
-        64899,
-        64915,
-        64923,
-        64931,
-        64942,
-        64958,
-        65157
+        {
+          "addr": 64752,
+          "kind": "direct"
+        },
+        {
+          "addr": 64899,
+          "kind": "direct"
+        },
+        {
+          "addr": 64915,
+          "kind": "direct"
+        },
+        {
+          "addr": 64923,
+          "kind": "direct"
+        },
+        {
+          "addr": 64931,
+          "kind": "direct"
+        },
+        {
+          "addr": 64942,
+          "kind": "direct"
+        },
+        {
+          "addr": 64958,
+          "kind": "direct"
+        },
+        {
+          "addr": 65157,
+          "kind": "direct"
+        }
       ],
       "type": "byte",
       "values": [
@@ -12847,18 +13529,39 @@
       "labels": [
         "tube_r4_data"
       ],
-      "comments_before": [
+      "comment_inline": "Tube register 4 data",
+      "xref_summaries": [
         "&feff referenced 7 times by &fd3f, &fd88, &fd98, &fda0, &fda8, &fdb3, &fdc3"
       ],
-      "comment_inline": "Tube register 4 data",
       "references": [
-        64831,
-        64904,
-        64920,
-        64928,
-        64936,
-        64947,
-        64963
+        {
+          "addr": 64831,
+          "kind": "direct"
+        },
+        {
+          "addr": 64904,
+          "kind": "direct"
+        },
+        {
+          "addr": 64920,
+          "kind": "direct"
+        },
+        {
+          "addr": 64928,
+          "kind": "direct"
+        },
+        {
+          "addr": 64936,
+          "kind": "direct"
+        },
+        {
+          "addr": 64947,
+          "kind": "direct"
+        },
+        {
+          "addr": 64963,
+          "kind": "direct"
+        }
       ],
       "type": "byte",
       "values": [
@@ -13000,14 +13703,18 @@
       "labels": [
         "unused_fill_page_ff"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Unused fill in lower page &FF\n\nThe reset code copies all of page &FF to RAM with\nLDA/STA &FF00,X but only &FF80 onwards contains the\ndefault vector table and MOS entry points.",
-        "&ff00 referenced 2 times by &f802, &f805"
+      "xref_summaries": [
+        "&ff00 used as index base 2 times by &f802, &f805"
       ],
       "references": [
-        63490,
-        63493
+        {
+          "addr": 63490,
+          "kind": "indexed"
+        },
+        {
+          "addr": 63493,
+          "kind": "indexed"
+        }
       ],
       "type": "byte",
       "values": [
@@ -13150,14 +13857,15 @@
       "labels": [
         "default_vector_table"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Default MOS vector table\n\n27 two-byte entries (54 bytes) copied to &0200-&0235\nat reset. Each entry is the initial value for the\ncorresponding MOS vector. Vectors for unimplemented\nfunctions point to the 'unsupported' error handler;\nunused event and indirect vectors point to\nnull_return (RTS).",
-        "&ff80 referenced 1 time by &f80d"
-      ],
       "comment_inline": "USERV  - User vector",
+      "xref_summaries": [
+        "&ff80 used as index base 1 time by &f80d"
+      ],
       "references": [
-        63501
+        {
+          "addr": 63501,
+          "kind": "indexed"
+        }
       ],
       "type": "word",
       "values": [
@@ -13565,10 +14273,6 @@
       "labels": [
         "vector_table_info"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "Vector table descriptor\n\nThree-byte block at &FFB6 used by OSBYTE &FD\n(read vector table info). Byte 0 = length of the\nvector table in bytes (&36 = 54 = 27 vectors).\nBytes 1-2 = address of the default vector table\n(&FF80)."
-      ],
       "comment_inline": "Vector table length: &36 bytes (27 words at &FF80)",
       "type": "byte",
       "values": [
@@ -13599,10 +14303,6 @@
       ],
       "labels": [
         "mos_stub_unsupported_1"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: unsupported (5 stubs at &FFB9-&FFC7)\n\nFive consecutive JMP unsupported stubs at &FFB9,\n&FFBC, &FFBF, &FFC2, &FFC5. In the v1.10 external\nROM, all five generate a 'Bad' error. These\naddresses are reserved for MOS compatibility but\nhave no function in this Tube Client."
       ],
       "comment_inline": "Unsupported: generates 'Bad' error",
       "type": "code",
@@ -13685,10 +14385,6 @@
       "labels": [
         "nvrdch"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: NVRDCH (non-vectored RDCH)\n\nJump directly to the OSRDCH implementation,\nbypassing RDCHV. Used when the caller needs to\nensure the real RDCH handler runs regardless of\nany vector interception."
-      ],
       "comment_inline": "Non-vectored RDCH",
       "type": "code",
       "mnemonic": "jmp",
@@ -13705,10 +14401,6 @@
       ],
       "labels": [
         "nvwrch"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: NVWRCH (non-vectored WRCH)\n\nJump directly to the OSWRCH implementation,\nbypassing WRCHV. Used when the caller needs to\nensure the real WRCH handler runs regardless of\nany vector interception."
       ],
       "comment_inline": "Non-vectored WRCH",
       "type": "code",
@@ -13727,10 +14419,6 @@
       "labels": [
         "osfind_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSFIND\n\nOpen or close a file. Dispatches via FINDV (&021C).\n\nOn Entry:\n    A: 0 to close, non-zero to open\n    Y: handle (close) or XY => filename (open)\n\nOn Exit:\n    A: file handle (open) or preserved (close)"
-      ],
       "comment_inline": "Dispatch via FINDV",
       "type": "code",
       "mnemonic": "jmp",
@@ -13747,10 +14435,6 @@
       ],
       "labels": [
         "osgbpb_entry"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSGBPB\n\nMultiple-byte get or put. Dispatches via GBPBV (&021A).\n\nOn Entry:\n    A: function\n    XY: 13-byte control block address"
       ],
       "comment_inline": "Dispatch via GBPBV",
       "type": "code",
@@ -13769,10 +14453,6 @@
       "labels": [
         "osbput_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSBPUT\n\nWrite a byte to an open file. Dispatches via BPUTV (&0218).\n\nOn Entry:\n    A: byte to write\n    Y: file handle"
-      ],
       "comment_inline": "Dispatch via BPUTV",
       "type": "code",
       "mnemonic": "jmp",
@@ -13789,10 +14469,6 @@
       ],
       "labels": [
         "osbget_entry"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSBGET\n\nRead a byte from an open file. Dispatches via BGETV (&0216).\n\nOn Entry:\n    Y: file handle\n\nOn Exit:\n    A: byte read\n    C: set if EOF"
       ],
       "comment_inline": "Dispatch via BGETV",
       "type": "code",
@@ -13811,10 +14487,6 @@
       "labels": [
         "osargs_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSARGS\n\nRead or write open file arguments. Dispatches via ARGSV (&0214).\n\nOn Entry:\n    A: function\n    X: zero-page data word address\n    Y: handle"
-      ],
       "comment_inline": "Dispatch via ARGSV",
       "type": "code",
       "mnemonic": "jmp",
@@ -13831,10 +14503,6 @@
       ],
       "labels": [
         "osfile_entry"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSFILE\n\nWhole-file operations. Dispatches via FILEV (&0212).\n\nOn Entry:\n    A: function\n    XY: 18-byte control block address"
       ],
       "comment_inline": "Dispatch via FILEV",
       "type": "code",
@@ -13853,10 +14521,6 @@
       "labels": [
         "osrdch_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSRDCH\n\nRead a character from the input stream. Dispatches via RDCHV (&0210).\n\nOn Exit:\n    A: character\n    C: set if Escape"
-      ],
       "comment_inline": "Dispatch via RDCHV",
       "type": "code",
       "mnemonic": "jmp",
@@ -13872,10 +14536,6 @@
       ],
       "labels": [
         "osasci_entry"
-      ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSASCI\n\nWrite a character, converting CR to CR+LF. If the\ncharacter is &0D, falls through to OSNEWL to send\nLF then CR. Otherwise jumps directly to OSWRCH.\n\nOn Entry:\n    A: character to write"
       ],
       "comment_inline": "Is it carriage return?",
       "type": "code",
@@ -13904,15 +14564,19 @@
       "labels": [
         "osnewl_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSNEWL\n\nSend a newline sequence (LF followed by CR) via OSWRCH.\nLoads A=&0A, calls OSWRCH, then falls through to\nOSWRCR which loads A=&0D and calls OSWRCH.",
+      "comment_inline": "Send linefeed first",
+      "xref_summaries": [
         "&ffe7 referenced 2 times by &f948, &f957"
       ],
-      "comment_inline": "Send linefeed first",
       "references": [
-        63816,
-        63831
+        {
+          "addr": 63816,
+          "kind": "direct"
+        },
+        {
+          "addr": 63831,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "lda",
@@ -13941,10 +14605,6 @@
       "labels": [
         "oswrcr_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSWRCR\n\nSend a carriage return via OSWRCH. Loads A=&0D and\nfalls through to OSWRCH."
-      ],
       "comment_inline": "Load carriage return",
       "type": "code",
       "mnemonic": "lda",
@@ -13960,18 +14620,31 @@
       "labels": [
         "oswrch_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSWRCH\n\nWrite a character to the output stream. Dispatches via WRCHV (&020E).\n\nOn Entry:\n    A: character to write\n\nOn Exit:\n    A: preserved",
+      "comment_inline": "Dispatch via WRCHV",
+      "xref_summaries": [
         "&ffee referenced 5 times by &f88f, &f951, &feaa, &ffe5, &ffe9"
       ],
-      "comment_inline": "Dispatch via WRCHV",
       "references": [
-        63631,
-        63825,
-        65194,
-        65509,
-        65513
+        {
+          "addr": 63631,
+          "kind": "direct"
+        },
+        {
+          "addr": 63825,
+          "kind": "direct"
+        },
+        {
+          "addr": 65194,
+          "kind": "direct"
+        },
+        {
+          "addr": 65509,
+          "kind": "direct"
+        },
+        {
+          "addr": 65513,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jmp",
@@ -13989,14 +14662,15 @@
       "labels": [
         "osword_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSWORD\n\nPerform a word-based MOS operation. Dispatches via WORDV (&020C).\n\nOn Entry:\n    A: function\n    XY: control block address",
+      "comment_inline": "Dispatch via WORDV",
+      "xref_summaries": [
         "&fff1 referenced 1 time by &f898"
       ],
-      "comment_inline": "Dispatch via WORDV",
       "references": [
-        63640
+        {
+          "addr": 63640,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jmp",
@@ -14014,14 +14688,15 @@
       "labels": [
         "osbyte_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSBYTE\n\nPerform a byte-based MOS operation. Dispatches via BYTEV (&020A).\n\nOn Entry:\n    A: function\n    X: parameter 1\n    Y: parameter 2",
+      "comment_inline": "Dispatch via BYTEV",
+      "xref_summaries": [
         "&fff4 referenced 1 time by &f8a9"
       ],
-      "comment_inline": "Dispatch via BYTEV",
       "references": [
-        63657
+        {
+          "addr": 63657,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jmp",
@@ -14039,14 +14714,15 @@
       "labels": [
         "oscli_entry"
       ],
-      "comments_before": [
-        "***************************************************************************************",
-        "MOS entry: OSCLI\n\nExecute a star command. Dispatches via CLIV (&0208).\n\nOn Entry:\n    XY: command string address (CR-terminated)",
+      "comment_inline": "Dispatch via CLIV",
+      "xref_summaries": [
         "&fff7 referenced 1 time by &f8a1"
       ],
-      "comment_inline": "Dispatch via CLIV",
       "references": [
-        63649
+        {
+          "addr": 63649,
+          "kind": "direct"
+        }
       ],
       "type": "code",
       "mnemonic": "jmp",
@@ -14068,15 +14744,24 @@
           "nmi_vector_hi"
         ]
       },
-      "comments_before": [
+      "comment_inline": "NMI vector (patched at runtime)",
+      "xref_summaries": [
         "&fffa referenced 3 times by &fd65, &fd6a, &fd70",
         "&fffb referenced 1 time by &fd76"
       ],
-      "comment_inline": "NMI vector (patched at runtime)",
       "references": [
-        64869,
-        64874,
-        64880
+        {
+          "addr": 64869,
+          "kind": "direct"
+        },
+        {
+          "addr": 64874,
+          "kind": "direct"
+        },
+        {
+          "addr": 64880,
+          "kind": "direct"
+        }
       ],
       "type": "word",
       "values": [
@@ -14118,10 +14803,10 @@
           "irq_vector_hi"
         ]
       },
-      "comments_before": [
-        "&ffff referenced 4 times by &fdd6, &fdf8, &fe01, &fe15"
-      ],
       "comment_inline": "IRQ/BRK vector",
+      "xref_summaries": [
+        "&ffff referenced 2 times by &fe01, &fe15; also used as index base 2 times by &fdd6, &fdf8"
+      ],
       "type": "word",
       "values": [
         64741

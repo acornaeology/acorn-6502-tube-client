@@ -1120,6 +1120,20 @@ d.comment(0xF856, 'Jump to low memory to page ROM out', align=Align.INLINE)
 d.comment(0x0100, 'Read Tube R1 status to page ROM out', align=Align.INLINE)
 d.comment(0x0103, 'Enable interrupts for data transfers', align=Align.INLINE)
 d.comment(0x0104, 'Patched after first boot to skip banner', align=Align.INLINE)
+# The instructions rendered at &0103/&0104 are the relocated low-memory
+# startup code. The irq_return_addr_lo/hi labels name these addresses
+# for a second, unrelated use as stack-frame bases (see brk_handler_entry),
+# so flag that here to avoid confusing the two.
+d.comment(0x0103,
+          'irq_return_addr_lo also names &0103 as a stack-frame base:\n'
+          'brk_handler_entry reads &0103,X (X = SP) to fetch the pushed\n'
+          'BRK return address low byte.',
+          word_wrap=False)
+d.comment(0x0104,
+          'irq_return_addr_hi also names &0104 as a stack-frame base:\n'
+          'brk_handler_entry reads &0104,X (X = SP) to fetch the pushed\n'
+          'BRK return address high byte.',
+          word_wrap=False)
 d.comment(0xF860, 'Print inline startup banner string', align=Align.INLINE)
 d.comment(0xF87B, 'NOP (&EA) terminates string and is executed', align=Align.INLINE)
 d.comment(0xF87C, 'Low byte of command_prompt address', align=Align.INLINE)

@@ -4,7 +4,7 @@ This file provides guidance when working with code in this repository.
 
 ## Project overview
 
-Annotated disassembly of the Acorn 6502 Tube Client ROM — the operating system for the 65C02 second (parasite) processor used with the BBC Micro. Python scripts drive [dasmos](https://github.com/acornaeology/dasmos) (a programmable 6502/65C02 disassembler with a stable 1.0 API) to produce readable, verified assembly output from the original ROM binary. The first version covered is 1.10.
+Annotated disassembly of the Acorn 6502 Tube Client ROM — the operating system for the 65C02 second (parasite) processor used with the BBC Micro. Python scripts drive [dasmos](https://github.com/acornaeology/dasmos) (a programmable 6502/65C02 disassembler with a stable API) to produce readable, verified assembly output from the original ROM binary. The first version covered is 1.10.
 
 ## Build commands
 
@@ -27,7 +27,7 @@ The disassembly tooling is provided by [fantasm](https://github.com/acornaeology
 
 **Full fantasm reference: <https://acornaeology.github.io/fantasm/>** — the user guide covers every subcommand, the `fantasm.toml` schema, the version-graph workflows, and the importable `fantasm.api`. Reach for it before guessing.
 
-[dasmos](https://github.com/acornaeology/dasmos) (a programmable 6502/65C02 disassembler — a ground-up rewrite of py8dis with a stable 1.0 API, byte-faithful round-trip oracle, and Stevedore-managed CPU / renderer / environment plug-ins) is invoked directly via the per-version driver script under `versions/tube-6502-client-<VER>/disassemble/`; fantasm operates on the `.asm` / `.json` artefacts dasmos emits. Driver-API guide and full module reference: <https://acornaeology.github.io/dasmos/>. The local source-of-truth checkout is at `/Users/rjs/Code/acornaeology/dasmos/` (sibling to this repo) — read `src/dasmos/` directly when investigating behaviour.
+[dasmos](https://github.com/acornaeology/dasmos) (a programmable 6502/65C02 disassembler — a ground-up rewrite of py8dis with a stable 2.x API, byte-faithful round-trip oracle, and Stevedore-managed CPU / renderer / environment plug-ins) is invoked directly via the per-version driver script under `versions/tube-6502-client-<VER>/disassemble/`; fantasm operates on the `.asm` / `.json` artefacts dasmos emits. Driver-API guide and full module reference: <https://acornaeology.github.io/dasmos/>. The local source-of-truth checkout is at `/Users/rjs/Code/acornaeology/dasmos/` (sibling to this repo) — read `src/dasmos/` directly when investigating behaviour.
 
 ### Disassembly driver
 
@@ -63,7 +63,7 @@ Version IDs in `acornaeology.json` and CLI arguments are bare numbers (`1.10`). 
 - Tube Client ROM size: 2048 bytes (2 kB, half of a 4 kB ROM)
 - ROM base address: TBC (provisionally &F800, occupying &F800-&FFFF)
 - The ROM provides the MOS API for the parasite processor by forwarding calls to the host over the Tube interface
-- dasmos is a regular PyPI dependency (`dasmos>=1.0`); the local checkout at `/Users/rjs/Code/acornaeology/dasmos/` is the source of truth for behaviour investigations
+- dasmos is a regular PyPI dependency (`dasmos>=2.0`); the local checkout at `/Users/rjs/Code/acornaeology/dasmos/` is the source of truth for behaviour investigations
 - Assembly output targets beebasm syntax (via `ir.render("beebasm")`)
 - Assembly comments are formatted to fit within 62 characters
 - The 65C02 has additional instructions over the NMOS 6502; pass `cpu="65C02"` to `dasmos.Disassembler.create(...)`
