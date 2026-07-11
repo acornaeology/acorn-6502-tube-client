@@ -42,6 +42,8 @@ beebasm -i versions/tube-6502-client-1.10/output/tube-6502-client-1.10.asm -o tu
 
 ## References
 
+- [tobylobster's BBC Micro MOS disassembly](https://tobylobster.github.io/mos/)
+  tobylobster's fully annotated disassembly of the BBC Micro MOS — a reference for the host-side OSBYTE / OSWORD / vector-call semantics the 6502 Tube Client interacts with.
 - [Original Acorn source code for v1.10 (UADE format)](https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade)
   The original Acorn source code for the 6502 Tube Client, in UADE (Universal Assembler/Disassembler/Editor) format.
 - [J.G. Harston's reassembly of the v1.10 Tube Client (BBC BASIC)](https://web.archive.org/web/20200613192357/http://mdfs.net/Software/Tube/6502/Clnt65v1.src)

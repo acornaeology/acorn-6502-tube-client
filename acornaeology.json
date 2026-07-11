@@ -6,32 +6,45 @@
     "versions": ["1.10"],
     "references": [
         {
+            "label": "tobylobster's BBC Micro MOS disassembly",
+            "url": "https://tobylobster.github.io/mos/",
+            "icon": "ref",
+            "category": "source",
+            "note": "tobylobster's fully annotated disassembly of the BBC Micro MOS — a reference for the host-side OSBYTE / OSWORD / vector-call semantics the 6502 Tube Client interacts with.",
+            "id": "mos"
+        },
+        {
             "label": "Original Acorn source code for v1.10 (UADE format)",
             "url": "https://github.com/stardot/Acorn6502TubeROM/blob/master/uadesrc/tube6502.uade",
+            "category": "source",
             "icon": "ref",
             "note": "The original Acorn source code for the 6502 Tube Client, in UADE (Universal Assembler/Disassembler/Editor) format."
         },
         {
             "label": "J.G. Harston's reassembly of the v1.10 Tube Client (BBC BASIC)",
             "url": "https://web.archive.org/web/20200613192357/http://mdfs.net/Software/Tube/6502/Clnt65v1.src",
+            "category": "source",
             "icon": "ref",
             "note": "A BBC BASIC reassembly of the 6502 Tube Client ROM."
         },
         {
             "label": "Dave Banks' working disassembly of the v1.10 Client ROM (beebasm)",
             "url": "https://github.com/hoglet67/6502ClientROM",
+            "category": "source",
             "icon": "ref",
             "note": "A beebasm disassembly including conditional assembly for the Acorn Turbo 256K variant."
         },
         {
             "label": "Tom Seddon's reassembly of the 6502 Tube Client",
             "url": "https://github.com/tom-seddon/acorn_6502_copro_os_disassembly",
+            "category": "related",
             "icon": "ref",
             "note": "Another reassembly of the 6502 Tube Client ROM."
         },
         {
             "label": "Stardot Forums: Annotated disassembly of Acorn 6502 Tube Client ROM",
             "url": "https://www.stardot.org.uk/forums/viewtopic.php?t=32686",
+            "category": "discussion",
             "icon": "chat",
             "note": "Discussion thread for the 6502 Tube Client disassembly."
         }
