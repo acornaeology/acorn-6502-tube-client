@@ -1,10 +1,11 @@
 {
   "meta": {
-    "schema_version": 2,
+    "schema_version": 4,
     "load_addr": 63488,
     "end_addr": 65536
   },
   "constants": [],
+  "macros": [],
   "subroutines": [
     {
       "addr": 63488,
@@ -762,7 +763,6 @@
     "error_buffer_errnum": 567
   },
   "memory_map": [],
-  "index_bases": [],
   "regions": [],
   "items": [
     {
@@ -11955,7 +11955,16 @@
       ],
       "comment_inline": "Return from NMI",
       "type": "code",
-      "mnemonic": "rti"
+      "mnemonic": "rti",
+      "expr": {
+        "text": "<(nmi0_transfer_addr)",
+        "tree": {
+          "op": "lowbyte",
+          "operand": {
+            "sym": "nmi0_transfer_addr"
+          }
+        }
+      }
     },
     {
       "addr": 65120,
@@ -11980,7 +11989,15 @@
         2
       ],
       "expressions": [
-        "<(nmi0_transfer_addr)"
+        {
+          "text": "<(nmi0_transfer_addr)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi0_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -11993,7 +12010,15 @@
         22
       ],
       "expressions": [
-        "<(nmi1_transfer_addr)"
+        {
+          "text": "<(nmi1_transfer_addr)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi1_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12006,7 +12031,15 @@
         246
       ],
       "expressions": [
-        "<(data_transfer_addr)"
+        {
+          "text": "<(data_transfer_addr)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "data_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12019,7 +12052,15 @@
         246
       ],
       "expressions": [
-        "<(data_transfer_addr)"
+        {
+          "text": "<(data_transfer_addr)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "data_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12032,7 +12073,15 @@
         246
       ],
       "expressions": [
-        "<(data_transfer_addr)"
+        {
+          "text": "<(data_transfer_addr)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "data_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12045,7 +12094,15 @@
         246
       ],
       "expressions": [
-        "<(data_transfer_addr)"
+        {
+          "text": "<(data_transfer_addr)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "data_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12058,7 +12115,15 @@
         215
       ],
       "expressions": [
-        "<(nmi6_transfer_addr)"
+        {
+          "text": "<(nmi6_transfer_addr)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi6_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12071,7 +12136,15 @@
         249
       ],
       "expressions": [
-        "<(nmi7_transfer_addr)"
+        {
+          "text": "<(nmi7_transfer_addr)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi7_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12097,7 +12170,15 @@
         254
       ],
       "expressions": [
-        ">(nmi0_transfer_addr)"
+        {
+          "text": ">(nmi0_transfer_addr)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi0_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12110,7 +12191,15 @@
         254
       ],
       "expressions": [
-        ">(nmi1_transfer_addr)"
+        {
+          "text": ">(nmi1_transfer_addr)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi1_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12123,7 +12212,15 @@
         0
       ],
       "expressions": [
-        ">(data_transfer_addr)"
+        {
+          "text": ">(data_transfer_addr)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "data_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12136,7 +12233,15 @@
         0
       ],
       "expressions": [
-        ">(data_transfer_addr)"
+        {
+          "text": ">(data_transfer_addr)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "data_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12149,7 +12254,15 @@
         0
       ],
       "expressions": [
-        ">(data_transfer_addr)"
+        {
+          "text": ">(data_transfer_addr)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "data_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12162,7 +12275,15 @@
         0
       ],
       "expressions": [
-        ">(data_transfer_addr)"
+        {
+          "text": ">(data_transfer_addr)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "data_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12175,7 +12296,15 @@
         253
       ],
       "expressions": [
-        ">(nmi6_transfer_addr)"
+        {
+          "text": ">(nmi6_transfer_addr)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi6_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12188,7 +12317,15 @@
         253
       ],
       "expressions": [
-        ">(nmi7_transfer_addr)"
+        {
+          "text": ">(nmi7_transfer_addr)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi7_transfer_addr"
+            }
+          }
+        }
       ]
     },
     {
@@ -12214,7 +12351,15 @@
         0
       ],
       "expressions": [
-        "<(nmi_single_byte_to_tube)"
+        {
+          "text": "<(nmi_single_byte_to_tube)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi_single_byte_to_tube"
+            }
+          }
+        }
       ]
     },
     {
@@ -12227,7 +12372,15 @@
         17
       ],
       "expressions": [
-        "<(nmi_single_byte_from_tube)"
+        {
+          "text": "<(nmi_single_byte_from_tube)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi_single_byte_from_tube"
+            }
+          }
+        }
       ]
     },
     {
@@ -12240,7 +12393,15 @@
         34
       ],
       "expressions": [
-        "<(nmi_two_bytes_to_tube)"
+        {
+          "text": "<(nmi_two_bytes_to_tube)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi_two_bytes_to_tube"
+            }
+          }
+        }
       ]
     },
     {
@@ -12253,7 +12414,15 @@
         65
       ],
       "expressions": [
-        "<(nmi_two_bytes_from_tube)"
+        {
+          "text": "<(nmi_two_bytes_from_tube)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi_two_bytes_from_tube"
+            }
+          }
+        }
       ]
     },
     {
@@ -12266,7 +12435,15 @@
         179
       ],
       "expressions": [
-        "<(nmi_acknowledge)"
+        {
+          "text": "<(nmi_acknowledge)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi_acknowledge"
+            }
+          }
+        }
       ]
     },
     {
@@ -12279,7 +12456,15 @@
         179
       ],
       "expressions": [
-        "<(nmi_acknowledge)"
+        {
+          "text": "<(nmi_acknowledge)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi_acknowledge"
+            }
+          }
+        }
       ]
     },
     {
@@ -12292,7 +12477,15 @@
         179
       ],
       "expressions": [
-        "<(nmi_acknowledge)"
+        {
+          "text": "<(nmi_acknowledge)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi_acknowledge"
+            }
+          }
+        }
       ]
     },
     {
@@ -12305,7 +12498,15 @@
         179
       ],
       "expressions": [
-        "<(nmi_acknowledge)"
+        {
+          "text": "<(nmi_acknowledge)",
+          "tree": {
+            "op": "lowbyte",
+            "operand": {
+              "sym": "nmi_acknowledge"
+            }
+          }
+        }
       ]
     },
     {
@@ -12331,7 +12532,15 @@
         254
       ],
       "expressions": [
-        ">(nmi_single_byte_to_tube)"
+        {
+          "text": ">(nmi_single_byte_to_tube)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi_single_byte_to_tube"
+            }
+          }
+        }
       ]
     },
     {
@@ -12344,7 +12553,15 @@
         254
       ],
       "expressions": [
-        ">(nmi_single_byte_from_tube)"
+        {
+          "text": ">(nmi_single_byte_from_tube)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi_single_byte_from_tube"
+            }
+          }
+        }
       ]
     },
     {
@@ -12357,7 +12574,15 @@
         254
       ],
       "expressions": [
-        ">(nmi_two_bytes_to_tube)"
+        {
+          "text": ">(nmi_two_bytes_to_tube)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi_two_bytes_to_tube"
+            }
+          }
+        }
       ]
     },
     {
@@ -12370,7 +12595,15 @@
         254
       ],
       "expressions": [
-        ">(nmi_two_bytes_from_tube)"
+        {
+          "text": ">(nmi_two_bytes_from_tube)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi_two_bytes_from_tube"
+            }
+          }
+        }
       ]
     },
     {
@@ -12383,7 +12616,15 @@
         254
       ],
       "expressions": [
-        ">(nmi_acknowledge)"
+        {
+          "text": ">(nmi_acknowledge)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi_acknowledge"
+            }
+          }
+        }
       ]
     },
     {
@@ -12396,7 +12637,15 @@
         254
       ],
       "expressions": [
-        ">(nmi_acknowledge)"
+        {
+          "text": ">(nmi_acknowledge)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi_acknowledge"
+            }
+          }
+        }
       ]
     },
     {
@@ -12409,7 +12658,15 @@
         254
       ],
       "expressions": [
-        ">(nmi_acknowledge)"
+        {
+          "text": ">(nmi_acknowledge)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi_acknowledge"
+            }
+          }
+        }
       ]
     },
     {
@@ -12422,7 +12679,15 @@
         254
       ],
       "expressions": [
-        ">(nmi_acknowledge)"
+        {
+          "text": ">(nmi_acknowledge)",
+          "tree": {
+            "op": "highbyte",
+            "operand": {
+              "sym": "nmi_acknowledge"
+            }
+          }
+        }
       ]
     },
     {
@@ -13872,7 +14137,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -13887,7 +14157,12 @@
         63813
       ],
       "expressions": [
-        "error_handler"
+        {
+          "text": "error_handler",
+          "tree": {
+            "sym": "error_handler"
+          }
+        }
       ]
     },
     {
@@ -13902,7 +14177,12 @@
         64752
       ],
       "expressions": [
-        "irq1_handler"
+        {
+          "text": "irq1_handler",
+          "tree": {
+            "sym": "irq1_handler"
+          }
+        }
       ]
     },
     {
@@ -13917,7 +14197,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -13932,7 +14217,12 @@
         63946
       ],
       "expressions": [
-        "oscli_impl"
+        {
+          "text": "oscli_impl",
+          "tree": {
+            "sym": "oscli_impl"
+          }
+        }
       ]
     },
     {
@@ -13947,7 +14237,12 @@
         64115
       ],
       "expressions": [
-        "osbyte_impl"
+        {
+          "text": "osbyte_impl",
+          "tree": {
+            "sym": "osbyte_impl"
+          }
+        }
       ]
     },
     {
@@ -13962,7 +14257,12 @@
         64255
       ],
       "expressions": [
-        "osword_impl"
+        {
+          "text": "osword_impl",
+          "tree": {
+            "sym": "osword_impl"
+          }
+        }
       ]
     },
     {
@@ -13977,7 +14277,12 @@
         63842
       ],
       "expressions": [
-        "oswrch_impl"
+        {
+          "text": "oswrch_impl",
+          "tree": {
+            "sym": "oswrch_impl"
+          }
+        }
       ]
     },
     {
@@ -13992,7 +14297,12 @@
         63852
       ],
       "expressions": [
-        "osrdch_impl"
+        {
+          "text": "osrdch_impl",
+          "tree": {
+            "sym": "osrdch_impl"
+          }
+        }
       ]
     },
     {
@@ -14007,7 +14317,12 @@
         64595
       ],
       "expressions": [
-        "osfile_impl"
+        {
+          "text": "osfile_impl",
+          "tree": {
+            "sym": "osfile_impl"
+          }
+        }
       ]
     },
     {
@@ -14022,7 +14337,12 @@
         64460
       ],
       "expressions": [
-        "osargs_impl"
+        {
+          "text": "osargs_impl",
+          "tree": {
+            "sym": "osargs_impl"
+          }
+        }
       ]
     },
     {
@@ -14037,7 +14357,12 @@
         64554
       ],
       "expressions": [
-        "osbget_impl"
+        {
+          "text": "osbget_impl",
+          "tree": {
+            "sym": "osbget_impl"
+          }
+        }
       ]
     },
     {
@@ -14052,7 +14377,12 @@
         64566
       ],
       "expressions": [
-        "osbput_impl"
+        {
+          "text": "osbput_impl",
+          "tree": {
+            "sym": "osbput_impl"
+          }
+        }
       ]
     },
     {
@@ -14067,7 +14397,12 @@
         64654
       ],
       "expressions": [
-        "osgbpb_impl"
+        {
+          "text": "osgbpb_impl",
+          "tree": {
+            "sym": "osgbpb_impl"
+          }
+        }
       ]
     },
     {
@@ -14082,7 +14417,12 @@
         64524
       ],
       "expressions": [
-        "osfind_impl"
+        {
+          "text": "osfind_impl",
+          "tree": {
+            "sym": "osfind_impl"
+          }
+        }
       ]
     },
     {
@@ -14097,7 +14437,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -14112,7 +14457,12 @@
         63869
       ],
       "expressions": [
-        "null_return"
+        {
+          "text": "null_return",
+          "tree": {
+            "sym": "null_return"
+          }
+        }
       ]
     },
     {
@@ -14127,7 +14477,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -14142,7 +14497,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -14157,7 +14517,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -14172,7 +14537,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -14187,7 +14557,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -14202,7 +14577,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -14217,7 +14597,12 @@
         64695
       ],
       "expressions": [
-        "unsupported"
+        {
+          "text": "unsupported",
+          "tree": {
+            "sym": "unsupported"
+          }
+        }
       ]
     },
     {
@@ -14232,7 +14617,12 @@
         63869
       ],
       "expressions": [
-        "null_return"
+        {
+          "text": "null_return",
+          "tree": {
+            "sym": "null_return"
+          }
+        }
       ]
     },
     {
@@ -14247,7 +14637,12 @@
         63869
       ],
       "expressions": [
-        "null_return"
+        {
+          "text": "null_return",
+          "tree": {
+            "sym": "null_return"
+          }
+        }
       ]
     },
     {
@@ -14262,7 +14657,12 @@
         63869
       ],
       "expressions": [
-        "null_return"
+        {
+          "text": "null_return",
+          "tree": {
+            "sym": "null_return"
+          }
+        }
       ]
     },
     {
@@ -14291,7 +14691,12 @@
         65408
       ],
       "expressions": [
-        "default_vector_table"
+        {
+          "text": "default_vector_table",
+          "tree": {
+            "sym": "default_vector_table"
+          }
+        }
       ]
     },
     {
@@ -14768,7 +15173,12 @@
         65203
       ],
       "expressions": [
-        "nmi_acknowledge"
+        {
+          "text": "nmi_acknowledge",
+          "tree": {
+            "sym": "nmi_acknowledge"
+          }
+        }
       ]
     },
     {
@@ -14786,7 +15196,12 @@
         63488
       ],
       "expressions": [
-        "reset"
+        {
+          "text": "reset",
+          "tree": {
+            "sym": "reset"
+          }
+        }
       ]
     },
     {
@@ -14812,7 +15227,12 @@
         64741
       ],
       "expressions": [
-        "interrupt_handler"
+        {
+          "text": "interrupt_handler",
+          "tree": {
+            "sym": "interrupt_handler"
+          }
+        }
       ]
     }
   ]
