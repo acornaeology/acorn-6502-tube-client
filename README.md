@@ -58,7 +58,7 @@ beebasm -i versions/tube-6502-client-1.10/output/tube-6502-client-1.10.asm -o tu
 ## Credits
 
 - [dasmos](https://github.com/acornaeology/dasmos) — programmable 6502/65C02 disassembler used to produce the annotated assembly
-- [beebasm](https://github.com/stardot/beebasm) by Rich Mayfield and contributors
+- [beebasm](https://github.com/stardot/beebasm) by Rich Talbot-Watkins and contributors
 - [The BBC Micro ROM Library](https://tobylobster.github.io/rom_library/) by tobylobster
 
 ## License
