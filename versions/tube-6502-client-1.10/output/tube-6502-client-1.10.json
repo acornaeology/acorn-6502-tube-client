@@ -438,7 +438,7 @@
       "addr": 64869,
       "name": "data_transfer_setup",
       "title": "Set up data transfer via NMI",
-      "description": "Configure the NMI handler for a data transfer.\n\nThe transfer type (0-7) from R4 selects the NMI\nroutine and the address pointer. Types 0-3 are\nsingle/double byte transfers. Types 4-5 are release.\nTypes 6-7 are 256-byte block transfers.\n\nThe setup phase consumes 7 bytes on R4 in this order:\ntransfer type, called ID, address bytes 4/3/2/1 (only\nthe low two are stored, via transfer_addr_ptr), then a\nsync byte. The transfer type byte has already been read\nby tube_r4_interrupt before falling through here; the\nother 6 are read below. Between the last address byte\nand the sync wait, two bytes are drained from R3 in the\nH-to-P direction via BIT tube_r3_data.\n\nNo bytes are written to R3 during setup: any P-to-H R3\nwrite happens later, from the NMI handler selected by\nthe transfer type. For transfer types 0-5 the routine\nexits via RTI after the sync byte; for type 6 it runs\ntransfer_write_loop to send 256 bytes to R3, and for\ntype 7 it runs transfer_256_bytes_from_tube to read 256\nbytes from R3.\n\nThe sync byte is the final step of the host-side Tube\nhandshake: the host writes it only once it is ready to\nbegin the data phase. The parasite blocks in the BIT/BPL\nloop at transfer_wait_sync until bit 7 of R4 status is\nset, so if the sync byte is never written the parasite\nspins here indefinitely.",
+      "description": "Configure the NMI handler for a data transfer.\n\nThe transfer type (0-7) from R4 selects the NMI\nroutine and the address pointer. Types 0-3 are\nsingle/double byte transfers. Types 4-5 are release.\nTypes 6-7 are 256-byte block transfers.\n\nThe setup phase consumes 7 bytes on R4 in this order:\ntransfer type, called ID, address bytes 4/3/2/1 (only\nthe low two are stored, via transfer_addr_ptr), then a\nsync byte. The transfer type byte has already been read\nby tube_r4_interrupt before falling through here; the\nother 6 are read below. Between the last address byte\nand the sync wait, two bytes are drained from R3 in the\nH-to-P direction via BIT tube_r3_data.\n\nNo bytes are written to R3 during setup: any P-to-H R3\nwrite happens later, from the NMI handler selected by\nthe transfer type. For transfer types 0-5 the routine\nexits via RTI after the sync byte; for type 6 it runs\ntransfer_write_loop to send 256 bytes to R3, and for\ntype 7 it runs transfer_256_bytes_from_tube to read 256\nbytes from R3.\n\nBoth block loops poll bit 7 of R3 status, but on the\nparasite side that bit is not a plain \"data available\"\nflag: it is the R3 NMI-request flag, set when R3 holds\na byte from the host (H-to-P data available) or when\nthe host has emptied R3 (P-to-H space available). In\nthe write loop only the second case can arise, so bit 7\nmeans the host has taken the previous byte and R3 can\naccept the next. Bit 6 is the P-to-H space flag alone.\n\nThe sync byte is the final step of the host-side Tube\nhandshake: the host writes it only once it is ready to\nbegin the data phase. The parasite blocks in the BIT/BPL\nloop at transfer_wait_sync until bit 7 of R4 status is\nset, so if the sync byte is never written the parasite\nspins here indefinitely.",
       "fall_through": true
     },
     {
@@ -10891,7 +10891,7 @@
         41,
         128
       ],
-      "comment_inline": "Isolate ready bit",
+      "comment_inline": "Isolate bit 7: R3 NMI-request flag",
       "type": "code",
       "mnemonic": "and",
       "operand": "#&80"
@@ -10902,7 +10902,7 @@
         16,
         249
       ],
-      "comment_inline": "Wait until R3 ready",
+      "comment_inline": "Wait until host has taken the last byte",
       "type": "code",
       "mnemonic": "bpl",
       "operand": "transfer_write_loop",
@@ -10999,7 +10999,7 @@
         16,
         251
       ],
-      "comment_inline": "Wait until R3 ready",
+      "comment_inline": "Wait until host has taken the last byte",
       "type": "code",
       "mnemonic": "bpl",
       "operand": "transfer_write_sync",

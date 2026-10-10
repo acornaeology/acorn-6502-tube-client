@@ -885,6 +885,15 @@ transfer_write_loop to send 256 bytes to R3, and for
 type 7 it runs transfer_256_bytes_from_tube to read 256
 bytes from R3.
 
+Both block loops poll bit 7 of R3 status, but on the
+parasite side that bit is not a plain "data available"
+flag: it is the R3 NMI-request flag, set when R3 holds
+a byte from the host (H-to-P data available) or when
+the host has emptied R3 (P-to-H space available). In
+the write loop only the second case can arise, so bit 7
+means the host has taken the previous byte and R3 can
+accept the next. Bit 6 is the P-to-H space flag alone.
+
 The sync byte is the final step of the host-side Tube
 handshake: the host writes it only once it is ready to
 begin the data phase. The parasite blocks in the BIT/BPL
@@ -1794,14 +1803,14 @@ d.comment(0xFDC9, 'Below 6: exit (single/double/release)', align=Align.INLINE)
 d.comment(0xFDCB, 'Not 6: must be type 7 (read block)', align=Align.INLINE)
 d.comment(0xFDCD, 'Y=0 for 256-byte counter', align=Align.INLINE)
 d.comment(0xFDCF, 'Read Tube R3 status', align=Align.INLINE)
-d.comment(0xFDD2, 'Isolate ready bit', align=Align.INLINE)
-d.comment(0xFDD4, 'Wait until R3 ready', align=Align.INLINE)
+d.comment(0xFDD2, 'Isolate bit 7: R3 NMI-request flag', align=Align.INLINE)
+d.comment(0xFDD4, 'Wait until host has taken the last byte', align=Align.INLINE)
 d.comment(0xFDD6, 'Read byte (address patched)', align=Align.INLINE)
 d.comment(0xFDD9, 'Send to Tube R3', align=Align.INLINE)
 d.comment(0xFDDC, 'Next byte', align=Align.INLINE)
 d.comment(0xFDDD, 'Loop for 256 bytes', align=Align.INLINE)
 d.comment(0xFDDF, 'Poll Tube R3 status', align=Align.INLINE)
-d.comment(0xFDE2, 'Wait until R3 ready', align=Align.INLINE)
+d.comment(0xFDE2, 'Wait until host has taken the last byte', align=Align.INLINE)
 d.comment(0xFDE4, 'Send final sync byte to R3', align=Align.INLINE)
 d.comment(0xFDE7, 'Restore Y from stack', align=Align.INLINE)
 d.comment(0xFDE8, 'Transfer to Y', align=Align.INLINE)

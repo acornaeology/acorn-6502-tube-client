@@ -1445,6 +1445,13 @@ cpu 1
 ; RTI after the sync byte; for type 6 it runs transfer_write_loop to send 256 bytes to
 ; R3, and for type 7 it runs transfer_256_bytes_from_tube to read 256 bytes from R3.
 ;
+; Both block loops poll bit 7 of R3 status, but on the parasite side that bit is not a
+; plain "data available" flag: it is the R3 NMI-request flag, set when R3 holds a byte
+; from the host (H-to-P data available) or when the host has emptied R3 (P-to-H space
+; available). In the write loop only the second case can arise, so bit 7 means the host
+; has taken the previous byte and R3 can accept the next. Bit 6 is the P-to-H space flag
+; alone.
+;
 ; The sync byte is the final step of the host-side Tube handshake: the host writes it
 ; only once it is ready to begin the data phase. The parasite blocks in the BIT/BPL loop
 ; at transfer_wait_sync until bit 7 of R4 status is set, so if the sync byte is never
@@ -1511,8 +1518,8 @@ cpu 1
 ; &fdcf referenced 2 times by &fdd4, &fddd
 .transfer_write_loop
     lda tube_r3_status                                                ; fdcf: ad fc fe    ...      ; Read Tube R3 status
-    and #&80                                                          ; fdd2: 29 80       ).       ; Isolate ready bit
-    bpl transfer_write_loop                                           ; fdd4: 10 f9       ..       ; Wait until R3 ready
+    and #&80                                                          ; fdd2: 29 80       ).       ; Isolate bit 7: R3 NMI-request flag
+    bpl transfer_write_loop                                           ; fdd4: 10 f9       ..       ; Wait until host has taken the last byte
 .transfer_write_read_byte
 nmi6_transfer_addr = transfer_write_read_byte+1
     lda irq_vector_hi,y                                               ; fdd6: b9 ff ff    ...      ; Read byte (address patched)
@@ -1522,7 +1529,7 @@ nmi6_transfer_addr = transfer_write_read_byte+1
 ; &fddf referenced 1 time by &fde2
 .transfer_write_sync
     bit tube_r3_status                                                ; fddf: 2c fc fe    ,..      ; Poll Tube R3 status
-    bpl transfer_write_sync                                           ; fde2: 10 fb       ..       ; Wait until R3 ready
+    bpl transfer_write_sync                                           ; fde2: 10 fb       ..       ; Wait until host has taken the last byte
     sta tube_r3_data                                                  ; fde4: 8d fd fe    ...      ; Send final sync byte to R3
 ; ***************************************************************************************
 ; Restore registers and return from interrupt
