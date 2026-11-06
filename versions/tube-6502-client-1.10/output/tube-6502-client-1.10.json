@@ -5,14 +5,14 @@
     "end_addr": 65536,
     "images": [
       {
-        "name": "tmpxrmsfksy.rom",
+        "name": "tmpkj1_h6g2.rom",
         "load_addr": 63488,
         "end_addr": 65536
       }
     ],
     "moves": [
       {
-        "name": "move_1",
+        "name": "low_memory_code",
         "dest": 256,
         "src": 63577,
         "length": 7
@@ -31,7 +31,7 @@
     {
       "addr": 256,
       "binary_addr": 63577,
-      "move": "move_1",
+      "move": "low_memory_code",
       "name": "low_memory_startup_code",
       "title": "Low memory startup code (relocated from ROM at reloc_low_memory_src)",
       "description": "Copied from ROM to &0100 by the reset routine.\n\nReads Tube R1 status to page out the ROM, enables\ninterrupts, then jumps to display the startup banner.\nOn subsequent soft resets, the JMP target at &F85E is\npatched to skip the banner and enter the command prompt\ndirectly."
@@ -1223,7 +1223,7 @@
       "mnemonic": "sta",
       "operand": "low_memory_code,x",
       "target": 256,
-      "target_move": "move_1",
+      "target_move": "low_memory_code",
       "target_label": "low_memory_code"
     },
     {
@@ -1373,7 +1373,7 @@
       "mnemonic": "jmp",
       "operand": "low_memory_code",
       "target": 256,
-      "target_move": "move_1",
+      "target_move": "low_memory_code",
       "target_label": "low_memory_code"
     },
     {
@@ -1384,7 +1384,7 @@
         254
       ],
       "binary_addr": 63577,
-      "move": "move_1",
+      "move": "low_memory_code",
       "labels": [
         "low_memory_code",
         "low_memory_startup_code"
@@ -1415,7 +1415,7 @@
         88
       ],
       "binary_addr": 63580,
-      "move": "move_1",
+      "move": "low_memory_code",
       "labels": [
         "irq_return_addr_lo"
       ],
@@ -1443,7 +1443,7 @@
         248
       ],
       "binary_addr": 63581,
-      "move": "move_1",
+      "move": "low_memory_code",
       "labels": [
         "irq_return_addr_hi"
       ],
@@ -1484,7 +1484,7 @@
         {
           "addr": 260,
           "kind": "direct",
-          "move": "move_1",
+          "move": "low_memory_code",
           "move_id": 1
         }
       ],
@@ -9554,7 +9554,7 @@
       "mnemonic": "lda",
       "operand": "irq_return_addr_lo,x",
       "target": 259,
-      "target_move": "move_1",
+      "target_move": "low_memory_code",
       "target_label": "irq_return_addr_lo"
     },
     {
@@ -9611,7 +9611,7 @@
       "mnemonic": "lda",
       "operand": "irq_return_addr_hi,x",
       "target": 260,
-      "target_move": "move_1",
+      "target_move": "low_memory_code",
       "target_label": "irq_return_addr_hi"
     },
     {
@@ -13372,7 +13372,7 @@
         {
           "addr": 256,
           "kind": "direct",
-          "move": "move_1",
+          "move": "low_memory_code",
           "move_id": 1
         },
         {

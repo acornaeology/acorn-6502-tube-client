@@ -27,7 +27,7 @@ _tmp.close()
 d = dasmos.Disassembler.create(cpu='65C02', auto_label_data_prefix='l', auto_label_code_prefix='c', auto_label_subroutine_prefix='sub_c', auto_label_loop_prefix='loop_c')
 d.load(_tmp.name, 0xF800)
 os.unlink(_tmp.name)
-d.add_move(0x0100, 0xF859, 0x07)
+d.add_move(0x0100, 0xF859, 0x07, name="low_memory_code")
 
 d.label(0xF859, 'reloc_low_memory_src')
 
