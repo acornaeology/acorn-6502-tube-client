@@ -1,5 +1,5 @@
 version = 1
-revision = 1
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -18,7 +18,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dasmos", specifier = ">=4.1.0" },
+    { name = "dasmos", specifier = ">=4.4.0" },
     { name = "fantasm", specifier = ">=0.18.0" },
 ]
 
@@ -84,7 +84,7 @@ wheels = [
 
 [[package]]
 name = "dasmos"
-version = "4.1.0"
+version = "4.4.0"
 source = { registry = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/simple" }
 dependencies = [
     { name = "asyoulikeit" },
@@ -92,9 +92,9 @@ dependencies = [
     { name = "mistletoe" },
     { name = "stevedore" },
 ]
-sdist = { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/3f/dc/cbd17baf456cc8488e242f018c6c17683e54e6934d4f3e5c1073cff78ec0/dasmos-4.1.0.tar.gz", hash = "sha256:7b3e3531b710545173c33dd9c4ce5c0ef8a7ec3429fd752ea16e1436cd1bed07" }
+sdist = { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/27/18/0e197ecf4de405ac3e6e8afe07bb9610e0b72f83a76f68b6045a82d25837/dasmos-4.4.0.tar.gz", hash = "sha256:e128abe1e2c3ee6ad6ba3db52af8b11af46e8a39ca5f46bae8b4046f7a8811f8" }
 wheels = [
-    { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/0c/e1/fd033483d3f24d7512c173781d7bb4a7b8d7c1c178d541d0085eb738315c/dasmos-4.1.0-py3-none-any.whl", hash = "sha256:99d00a307dec5b326a100d8fe885a8eed3f6f56333d32ebdf03834414264c123" },
+    { url = "https://sixtynorthartifactory1.jfrog.io/artifactory/api/pypi/python-packages/packages/packages/eb/f4/61a004f6664e1087a1f98bff69dbd027a6bd205fc0cf722aa492b7be2985/dasmos-4.4.0-py3-none-any.whl", hash = "sha256:365f15ebdf16757d7dab5996c74425ab63f88fc8bd10426826db1790fae9178e" },
 ]
 
 [[package]]
