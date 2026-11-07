@@ -21,12 +21,14 @@ _rom_filepath = os.environ.get('FANTASM_ROM', str(_version_dirpath / 'rom' / 'tu
 _output_dirpath = Path(os.environ.get('FANTASM_OUTPUT_DIR', str(_version_dirpath / 'output')))
 _full_rom = open(_rom_filepath, 'rb').read()
 _upper_rom = _full_rom[2048:]
-_tmp = tempfile.NamedTemporaryFile(suffix='.rom', delete=False)
-_tmp.write(_upper_rom)
-_tmp.close()
+# Load the upper 2K through a file of a fixed name (dasmos records the
+# loaded file's name in the JSON), in a temporary directory.
+_tmp_dir = tempfile.TemporaryDirectory()
+_tmp_filepath = Path(_tmp_dir.name) / Path(_rom_filepath).name
+_tmp_filepath.write_bytes(_upper_rom)
 d = dasmos.Disassembler.create(cpu='65C02', auto_label_data_prefix='l', auto_label_code_prefix='c', auto_label_subroutine_prefix='sub_c', auto_label_loop_prefix='loop_c')
-d.load(_tmp.name, 0xF800)
-os.unlink(_tmp.name)
+d.load(_tmp_filepath, 0xF800)
+_tmp_dir.cleanup()
 d.add_move(0x0100, 0xF859, 0x07, name="low_memory_code")
 
 d.label(0xF859, 'reloc_low_memory_src')

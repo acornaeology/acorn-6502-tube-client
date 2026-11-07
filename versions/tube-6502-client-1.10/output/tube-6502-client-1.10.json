@@ -5,7 +5,7 @@
     "end_addr": 65536,
     "images": [
       {
-        "name": "tmpkj1_h6g2.rom",
+        "name": "tube-6502-client-1.10.rom",
         "load_addr": 63488,
         "end_addr": 65536
       }
